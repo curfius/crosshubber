@@ -1,0 +1,72 @@
+<div
+  class="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--portal-bg-base)] px-4">
+  <div
+    class="pointer-events-none absolute -top-40 -left-40 size-96 rounded-full bg-[var(--portal-accent-primary-glow)] blur-3xl"></div>
+  <div
+    class="pointer-events-none absolute -right-32 -bottom-32 size-96 rounded-full bg-[var(--portal-accent-secondary-subtle)] blur-3xl"></div>
+  <div
+    class="pointer-events-none absolute top-1/3 left-1/2 size-64 -translate-x-1/2 rounded-full bg-[var(--portal-accent-primary-subtle)] blur-3xl"></div>
+
+  <div
+    class="relative w-full max-w-sm rounded-2xl border border-[var(--portal-border-default)] bg-[var(--portal-bg-glass)] p-8 shadow-2xl shadow-black/40 backdrop-blur-xl">
+    <div class="mb-8 flex flex-col items-center gap-4">
+      <div
+        class="flex size-14 items-center justify-center rounded-2xl shadow-lg [background:var(--portal-gradient-primary)]">
+        <svg class="size-8 text-[var(--portal-text-inverse)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="M9 10h.01M15 10h.01M8.5 15a4 4 0 0 0 7 0"></path>
+        </svg>
+      </div>
+      <div class="text-center">
+        <h1 class="text-xl font-bold text-[var(--portal-text-primary)]">{{ i18n.t('login.title') }}</h1>
+        <p class="mt-1 text-sm text-[var(--portal-text-tertiary)]">{{ i18n.t('login.subtitle') }}</p>
+      </div>
+    </div>
+
+    @if (error()) {
+    <div
+      class="ds-alert ds-alert-danger mb-4">
+      <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M12 8v4M12 16h.01"></path>
+      </svg>
+      <span>{{ error() }}</span>
+    </div>
+    }
+
+    <form class="flex flex-col gap-4" (ngSubmit)="onSubmit()">
+      <div class="flex flex-col gap-1.5">
+        <label for="username" class="ds-label block">{{ i18n.t('login.username') }}</label>
+        <input id="username" name="username" type="text" autocomplete="username" required autofocus
+          [(ngModel)]="username"
+          class="ds-input" />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label for="password" class="ds-label block">{{ i18n.t('login.password') }}</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required
+          [(ngModel)]="password"
+          class="ds-input" />
+      </div>
+
+      <button type="submit" [disabled]="busy()"
+        class="ds-btn ds-btn-gradient ds-btn-lg mt-2 w-full">
+        @if (busy()) {
+        <svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+        </svg>
+        <span>{{ i18n.t('login.signingIn') }}</span>
+        } @else {
+        <span>{{ i18n.t('login.signIn') }}</span>
+        }
+      </button>
+    </form>
+
+    <p class="mt-6 text-center text-xs text-[var(--portal-text-muted)]">
+      {{ i18n.t('login.footer') }}
+    </p>
+  </div>
+</div>

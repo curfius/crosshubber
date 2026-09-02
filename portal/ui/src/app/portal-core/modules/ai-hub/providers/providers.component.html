@@ -1,0 +1,241 @@
+﻿<div>
+  <div class="mb-6">
+    <h1 class="ds-heading-3">{{ i18n.t('aihub.providers.title') }}</h1>
+    <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('aihub.providers.subtitle') }}</p>
+  </div>
+
+  <div class="flex" style="height: calc(100% - 52px)">
+    <!-- Left sidebar: provider list -->
+    <div class="w-56 shrink-0 border-r border-[var(--portal-border-default)] flex flex-col">
+    <div class="min-h-0 flex-1 overflow-y-auto p-3">
+      <app-ds-tree
+        [nodes]="providerNodes()"
+        [selectedId]="selectedId()"
+        [boxed]="false"
+        [searchable]="true"
+        (nodeSelected)="selectProvider($event.id)"
+        (actionClick)="onProviderAction($event)" />
+    </div>
+
+    <div class="border-t border-[var(--portal-border-default)] p-4">
+      @if (!showAddCustom()) {
+      <button type="button" (click)="showAddCustom.set(true)"
+        class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]">
+        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        {{ i18n.t('aihub.providers.customProvider.add') }}
+      </button>
+      } @else {
+      <div class="space-y-2">
+        <input type="text" [placeholder]="i18n.t('aihub.providers.customProvider.idPlaceholder')" [value]="customId()" (input)="customId.set($any($event.target).value)"
+          class="ds-input" />
+        <input type="text" [placeholder]="i18n.t('aihub.providers.customProvider.namePlaceholder')" [value]="customName()" (input)="customName.set($any($event.target).value)"
+          class="ds-input" />
+        <input type="text" [placeholder]="i18n.t('aihub.providers.customProvider.urlPlaceholder')" [value]="customBaseURL()" (input)="customBaseURL.set($any($event.target).value)"
+          class="ds-input" />
+        <div class="flex gap-2">
+          <button type="button" (click)="addCustomProvider()"
+            class="ds-btn ds-btn-primary ds-btn-sm">{{ i18n.t('aihub.providers.action.add') }}</button>
+          <button type="button" (click)="showAddCustom.set(false)"
+            class="ds-btn ds-btn-ghost ds-btn-sm">{{ i18n.t('aihub.providers.action.cancel') }}</button>
+        </div>
+      </div>
+      }
+    </div>
+  </div>
+
+  <!-- Right panel: provider config -->
+  <div class="flex-1 overflow-y-auto p-6">
+    @if (selectedProvider(); as provider) {
+    <div class="mx-auto max-w-3xl">
+      <div class="mb-6 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <span class="size-2.5 shrink-0 rounded-full" [style.background]="dotColor(providerDot(provider))"></span>
+          <div>
+            <h1 class="ds-heading-3">{{ provider.name }}</h1>
+            <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('aihub.providers.provider.description') }}</p>
+          </div>
+        </div>
+        <app-switch [checked]="provider.enabled" (toggled)="toggleProvider(provider)" />
+      </div>
+
+      <!-- Provider details -->
+      <div class="mb-6 rounded-xl border border-[var(--portal-card-border)] bg-[var(--portal-card-bg)] p-4">
+        <dl class="grid grid-cols-2 gap-x-6 gap-y-3 text-xs md:grid-cols-4">
+          <div class="min-w-0">
+            <dt class="text-[10px] uppercase tracking-wider text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.providers.field.id') }}</dt>
+            <dd class="mt-0.5 truncate font-mono text-[var(--portal-text-secondary)]">{{ provider.id }}</dd>
+          </div>
+          <div class="min-w-0">
+            <dt class="text-[10px] uppercase tracking-wider text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.providers.field.baseUrl') }}</dt>
+            <dd class="mt-0.5 truncate font-mono text-[var(--portal-text-secondary)]">{{ provider.baseURL ?? 'â€”' }}</dd>
+          </div>
+          <div>
+            <dt class="text-[10px] uppercase tracking-wider text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.providers.field.type') }}</dt>
+            <dd class="mt-0.5 text-[var(--portal-text-secondary)]">{{ isBuiltin(provider.id) ? i18n.t('aihub.providers.type.builtin') : i18n.t('aihub.providers.type.custom') }}</dd>
+          </div>
+          <div>
+            <dt class="text-[10px] uppercase tracking-wider text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.providers.field.tokens') }}</dt>
+            <dd class="mt-0.5 text-[var(--portal-text-secondary)]">{{ provider.tokens.length }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <!-- Tokens -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-[var(--portal-text-muted)]">{{ i18n.t('aihub.providers.tokens.heading') }}</h2>
+          <button type="button" (click)="showAddToken.set(true)"
+            class="flex items-center gap-1 rounded px-2 py-1 text-xs text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]">
+            <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            {{ i18n.t('aihub.providers.token.add') }}
+          </button>
+        </div>
+
+        @if (showAddToken()) {
+        <div class="rounded-xl border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] p-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="ds-label mb-1 block">{{ i18n.t('aihub.providers.token.name') }}</label>
+              <input type="text" [placeholder]="i18n.t('aihub.providers.token.namePlaceholder')" [value]="newTokenName()" (input)="newTokenName.set($any($event.target).value)"
+                class="ds-input" />
+            </div>
+            <div>
+              <label class="ds-label mb-1 block">{{ i18n.t('aihub.providers.token.apiKey') }}</label>
+              <input type="password" [placeholder]="i18n.t('aihub.providers.token.apiKeyPlaceholder')" [value]="newTokenApiKey()" (input)="newTokenApiKey.set($any($event.target).value)"
+                class="ds-input" />
+            </div>
+          </div>
+          <div class="mt-3 flex gap-2">
+            <button type="button" (click)="addToken(provider)"
+              class="ds-btn ds-btn-primary ds-btn-sm">{{ i18n.t('aihub.providers.action.save') }}</button>
+            <button type="button" (click)="showAddToken.set(false)"
+              class="ds-btn ds-btn-ghost ds-btn-sm">{{ i18n.t('aihub.providers.action.cancel') }}</button>
+          </div>
+        </div>
+        }
+
+        @for (token of provider.tokens; track token.id) {
+        <div class="rounded-xl border border-[var(--portal-card-border)] bg-[var(--portal-card-bg)]">
+          <!-- Token header -->
+          <div class="flex items-center gap-3 p-4">
+            <button type="button" (click)="toggleTokenExpanded(token.id)"
+              class="flex size-5 shrink-0 items-center justify-center rounded text-[var(--portal-text-muted)] transition hover:text-[var(--portal-text-secondary)]">
+              <svg class="size-3 transition-transform" [class.rotate-90]="expandedTokens().has(token.id)" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4l4 4-4 4"/></svg>
+            </button>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-[var(--portal-text-primary)]">{{ token.name }}</p>
+              <p class="text-[10px] text-[var(--portal-text-disabled)]">{{ token.maskedKey ?? i18n.t('aihub.providers.token.noKeySet') }} &middot; {{ i18n.t('aihub.providers.token.modelsCount', { count: selectedModels(token).length }) }}</p>
+            </div>
+            <button type="button" (click)="requestRemoveToken(provider, token)"
+              class="size-4 shrink-0 text-[var(--portal-text-disabled)] transition hover:text-[var(--portal-status-danger)]" [title]="i18n.t('aihub.providers.token.delete')">
+              <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            </button>
+            <app-switch [checked]="token.enabled" (toggled)="toggleTokenEnabled(provider, token)" />
+          </div>
+
+          <!-- Token body: models -->
+          @if (expandedTokens().has(token.id)) {
+          <div class="border-t border-[var(--portal-border-default)] px-4 py-3">
+
+            <!-- Selected models -->
+            @if (selectedModels(token).length > 0) {
+            <div class="mb-4">
+              <h4 class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--portal-text-muted)]">{{ i18n.t('aihub.providers.models.selected', { count: selectedModels(token).length }) }}</h4>
+              <div class="space-y-1">
+                @for (model of selectedModels(token); track model.id) {
+                <div class="flex items-center gap-2 rounded-lg bg-[var(--portal-bg-hover)] px-2.5 py-2">
+                  <span class="min-w-0 flex-1 truncate text-xs text-[var(--portal-text-secondary)]">{{ model.name }}</span>
+                  <span class="shrink-0 text-[10px] text-[var(--portal-text-disabled)]">{{ model.id }}</span>
+                  <select [value]="model.variant ?? ''" (change)="setVariant(provider, token, model, $any($event.target).value)"
+                    class="ds-select shrink-0 !py-0.5 !px-1.5 !text-[10px] w-auto">
+                    <option value="">default</option>
+                    <option value="high">high</option>
+                    <option value="medium">medium</option>
+                    <option value="low">low</option>
+                    <option value="fast">fast</option>
+                    <option value="thinking">thinking</option>
+                  </select>
+                  <app-switch [checked]="true" (toggled)="toggleModel(provider, token, model)" />
+                </div>
+                }
+              </div>
+            </div>
+            }
+
+            <!-- Available models -->
+            <div>
+              <div class="mb-2 flex items-center justify-between">
+                <h4 class="text-[10px] font-semibold uppercase tracking-wider text-[var(--portal-text-muted)]">
+                  @if (hasFetched(provider)) { {{ i18n.t('aihub.providers.models.availableCount', { count: availableModels(provider, token).length }) }} } @else { {{ i18n.t('aihub.providers.models.available') }} }
+                </h4>
+                <button type="button" (click)="refreshModels(provider)" [disabled]="fetchingProviderId() === provider.id"
+                  class="flex size-6 items-center justify-center rounded text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)] disabled:opacity-50"
+                  [title]="i18n.t('aihub.providers.models.refresh')">
+                  @if (fetchingProviderId() === provider.id) {
+                  <svg class="size-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.22-8.56" stroke-linecap="round"/></svg>
+                  } @else {
+                  <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  }
+                </button>
+              </div>
+
+              @if (!hasFetched(provider)) {
+              <p class="py-3 text-center text-xs text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.providers.models.notLoaded') }}</p>
+              } @else {
+              <div class="mb-2">
+                <input type="text" [placeholder]="i18n.t('aihub.providers.models.searchPlaceholder')" [value]="modelSearch()" (input)="modelSearch.set($any($event.target).value)"
+                  class="ds-input" />
+              </div>
+              @if (availableModels(provider, token).length === 0) {
+              <p class="py-3 text-center text-xs text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.providers.models.noMatch') }}</p>
+              } @else {
+              <div class="max-h-64 space-y-1 overflow-y-auto">
+                @for (model of availableModels(provider, token); track model.id) {
+                <div class="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-[var(--portal-bg-hover)]">
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-xs" [class]="isModelSelected(token, model.id) ? 'text-[var(--portal-text-secondary)]' : 'text-[var(--portal-text-muted)]'">{{ model.name }}</p>
+                    <p class="truncate text-[10px] text-[var(--portal-text-disabled)]">{{ model.id }}</p>
+                  </div>
+                  <app-switch [checked]="isModelSelected(token, model.id)" (toggled)="toggleModel(provider, token, model)" />
+                </div>
+                }
+              </div>
+              }
+              }
+            </div>
+          </div>
+          }
+        </div>
+        }
+
+        @if (provider.tokens.length === 0 && !showAddToken()) {
+        <p class="py-8 text-center text-xs text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.providers.tokens.empty') }}</p>
+        }
+      </div>
+    </div>
+    } @else {
+    <div class="flex h-full items-center justify-center">
+      <p class="text-sm text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.providers.empty.selectProvider') }}</p>
+    </div>
+    }
+  </div>
+  </div>
+</div>
+
+@if (pendingDeleteToken(); as t) {
+<app-confirm-dialog
+  [title]="i18n.t('aihub.providers.token.delete')"
+  [message]="i18n.t('aihub.providers.confirmRemoveToken', { name: t.name })"
+  [confirmLabel]="i18n.t('aihub.providers.token.delete')"
+  (confirmed)="confirmRemoveToken()"
+  (cancelled)="cancelRemoveToken()" />
+}
+
+@if (pendingRemoveProvider(); as p) {
+<app-confirm-dialog
+  [title]="i18n.t('aihub.providers.provider.remove')"
+  [message]="i18n.t('aihub.providers.confirmRemoveProvider', { name: p.name })"
+  [confirmLabel]="i18n.t('aihub.providers.provider.remove')"
+  (confirmed)="confirmRemoveProvider()"
+  (cancelled)="cancelRemoveProvider()" />
+}

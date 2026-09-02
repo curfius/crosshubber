@@ -1,0 +1,29 @@
+<div class="flex h-full flex-col">
+  <!-- Tab bar -->
+  <div class="flex items-center gap-1 border-b border-[var(--portal-border-default)] px-6 pt-3">
+    <h1 class="ds-heading-3 mr-4 !text-sm">{{ i18n.t('aihub.title') }}</h1>
+    @for (t of tabs(); track t.key) {
+    <button type="button" (click)="selectTab(t.key)"
+      [class]="activeTab() === t.key
+        ? 'rounded-t-lg border-x border-t border-[var(--portal-border-default)] bg-[var(--portal-bg-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--portal-text-primary)]'
+        : 'rounded-t-lg px-3 py-1.5 text-xs text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]'">
+      {{ i18n.t(t.labelKey) }}
+    </button>
+    }
+  </div>
+
+  <!-- Active tab -->
+  <div class="min-h-0 flex-1">
+    @switch (activeTab()) {
+      @case ('chat') {
+        <app-ai-hub-chat />
+      }
+      @case ('providers') {
+        <app-ai-hub-providers />
+      }
+      @case ('channels') {
+        <app-ai-hub-channels />
+      }
+    }
+  </div>
+</div>

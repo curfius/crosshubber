@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+/* Design system AFTER tailwind: its @layer base reset must land after
+   Tailwind's preflight (same layer → later wins) while Tailwind's utilities
+   layer still overrides both. */
+@import "./design-system/styles/design-tokens.css";
+@import "./design-system/styles/base.css";
+@import "./design-system/styles/components.css";
+@import "./design-system/styles/themes/theme-dark-slate.css";
+@import "./design-system/styles/themes/theme-dark-slate-bold.css";
+@import "./design-system/styles/themes/theme-dark-slate-light.css";
+@import "./design-system/styles/themes/theme-light.css";
+@import "./design-system/styles/themes/theme-midnight-blue.css";
+@import "./design-system/styles/themes/theme-forest.css";
+@import "./design-system/styles/themes/theme-sunset.css";
+@import "./design-system/styles/themes/theme-ocean.css";
+@import "./design-system/styles/themes/theme-nord.css";
+@import "./design-system/styles/themes/theme-dracula.css";
+@import "./design-system/styles/themes/theme-monochrome.css";
+@import "./design-system/styles/themes/theme-high-contrast.css";
+@import "./design-system/styles/themes/theme-malo-1.css";
+@import "./design-system/styles/themes/theme-malo-2.css";
+@import "./design-system/styles/themes/theme-malo-3.css";
+@import "./design-system/styles/themes/theme-malo-light.css";
+@import "./design-system/styles/themes/theme-malo-dark.css";
+
+/* Remap Tailwind's type scale onto the design-system font sizes so every
+   text-* utility renders at DS density across all themes. */
+@theme {
+  --text-xs: var(--portal-font-size-xs);
+  --text-sm: var(--portal-font-size-sm);
+  --text-base: var(--portal-font-size-base);
+  --text-lg: var(--portal-font-size-lg);
+  --text-xl: var(--portal-font-size-xl);
+  --text-2xl: var(--portal-font-size-2xl);
+}
+
+/* App-wide visible keyboard focus using the theme's focus token. Unlayered so
+   it applies everywhere regardless of Tailwind layers. */
+:focus-visible {
+  outline: 2px solid var(--portal-border-focus);
+  outline-offset: 2px;
+}
+
+@source "./src/app";

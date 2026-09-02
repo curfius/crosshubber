@@ -1,0 +1,19 @@
+<div class="relative h-full w-full overflow-hidden bg-[var(--portal-bg-base)]">
+  @if (loading()) {
+  <div class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[var(--portal-bg-base)]">
+    <div class="size-10 animate-spin rounded-full border-4 border-[var(--portal-border-default)] border-t-[var(--portal-accent-primary)]"></div>
+    <p class="text-sm text-[var(--portal-text-muted)]">{{ i18n.t('workarea.loadingNamed', { name: entryPoint().name }) }}</p>
+  </div>
+  }
+  @if (isIframe()) {
+    @if (iframeBlocked()) {
+      <div class="flex h-full w-full flex-col items-center justify-center gap-2 bg-white p-6 text-center">
+        <p class="text-sm font-semibold text-red-600">{{ i18n.t('workarea.iframeBlocked') }}</p>
+        <p class="max-w-md text-xs text-[var(--portal-text-muted)] break-all">{{ i18n.t('workarea.iframeBlockedHint', { url: entryPoint().url ?? '' }) }}</p>
+      </div>
+    } @else {
+      <div #iframeHost class="h-full w-full border-0 bg-white"></div>
+    }
+  }
+  <div #host class="h-0 w-full"></div>
+</div>

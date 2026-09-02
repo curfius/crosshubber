@@ -1,0 +1,106 @@
+<div class="h-full overflow-y-auto p-6">
+  <div class="mb-5 flex items-center gap-4">
+    <h1 class="ds-heading-2 shrink-0">{{ i18n.t('navigation.app.title') }}</h1>
+    <div class="relative max-w-xs flex-1">
+      <svg class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[var(--portal-input-placeholder)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+      </svg>
+      <input
+        type="text"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+        [placeholder]="i18n.t('dashboard.search.placeholder')"
+        class="ds-input w-full py-1.5 pl-8 pr-3" />
+    </div>
+  </div>
+
+  <!-- Pinned apps (root order) -->
+  @if (pinnedApps().length > 0) {
+  <section class="mb-5">
+    <div class="ds-sidebar-section-label mb-2">{{ i18n.t('navigation.app.pinned') }}</div>
+    <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+      @for (ep of pinnedApps(); track ep.moduleKey + ':' + ep.entryKey) {
+      <div (click)="openApp(ep)"
+        class="group/ep relative flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-[var(--portal-card-border)] bg-[var(--portal-bg-surface)] p-2.5 transition hover:border-[var(--portal-accent-primary-glow)] hover:bg-[var(--portal-bg-hover)]">
+        <div class="flex size-8 items-center justify-center rounded-md text-xs font-bold text-[var(--portal-text-inverse)]" [style.background]="ep.color || 'var(--portal-accent-primary)'">
+          {{ ep.name.charAt(0) }}
+        </div>
+        <span class="w-full truncate text-center text-xs font-medium text-[var(--portal-text-secondary)]">{{ ep.name }}</span>
+        <span class="rounded bg-[var(--portal-bg-elevated)] px-1 py-0.5 text-[9px] font-medium text-[var(--portal-text-muted)]">{{ typeBadge(ep.type) }}</span>
+        <div class="absolute right-1.5 top-1.5 flex items-center gap-0.5">
+          <button type="button" (click)="openInNewTab(ep, $event)" [title]="i18n.t('dashboard.action.openInNewTab')"
+            class="flex size-4 items-center justify-center rounded text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]">
+            <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+          </button>
+          <button type="button" (click)="togglePin(ep, $event)"
+            class="flex size-4 items-center justify-center rounded text-xs transition"
+            [class]="isPinned(ep)
+              ? 'text-[var(--portal-status-warning)]'
+              : 'text-[var(--portal-text-disabled)] hover:text-[var(--portal-status-warning)]'">
+            {{ isPinned(ep) ? '&#9733;' : '&#9734;' }}
+          </button>
+        </div>
+      </div>
+      }
+    </div>
+  </section>
+  }
+
+  <!-- Configured sections -->
+  <ng-template #sectionTpl let-nodes>
+    @for (node of nodes; track node.id) {
+      @if (node.type === 'item') {
+        @if (epOf(node); as ep) {
+        <div (click)="openApp(ep)"
+          class="group/ep relative flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-[var(--portal-card-border)] bg-[var(--portal-bg-surface)] p-2.5 transition hover:border-[var(--portal-accent-primary-glow)] hover:bg-[var(--portal-bg-hover)]">
+          <div class="flex size-8 items-center justify-center rounded-md text-xs font-bold text-[var(--portal-text-inverse)]" [style.background]="ep.color || 'var(--portal-accent-primary)'">
+            {{ ep.name.charAt(0) }}
+          </div>
+          <span class="w-full truncate text-center text-xs font-medium text-[var(--portal-text-secondary)]">{{ ep.name }}</span>
+          <span class="rounded bg-[var(--portal-bg-elevated)] px-1 py-0.5 text-[9px] font-medium text-[var(--portal-text-muted)]">{{ typeBadge(ep.type) }}</span>
+          <div class="absolute right-1.5 top-1.5 flex items-center gap-0.5">
+            <button type="button" (click)="openInNewTab(ep, $event)" [title]="i18n.t('dashboard.action.openInNewTab')"
+              class="flex size-4 items-center justify-center rounded text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]">
+              <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </button>
+            <button type="button" (click)="togglePin(ep, $event)"
+              class="flex size-4 items-center justify-center rounded text-xs transition"
+              [class]="isPinned(ep)
+                ? 'text-[var(--portal-status-warning)]'
+                : 'text-[var(--portal-text-disabled)] hover:text-[var(--portal-status-warning)]'">
+              {{ isPinned(ep) ? '&#9733;' : '&#9734;' }}
+            </button>
+          </div>
+        </div>
+        }
+      } @else {
+      <div class="col-span-full">
+        <button type="button" (click)="toggleCollapsed(node.id)"
+          class="mb-2 mt-3 flex w-full items-center gap-2 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--portal-text-muted)] transition hover:text-[var(--portal-text-tertiary)]">
+          <svg class="size-3 shrink-0 transition-transform" [class.rotate-90]="!isCollapsed(node.id)" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 4l4 4-4 4" />
+          </svg>
+          {{ node.name }}
+        </button>
+        @if (!isCollapsed(node.id)) {
+        <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+          <ng-container *ngTemplateOutlet="sectionTpl; context: { $implicit: node.children }"/>
+        </div>
+        }
+      </div>
+      }
+    }
+  </ng-template>
+
+  <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+    <ng-container *ngTemplateOutlet="sectionTpl; context: { $implicit: sections() }"/>
+  </div>
+
+  @if (pinnedApps().length === 0 && sections().length === 0) {
+  <p class="py-10 text-center text-xs text-[var(--portal-text-disabled)]">{{ i18n.t('navigation.app.empty') }}</p>
+  }
+</div>

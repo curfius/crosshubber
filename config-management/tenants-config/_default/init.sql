@@ -1,0 +1,10 @@
+-- Default per-tenant database initialization (baseline profile).
+-- Runs FIRST on a fresh Postgres volume (docker-entrypoint-initdb.d, 01-init.sql).
+-- A tenant can override it with tenants-config/<slug>/init.sql.
+--
+-- Static defaults are intentionally minimal:
+--   - schemas/roles/tables for dedicated app modules are GENERATED per tenant
+--     with real credentials (02-modules.sql, backoffice-tools/src/provision/deploy.ts)
+--   - portal-owned DDL is applied by the portal's versioned migrator at boot
+--     (portal/src/bootstrap/migrator.ts — advisory lock + __migrations history)
+--   - Keycloak does not use Postgres in tenant deployments (dev-file DB)

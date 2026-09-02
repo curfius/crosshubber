@@ -1,0 +1,28 @@
+/* ==========================================================================
+   THEMES INDEX
+   Imports all theme files. Each theme defines CSS custom property overrides
+   under a [data-theme="..."] attribute selector.
+
+   Usage:
+     <html data-theme="nord">     → applies Nord theme
+     <html data-theme="dracula">  → applies Dracula theme
+     <html> (no attribute)         → falls back to dark-slate (default)
+   ========================================================================== */
+
+@import url("./theme-dark-slate.css");
+@import url("./theme-dark-slate-bold.css");
+@import url("./theme-dark-slate-light.css");
+@import url("./theme-light.css");
+@import url("./theme-midnight-blue.css");
+@import url("./theme-forest.css");
+@import url("./theme-sunset.css");
+@import url("./theme-ocean.css");
+@import url("./theme-nord.css");
+@import url("./theme-dracula.css");
+@import url("./theme-monochrome.css");
+@import url("./theme-high-contrast.css");
+@import url("./theme-malo-1.css");
+@import url("./theme-malo-2.css");
+@import url("./theme-malo-3.css");
+@import url("./theme-malo-light.css");
+@import url("./theme-malo-dark.css");

@@ -1,0 +1,140 @@
+<div cdkDropListGroup class="dnd-tree-root">
+  @if (nodes().length === 0) {
+  <div
+    cdkDropList
+    [cdkDropListData]="{ parentId: null, empty: true }"
+    [cdkDropListDisabled]="dropListsDisabled()"
+    class="dnd-empty-root">
+    <span class="dnd-empty-hint">Drop here</span>
+  </div>
+  }
+
+  <ng-template #rows let-nodes let-depth="depth" let-parentId="parentId">
+    @for (node of nodes; track node.id) {
+    <!-- Row list: disjoint rect, one item -->
+    <div
+      cdkDropList
+      [cdkDropListData]="{ parentId: parentId, nodeId: node.id }"
+      [cdkDropListDisabled]="dropListsDisabled()"
+      class="dnd-row-list"
+      [style.padding-left.px]="depth * 16">
+      <div
+        cdkDrag
+        [cdkDragData]="node"
+        [cdkDragDisabled]="renamingId() === node.id"
+        [attr.data-node-id]="node.id"
+        (cdkDragStarted)="onDragStarted(node)"
+        (cdkDragEnded)="onDragEnded()"
+        class="dnd-node-row"
+        [class.dnd-node-disabled]="disabledIds().has(node.id)"
+        [class.dnd-node-leaf]="node.kind === 'item'">
+
+        <div class="dnd-node-main" (click)="node.kind === 'item' && itemClick.emit(node)">
+          <!-- drag handle -->
+          <span cdkDragHandle class="dnd-grip" title="Drag to move" aria-label="Drag to move">
+            <svg class="size-3" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+          </span>
+
+          <!-- chevron / spacer -->
+          @if (node.kind === 'folder') {
+          <button type="button" class="dnd-icon-btn" (click)="toggleExpanded(node.id, $event)"
+            [attr.aria-label]="isExpanded(node.id) ? 'Collapse' : 'Expand'"
+            [attr.title]="isExpanded(node.id) ? 'Collapse' : 'Expand'">
+            <svg class="size-3 transition-transform" [class.rotate-90]="isExpanded(node.id)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+          } @else {
+          <span class="dnd-icon-spacer"></span>
+          }
+
+          <!-- avatar -->
+          <span class="dnd-avatar" [style.background]="node.color || 'var(--portal-accent-primary)'">
+            @if (node.kind === 'folder') {
+            <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+            } @else {
+            {{ node.label.charAt(0) }}
+            }
+          </span>
+
+          <!-- label / rename input -->
+          @if (renamingId() === node.id) {
+          <input
+            type="text"
+            class="dnd-rename-input"
+            appAutofocus
+            [(ngModel)]="renameValue"
+            (keydown.enter)="commitRename()"
+            (keydown.escape)="cancelRename()"
+            (blur)="commitRename()"
+            [attr.aria-label]="'Rename ' + node.label" />
+          } @else {
+          <span class="dnd-label" [class.dnd-folder]="node.kind === 'folder'" [title]="node.label">{{ node.label }}</span>
+          }
+
+          <span class="flex-1"></span>
+
+          <!-- a11y fallback buttons -->
+          <span class="dnd-node-actions">
+            @if (depth > 0) {
+            <button type="button" class="dnd-icon-btn" (click)="moveOut(node)" title="Move out" aria-label="Move out">
+              <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 6-6 6 6 6"/><path d="m8 6-6 6 6 6"/></svg>
+            </button>
+            }
+            @if (depth < maxDepth() - 1) {
+            <button type="button" class="dnd-icon-btn" (click)="moveIn(node)" title="Move into previous folder" aria-label="Move into previous folder">
+              <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 18 6-6-6-6"/><path d="m16 18 6-6-6-6"/></svg>
+            </button>
+            }
+            <button type="button" class="dnd-icon-btn" (click)="moveUp(node)" title="Move up" aria-label="Move up">
+              <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+            </button>
+            <button type="button" class="dnd-icon-btn" (click)="moveDown(node)" title="Move down" aria-label="Move down">
+              <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            @if (node.kind === 'folder' && showAddFolder() && depth < maxDepth() - 1) {
+            <button type="button" class="dnd-icon-btn" (click)="addFolder(node.id)" title="Add subfolder" aria-label="Add subfolder">
+              <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            }
+            @if (node.kind === 'folder') {
+            <button type="button" class="dnd-icon-btn" (click)="startRename(node, $event)" title="Rename" aria-label="Rename">
+              <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
+            </button>
+            }
+            @if (showDelete()) {
+            <button type="button" class="dnd-icon-btn dnd-icon-danger" (click)="deleteNode(node)" title="Delete" aria-label="Delete">
+              <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+            }
+          </span>
+        </div>
+      </div>
+      </div>
+
+      @if (node.kind === 'folder') {
+      <!-- Drop-into strip: disjoint rect under the folder row -->
+      <div
+        cdkDropList
+        [cdkDropListData]="{ parentId: node.id, into: true }"
+        [cdkDropListDisabled]="dropListsDisabled()"
+        class="dnd-into-strip"
+        [class.dnd-into-armed]="isDragging()"
+        [style.margin-left.px]="depth * 16 + 16">
+        <span class="dnd-into-line"></span>
+      </div>
+
+      @if (node.children.length > 0 && isExpanded(node.id)) {
+      <ng-container *ngTemplateOutlet="rows; context: { $implicit: node.children, depth: depth + 1, parentId: node.id }"/>
+      }
+      }
+    }
+  </ng-template>
+
+  <ng-container *ngTemplateOutlet="rows; context: { $implicit: nodes(), depth: 0, parentId: null }"/>
+
+  @if (showAddFolder()) {
+  <button type="button" class="dnd-add-root" (click)="addFolder(null)">
+    <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+    {{ addFolderLabel() }}
+  </button>
+  }
+</div>

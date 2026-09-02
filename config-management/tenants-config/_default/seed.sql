@@ -1,0 +1,6 @@
+-- Default per-tenant seed data (baseline profile).
+-- Runs AFTER init on a fresh Postgres volume (docker-entrypoint-initdb.d, 03-seed.sql).
+-- A tenant can override it with tenants-config/<slug>/seed.sql.
+--
+-- Currently empty: module data is seeded by the portal reconciler at boot
+-- (portal/src/bootstrap/reconcile.ts), not by static SQL.

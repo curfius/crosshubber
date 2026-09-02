@@ -1,0 +1,19 @@
+/* ==========================================================================
+   DESIGN SYSTEM - ENTRY POINT
+   Import this single file to get the entire design system.
+
+   Usage:
+     @import "./design-system/styles/index.css";
+   ========================================================================== */
+
+/* 1. Design tokens (CSS custom properties) */
+@import url("./design-tokens.css");
+
+/* 2. Base styles (reset, typography, utilities) */
+@import url("./base.css");
+
+/* 3. Component classes (.ds-* classes) */
+@import url("./components.css");
+
+/* 4. Theme definitions (must come after tokens to override them) */
+@import url("./themes/index.css");

@@ -1,0 +1,254 @@
+<div class="relative flex h-10 shrink-0 items-center justify-end gap-2 border-b border-[var(--portal-border-default)] bg-[var(--portal-toolbar-bg)] px-3">
+  @if (workspacesEnabled()) {
+  <div class="flex items-center gap-1.5">
+    @if (active()) {
+    <span class="max-w-48 truncate text-sm text-[var(--portal-text-secondary)]" [title]="active()!">{{ active() }}</span>
+    } @else {
+    <span class="max-w-48 truncate text-sm italic text-[var(--portal-text-muted)]">{{ i18n.t('shell.toolbar.unsaved') }}</span>
+    }
+    @if (dirty() && editMode()) {
+    <span class="size-1.5 shrink-0 rounded-full bg-[var(--portal-status-warning)]" [title]="i18n.t('shell.toolbar.unsavedChanges')"></span>
+    }
+  </div>
+
+  @if (!editMode()) {
+  <button
+    type="button"
+    (click)="enterEdit()"
+    [title]="i18n.t('shell.toolbar.editWorkspace')"
+    [attr.aria-label]="i18n.t('shell.toolbar.editWorkspace')"
+    class="ds-btn ds-btn-ghost ds-btn-icon">
+    <svg class="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 2l3 3-7.5 7.5H3v-3.5z" />
+    </svg>
+  </button>
+  <button
+    type="button"
+    (click)="createNew()"
+    [title]="i18n.t('shell.toolbar.newWorkspace')"
+    [attr.aria-label]="i18n.t('shell.toolbar.newWorkspace')"
+    class="ds-btn ds-btn-ghost ds-btn-icon">
+    <svg class="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 3v10M3 8h10" />
+    </svg>
+  </button>
+  @if (active()) {
+  <button
+    type="button"
+    (click)="deleteAndExit()"
+    [title]="i18n.t('shell.toolbar.deleteWorkspace')"
+    [attr.aria-label]="i18n.t('shell.toolbar.deleteWorkspace')"
+    class="ds-btn ds-btn-ghost ds-btn-icon ds-btn-icon-danger">
+    <svg class="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 4h12M6 4V2h4v2M4 4l1 10h6l1-10" />
+    </svg>
+  </button>
+  }
+  } @else {
+  <button
+    type="button"
+    (click)="openSaveDialog()"
+    [title]="i18n.t('shell.toolbar.saveWorkspace')"
+    [attr.aria-label]="i18n.t('shell.toolbar.saveWorkspace')"
+    class="ds-btn ds-btn-ghost ds-btn-icon ds-btn-icon-success">
+    <svg class="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 2h8l3 3v9H3z" />
+      <path d="M5 2v4h5V2" />
+      <path d="M5 14v-4h6v4" />
+    </svg>
+  </button>
+  @if (active()) {
+  @if (dirty()) {
+  <button
+    type="button"
+    (click)="discardChanges()"
+    [title]="i18n.t('shell.toolbar.discardChanges')"
+    [attr.aria-label]="i18n.t('shell.toolbar.discardChanges')"
+    class="ds-btn ds-btn-ghost ds-btn-icon ds-btn-icon-warning">
+    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+    </svg>
+  </button>
+  }
+  <button
+    type="button"
+    (click)="deleteAndExit()"
+    [title]="i18n.t('shell.toolbar.deleteWorkspace')"
+    [attr.aria-label]="i18n.t('shell.toolbar.deleteWorkspace')"
+    class="ds-btn ds-btn-ghost ds-btn-icon ds-btn-icon-danger">
+    <svg class="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 4h12M6 4V2h4v2M4 4l1 10h6l1-10" />
+    </svg>
+  </button>
+  }
+  }
+  }
+
+  <div class="mx-1 h-5 w-px bg-[var(--portal-border-subtle)]"></div>
+
+  <button
+    type="button"
+    (click)="openSettings()"
+    [title]="i18n.t('shell.toolbar.settings')"
+    [attr.aria-label]="i18n.t('shell.toolbar.settings')"
+    class="ds-btn ds-btn-ghost ds-btn-icon">
+    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+  </button>
+
+  @if (i18n.enabledLanguages().length > 1) {
+  <button
+    type="button"
+    (click)="toggleLanguageMenu()"
+    [title]="i18n.t('shell.toolbar.language')"
+    [attr.aria-label]="i18n.t('shell.toolbar.language')"
+    [attr.aria-expanded]="showLanguageMenu()"
+    class="ds-btn ds-btn-ghost ds-btn-icon gap-1.5 px-2 text-xs font-medium">
+    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <path d="M2 12h20"></path>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+    </svg>
+    <span class="max-w-20 truncate">{{ activeLanguageLabel() }}</span>
+    <svg
+      class="size-3 text-[var(--portal-text-muted)] transition-transform"
+      [class.rotate-180]="showLanguageMenu()"
+      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  </button>
+  }
+
+  <button
+    type="button"
+    (click)="toggleProfile()"
+    class="flex size-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-[var(--portal-text-inverse)] transition ring-2 ring-transparent hover:ring-[var(--portal-border-strong)] [background:var(--portal-gradient-primary)]"
+    [attr.aria-label]="i18n.t('shell.toolbar.profile')">
+    {{ initials(userName()) }}
+  </button>
+
+  @if (showLanguageMenu()) {
+  <div class="fixed inset-0 z-40" (click)="closePanels()"></div>
+  <div class="absolute right-14 top-11 z-50 w-56 overflow-y-auto rounded-lg border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] py-1 shadow-xl">
+    <p class="px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-[var(--portal-text-muted)]">{{ i18n.t('shell.toolbar.language') }}</p>
+    @for (lang of i18n.enabledLanguages(); track lang.code) {
+    <button
+      type="button"
+      (click)="selectLanguage(lang.code)"
+      class="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm transition"
+      [class]="lang.code === i18n.locale() ? 'bg-[var(--portal-accent-primary-subtle)] text-[var(--portal-accent-primary)]' : 'text-[var(--portal-text-secondary)] hover:bg-[var(--portal-bg-hover)]'">
+      <span class="min-w-0">
+        <span class="block truncate">{{ lang.nativeName }}</span>
+        <span class="block text-[10px] uppercase tracking-wide text-[var(--portal-text-disabled)]">{{ lang.code }}</span>
+      </span>
+      @if (lang.code === i18n.locale()) {
+      <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6 9 17l-5-5" />
+      </svg>
+      }
+    </button>
+    }
+  </div>
+  }
+
+  @if (showSaveDialog()) {
+  <div class="fixed inset-0 z-40" (click)="closePanels()"></div>
+  <div class="absolute right-3 top-11 z-50 w-80 rounded-lg border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] p-4 shadow-xl">
+    <p class="mb-3 text-sm font-medium text-[var(--portal-text-primary)]">{{ i18n.t('shell.toolbar.saveWorkspace') }}</p>
+
+    <label class="ds-label block" for="ws-name">{{ i18n.t('shell.toolbar.workspaceName') }}</label>
+    <input
+      id="ws-name"
+      [value]="saveName()"
+      (input)="saveName.set($any($event.target).value)"
+      (keydown.enter)="saveOverwrite()"
+      (keydown.escape)="closePanels()"
+      class="ds-input mt-1" />
+
+    <label class="ds-label mt-3 block" for="ws-desc">{{ i18n.t('shell.toolbar.description') }}</label>
+    <textarea
+      id="ws-desc"
+      [value]="saveDescription()"
+      (input)="saveDescription.set($any($event.target).value)"
+      rows="2"
+      class="ds-textarea mt-1"
+      [placeholder]="i18n.t('shell.toolbar.descriptionPlaceholder')"></textarea>
+
+    <label class="ds-label mt-3 block">{{ i18n.t('shell.toolbar.color') }}</label>
+    <div class="mt-1.5 flex items-center gap-2">
+      @for (c of colors; track c) {
+      <button (click)="saveColor.set(c)"
+        class="size-6 cursor-pointer rounded-full border-2 transition"
+        [style.background]="c"
+        [class]="saveColor() === c ? 'border-[var(--portal-text-primary)]' : 'border-transparent'"
+        [attr.aria-label]="i18n.t('shell.toolbar.colorAria', { color: c })"></button>
+      }
+    </div>
+
+    <div class="mt-4 flex justify-end gap-2">
+      <button
+        type="button"
+        (click)="saveOverwrite()"
+        [disabled]="!saveName().trim()"
+        class="ds-btn ds-btn-primary ds-btn-sm">
+        {{ i18n.t('common.save') }}
+      </button>
+      <button
+        type="button"
+        (click)="saveAsNew()"
+        [disabled]="!saveName().trim()"
+        class="ds-btn ds-btn-primary ds-btn-sm">
+        {{ i18n.t('shell.toolbar.saveAsNew') }}
+      </button>
+    </div>
+  </div>
+  }
+
+  @if (showProfile()) {
+  <div class="fixed inset-0 z-40" (click)="closePanels()"></div>
+  <div class="absolute right-3 top-11 z-50 w-72 rounded-lg border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] p-4 shadow-xl">
+    <div class="flex items-center gap-3">
+      <div
+        class="flex size-12 shrink-0 items-center justify-center rounded-full text-lg font-bold text-[var(--portal-text-inverse)] [background:var(--portal-gradient-primary)]">
+        {{ initials(userName()) }}
+      </div>
+      <div class="min-w-0">
+        <p class="truncate text-sm font-semibold text-[var(--portal-text-primary)]">{{ userName() }}</p>
+        <p class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('shell.toolbar.viaKeycloak') }}</p>
+      </div>
+    </div>
+
+    @if (userSettingsAvailable()) {
+    <div class="mt-4 border-t border-[var(--portal-border-default)] pt-3">
+      <button
+        type="button"
+        (click)="openUserSettings()"
+        class="flex w-full items-center gap-2 rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-elevated)] px-3 py-2 text-sm font-medium text-[var(--portal-text-secondary)] transition hover:bg-[var(--portal-bg-hover)]">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        {{ i18n.t('shell.toolbar.userSettings') }}
+      </button>
+    </div>
+    }
+
+    <div class="mt-4 border-t border-[var(--portal-border-default)] pt-3">
+      <button
+        type="button"
+        (click)="logout.emit()"
+        class="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--portal-status-danger-subtle)] bg-[var(--portal-status-danger-bg)] px-3 py-2 text-sm font-medium text-[var(--portal-status-danger)] transition hover:bg-[var(--portal-status-danger-subtle)]">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <path d="M16 17l5-5-5-5"></path>
+          <path d="M21 12H9"></path>
+        </svg>
+        {{ i18n.t('shell.toolbar.logout') }}
+      </button>
+    </div>
+  </div>
+  }
+</div>

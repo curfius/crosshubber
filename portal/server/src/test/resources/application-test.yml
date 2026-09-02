@@ -1,0 +1,29 @@
+server:
+  port: 0
+
+portal:
+  tenant-slug: test
+  tenant-config-dir: ""
+  public-base-url: http://localhost:3000
+  issuer: http://localhost:8080/realms/test
+  client-secret: test-secret
+  session-secret: test-session-secret-32-chars-minimum
+  encryption-key: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  nats-http-url: ""
+  keycloak-public-url: ""
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate.ddl-auto: create-drop
+    properties.hibernate.default_schema: public
+  flyway:
+    enabled: false
+
+logging:
+  level:
+    com.crosshubber.portal: DEBUG

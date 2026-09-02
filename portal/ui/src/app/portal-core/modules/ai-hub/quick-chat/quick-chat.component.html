@@ -1,0 +1,141 @@
+﻿<div class="flex h-full flex-col">
+  <!-- Header -->
+  <div class="flex items-center justify-between border-b border-[var(--portal-border-default)] px-4 py-2.5">
+    <div class="flex items-center gap-2">
+      <div class="flex size-6 items-center justify-center rounded-md bg-[var(--portal-accent-primary-subtle)]">
+        <svg class="size-3 text-[var(--portal-accent-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/>
+        </svg>
+      </div>
+      <span class="text-xs font-medium text-[var(--portal-text-primary)]">{{ i18n.t('aihub.quick.title') }}</span>
+    </div>
+    <button type="button" (click)="close.emit()"
+      class="size-5 rounded text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]">
+      <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <!-- Model selector: name + pencil -->
+  <div class="flex items-center gap-1.5 border-b border-[var(--portal-border-subtle)] px-4 py-2">
+    @if (selectedModel()) {
+      <span class="truncate text-[10px] text-[var(--portal-text-tertiary)]">{{ selectedModel()!.providerName }} / {{ selectedModel()!.modelName }}</span>
+    } @else {
+      <span class="text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.quick.no-model') }}</span>
+    }
+    <button type="button" (click)="toggleModelPicker()"
+      class="shrink-0 rounded p-0.5 text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-tertiary)]">
+      <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+      </svg>
+    </button>
+    <!-- Model picker dropdown -->
+    @if (showModelPicker()) {
+      <div class="relative">
+        <div class="fixed inset-0 z-10" (click)="onPickerBackdrop()"></div>
+        <div class="absolute left-0 top-full z-20 mt-1 w-64 max-h-48 overflow-y-auto rounded-lg border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] shadow-xl">
+          @for (m of models(); track modelOptionKey(m)) {
+            <button type="button" (click)="selectModel(m)"
+              [class]="modelOptionKey(m) === selectedModelKey()
+                ? 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[10px] text-[var(--portal-accent-primary)] hover:bg-[var(--portal-bg-hover)]'
+                : 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[10px] text-[var(--portal-text-secondary)] hover:bg-[var(--portal-bg-hover)]'">
+              <span class="size-1 shrink-0 rounded-full" [class]="modelOptionKey(m) === selectedModelKey() ? 'bg-[var(--portal-accent-primary)]' : 'bg-[var(--portal-text-disabled)]'"></span>
+              <span class="truncate">{{ m.providerName }} / {{ m.modelName }}</span>
+            </button>
+          }
+          @if (models().length === 0) {
+            <p class="px-3 py-2 text-center text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.quick.no-models-configured') }}</p>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Messages -->
+  <div #messagesContainer class="flex-1 overflow-y-auto px-4 py-3">
+    @if (messages().length === 0) {
+    <div class="flex h-full flex-col items-center justify-center text-center">
+      <p class="text-xs text-[var(--portal-text-disabled)]">
+        @if (models().length === 0) { {{ i18n.t('aihub.quick.configure-tokens') }} }
+        @else { {{ i18n.t('aihub.quick.ask-anything') }} }
+      </p>
+    </div>
+    } @else {
+    <div class="space-y-3">
+      @for (msg of messages(); track msg.timestamp) {
+      <div [class]="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+        <div [class]="msg.role === 'user'
+          ? 'ds-chat-bubble ds-chat-bubble-user'
+          : 'ds-chat-bubble ds-chat-bubble-assistant'">
+          @if (msg.content) {
+          <div class="whitespace-pre-wrap">{{ msg.content }}</div>
+          } @else {
+          <div class="ds-chat-typing">
+            <span class="ds-chat-typing-dot" style="animation-delay: 0ms"></span>
+            <span class="ds-chat-typing-dot" style="animation-delay: 150ms"></span>
+            <span class="ds-chat-typing-dot" style="animation-delay: 300ms"></span>
+          </div>
+          }
+        </div>
+      </div>
+      }
+    </div>
+    }
+  </div>
+
+  <!-- Input -->
+  <div class="border-t border-[var(--portal-border-default)] px-4 py-3">
+    <div class="space-y-1.5">
+      <!-- Error message -->
+      @if (errorMessage()) {
+        <div class="rounded-lg bg-[var(--portal-status-danger-bg)] px-2.5 py-1.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <svg class="size-3 shrink-0 text-[var(--portal-status-danger)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
+              </svg>
+              <span class="text-[10px] text-[var(--portal-status-danger)]">{{ errorMessage() }}</span>
+            </div>
+            <div class="flex items-center gap-0.5">
+              @if (errorDetails()) {
+                <button type="button" (click)="toggleError()"
+                  class="shrink-0 rounded px-1 py-0.5 text-[9px] text-[var(--portal-status-danger)] opacity-70 transition hover:bg-[var(--portal-status-danger-subtle)] hover:opacity-100">
+                  {{ errorExpanded() ? i18n.t('aihub.quick.hide') : i18n.t('aihub.quick.details') }}
+                </button>
+              }
+              <button type="button" (click)="clearError()" class="shrink-0 rounded p-0.5 text-[var(--portal-status-danger)] hover:opacity-80">
+                <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
+          @if (errorExpanded() && errorDetails()) {
+            <pre class="mt-1.5 max-h-16 overflow-auto rounded bg-[var(--portal-bg-subtle)] p-1.5 text-[9px] text-[var(--portal-text-muted)] whitespace-pre-wrap break-all">{{ errorDetails() }}</pre>
+          }
+        </div>
+      }
+      <!-- Status bar -->
+      @if (status()) {
+        <div class="flex items-center gap-1 text-[9px] text-[var(--portal-text-muted)]">
+          <span class="size-1 animate-pulse rounded-full bg-[var(--portal-accent-primary)]"></span>
+          <span>{{ status() }}</span>
+        </div>
+      }
+      <div class="flex items-end gap-2 rounded-xl border border-[var(--portal-input-border)] bg-[var(--portal-bg-elevated)] px-3 py-1.5">
+        <textarea
+          [value]="input()"
+          (input)="input.set($any($event.target).value)"
+          (keydown)="onKeydown($event)"
+          [placeholder]="inputPlaceholder() || i18n.t('aihub.quick.input-placeholder')"
+          [disabled]="loading() || !selectedModel()"
+          rows="1"
+          class="max-h-20 min-h-[28px] flex-1 resize-none bg-transparent text-xs text-[var(--portal-text-secondary)] outline-none placeholder:text-[var(--portal-input-placeholder)] disabled:opacity-50"></textarea>
+        <button
+          type="button"
+          (click)="send()"
+          [disabled]="loading() || !input().trim() || !selectedModel()"
+          class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--portal-btn-primary-bg)] text-[var(--portal-btn-primary-text)] transition hover:bg-[var(--portal-btn-primary-bg-hover)] disabled:opacity-30 disabled:hover:bg-[var(--portal-btn-primary-bg)]">
+          <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

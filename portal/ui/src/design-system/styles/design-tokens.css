@@ -1,0 +1,287 @@
+/* ==========================================================================
+   DESIGN TOKENS
+   Foundation of the design system. All visual values are defined here as
+   CSS custom properties. Themes override these properties to change the
+   entire look of the application.
+   ========================================================================== */
+
+:root {
+  /* --------------------------------------------------------------------------
+     BACKGROUND TOKENS
+     Surface hierarchy from darkest (base) to lightest (overlay)
+     -------------------------------------------------------------------------- */
+  --portal-bg-base:         #020617;
+  --portal-bg-surface:      #0f172a;
+  --portal-bg-elevated:     #1e293b;
+  --portal-bg-overlay:      rgba(0, 0, 0, 0.70);
+  --portal-bg-hover:        rgba(30, 41, 59, 0.70);
+  --portal-bg-active:       rgba(30, 41, 59, 0.50);
+  --portal-bg-subtle:       rgba(15, 23, 42, 0.60);
+  --portal-bg-glass:        rgba(255, 255, 255, 0.05);
+
+  /* --------------------------------------------------------------------------
+     TEXT TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-text-primary:    #f1f5f9;
+  --portal-text-secondary:  #cbd5e1;
+  --portal-text-tertiary:   #94a3b8;
+  --portal-text-muted:      #64748b;
+  --portal-text-disabled:   #475569;
+  --portal-text-inverse:    #020617;
+  --portal-text-link:       #818cf8;
+  --portal-text-link-hover: #a5b4fc;
+
+  /* --------------------------------------------------------------------------
+     BORDER TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-border-default:  #1e293b;
+  --portal-border-subtle:   #334155;
+  --portal-border-strong:   #475569;
+  --portal-border-focus:    #6366f1;
+  --portal-border-input:    #334155;
+
+  /* --------------------------------------------------------------------------
+     ACCENT / PRIMARY (Indigo)
+     -------------------------------------------------------------------------- */
+  --portal-accent-primary:        #6366f1;
+  --portal-accent-primary-hover:  #818cf8;
+  --portal-accent-primary-active: #4f46e5;
+  --portal-accent-primary-subtle: rgba(99, 102, 241, 0.20);
+  --portal-accent-primary-glow:   rgba(99, 102, 241, 0.40);
+
+  /* --------------------------------------------------------------------------
+     ACCENT / SECONDARY (Purple) - used in settings, registry
+     -------------------------------------------------------------------------- */
+  --portal-accent-secondary:        #a855f7;
+  --portal-accent-secondary-hover:  #c084fc;
+  --portal-accent-secondary-active: #9333ea;
+  --portal-accent-secondary-subtle: rgba(168, 85, 247, 0.20);
+
+  /* --------------------------------------------------------------------------
+     STATUS COLORS
+     -------------------------------------------------------------------------- */
+  --portal-status-success:        #34d399;
+  --portal-status-success-subtle: rgba(52, 211, 153, 0.15);
+  --portal-status-success-bg:     rgba(52, 211, 153, 0.10);
+
+  --portal-status-warning:        #fbbf24;
+  --portal-status-warning-subtle: rgba(251, 191, 36, 0.15);
+  --portal-status-warning-bg:     rgba(251, 191, 36, 0.10);
+
+  --portal-status-danger:         #f87171;
+  --portal-status-danger-subtle:  rgba(248, 113, 113, 0.15);
+  --portal-status-danger-bg:      rgba(248, 113, 113, 0.10);
+
+  --portal-status-info:           #60a5fa;
+  --portal-status-info-subtle:    rgba(96, 165, 250, 0.15);
+  --portal-status-info-bg:        rgba(96, 165, 250, 0.10);
+
+  /* --------------------------------------------------------------------------
+     SIDEBAR TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-sidebar-bg:             #0f172a;
+  --portal-sidebar-border:         #1e293b;
+  --portal-sidebar-hover:          rgba(30, 41, 59, 0.70);
+  --portal-sidebar-active:         rgba(30, 41, 59, 0.50);
+  --portal-sidebar-text:           #94a3b8;
+  --portal-sidebar-text-hover:     #f1f5f9;
+  --portal-sidebar-text-active:    #f1f5f9;
+  --portal-sidebar-section-label:  #64748b;
+  --portal-sidebar-width-collapsed: 64px;
+  --portal-sidebar-width-expanded:  256px;
+
+  /* --------------------------------------------------------------------------
+     TOOLBAR TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-toolbar-bg:     rgba(15, 23, 42, 0.80);
+  --portal-toolbar-border: #1e293b;
+  --portal-toolbar-height: 40px;
+
+  /* --------------------------------------------------------------------------
+     TAB TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-tab-bg:              rgba(15, 23, 42, 0.80);
+  --portal-tab-border:          #1e293b;
+  --portal-tab-active-bg:       #1e293b;
+  --portal-tab-active-border:   #334155;
+  --portal-tab-active-text:     #f1f5f9;
+  --portal-tab-inactive-text:   #94a3b8;
+  --portal-tab-hover-bg:        rgba(30, 41, 59, 0.60);
+  --portal-tab-hover-text:      #e2e8f0;
+  --portal-tab-height:          40px;
+
+  /* --------------------------------------------------------------------------
+     INPUT TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-input-bg:             #1e293b;
+  --portal-input-bg-focus:       #1e293b;
+  --portal-input-border:         #334155;
+  --portal-input-border-focus:   #6366f1;
+  --portal-input-text:           #e2e8f0;
+  --portal-input-placeholder:    #64748b;
+  --portal-input-disabled-bg:    #1e293b;
+  --portal-input-disabled-text:  #475569;
+
+  /* --------------------------------------------------------------------------
+     CARD TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-card-bg:          #0f172a;
+  --portal-card-border:      #1e293b;
+  --portal-card-hover-border: #334155;
+  --portal-card-radius:      12px;
+
+  /* --------------------------------------------------------------------------
+     MODAL TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-modal-backdrop:  rgba(0, 0, 0, 0.70);
+  --portal-modal-bg:        #0f172a;
+  --portal-modal-border:    #334155;
+  --portal-modal-shadow:    0 25px 50px -12px rgba(0, 0, 0, 0.50);
+  --portal-modal-radius:    16px;
+
+  /* --------------------------------------------------------------------------
+     BUTTON TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-btn-primary-bg:        #6366f1;
+  --portal-btn-primary-bg-hover:  #818cf8;
+  --portal-btn-primary-bg-active: #4f46e5;
+  --portal-btn-primary-text:      #ffffff;
+
+  --portal-btn-secondary-bg:        #1e293b;
+  --portal-btn-secondary-bg-hover:  #334155;
+  --portal-btn-secondary-bg-active: #475569;
+  --portal-btn-secondary-text:      #cbd5e1;
+
+  --portal-btn-danger-bg:        #dc2626;
+  --portal-btn-danger-bg-hover:  #ef4444;
+  --portal-btn-danger-bg-active: #b91c1c;
+  --portal-btn-danger-text:      #ffffff;
+
+  --portal-btn-ghost-bg:        transparent;
+  --portal-btn-ghost-bg-hover:  rgba(30, 41, 59, 0.70);
+  --portal-btn-ghost-bg-active: rgba(30, 41, 59, 0.50);
+  --portal-btn-ghost-text:      #94a3b8;
+  --portal-btn-ghost-text-hover:#f1f5f9;
+
+  /* --------------------------------------------------------------------------
+     SHADOW TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-shadow-sm:  0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --portal-shadow-md:  0 4px 6px -1px rgba(0, 0, 0, 0.30), 0 2px 4px -2px rgba(0, 0, 0, 0.30);
+  --portal-shadow-lg:  0 10px 15px -3px rgba(0, 0, 0, 0.30), 0 4px 6px -4px rgba(0, 0, 0, 0.30);
+  --portal-shadow-xl:  0 20px 25px -5px rgba(0, 0, 0, 0.30), 0 8px 10px -6px rgba(0, 0, 0, 0.30);
+  --portal-shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.50);
+  --portal-shadow-glow: 0 0 20px rgba(99, 102, 241, 0.30);
+
+  /* --------------------------------------------------------------------------
+     TYPOGRAPHY TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-font-family-sans:  "Inter", "Gilroy Regular", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --portal-font-family-display: "Gilroy Regular", "Gilroy Bold", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --portal-font-family-mono:  "Fragment Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --portal-font-size-xs:    0.6875rem;   /* 11px */
+  --portal-font-size-sm:    0.75rem;     /* 12px */
+  --portal-font-size-base:  0.875rem;    /* 14px */
+  --portal-font-size-lg:    1rem;        /* 16px */
+  --portal-font-size-xl:    1.125rem;    /* 18px */
+  --portal-font-size-2xl:   1.25rem;     /* 20px */
+  --portal-font-size-3xl:   1.5rem;      /* 24px */
+
+  --portal-font-weight-normal:   400;
+  --portal-font-weight-medium:   500;
+  --portal-font-weight-semibold: 600;
+  --portal-font-weight-bold:     700;
+
+  --portal-line-height-tight:   1.25;
+  --portal-line-height-normal:  1.5;
+  --portal-line-height-relaxed: 1.75;
+
+  --portal-letter-spacing-tight:   -0.025em;
+  --portal-letter-spacing-normal:  0em;
+  --portal-letter-spacing-wide:    0.025em;
+  --portal-letter-spacing-wider:   0.05em;
+  --portal-letter-spacing-widest:  0.1em;
+
+  /* --------------------------------------------------------------------------
+     SPACING TOKENS (4px base unit)
+     -------------------------------------------------------------------------- */
+  --portal-space-0:   0;
+  --portal-space-0\.5: 2px;
+  --portal-space-1:   4px;
+  --portal-space-1\.5: 6px;
+  --portal-space-2:   8px;
+  --portal-space-2\.5: 10px;
+  --portal-space-3:   12px;
+  --portal-space-3\.5: 14px;
+  --portal-space-4:   16px;
+  --portal-space-5:   20px;
+  --portal-space-6:   24px;
+  --portal-space-7:   28px;
+  --portal-space-8:   32px;
+  --portal-space-9:   36px;
+  --portal-space-10:  40px;
+  --portal-space-12:  48px;
+  --portal-space-16:  64px;
+
+  /* --------------------------------------------------------------------------
+     BORDER RADIUS TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-radius-sm:    4px;
+  --portal-radius-md:    6px;
+  --portal-radius-lg:    8px;
+  --portal-radius-xl:    12px;
+  --portal-radius-2xl:   16px;
+  --portal-radius-full:  9999px;
+
+  /* --------------------------------------------------------------------------
+     TRANSITION TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-transition-fast:    100ms ease;
+  --portal-transition-normal:  150ms ease;
+  --portal-transition-slow:    200ms ease;
+  --portal-transition-slower:  300ms ease;
+
+  --portal-duration-100: 100ms;
+  --portal-duration-150: 150ms;
+  --portal-duration-200: 200ms;
+  --portal-duration-300: 300ms;
+
+  /* --------------------------------------------------------------------------
+     Z-INDEX TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-z-sidebar:          30;
+  --portal-z-dropdown:         40;
+  --portal-z-sticky:           50;
+  --portal-z-modal-backdrop:   50;
+  --portal-z-modal:            51;
+  --portal-z-popover:          52;
+  --portal-z-tooltip:          53;
+
+  /* --------------------------------------------------------------------------
+     GRADIENT TOKENS
+     -------------------------------------------------------------------------- */
+  --portal-gradient-primary: linear-gradient(to bottom right, #6366f1, #8b5cf6);
+  --portal-gradient-brand:  linear-gradient(to right, #6366f1, #8b5cf6);
+  --portal-gradient-glass:  linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%);
+
+  /* --------------------------------------------------------------------------
+      WIZARD WORKFLOW TOKENS
+      -------------------------------------------------------------------------- */
+  --portal-wizard-indicator-size: 28px;
+  --portal-wizard-connector-width: 2px;
+
+  /* --------------------------------------------------------------------------
+      WORKSPACE / MODULE PALETTE (dynamic colors for icons)
+      -------------------------------------------------------------------------- */
+  --portal-palette-1: #f97316;
+  --portal-palette-2: #fbbf24;
+  --portal-palette-3: #2563eb;
+  --portal-palette-4: #14b8a6;
+  --portal-palette-5: #6366f1;
+  --portal-palette-6: #a855f7;
+  --portal-palette-7: #ef4444;
+  --portal-palette-8: #06b6d4;
+  --portal-palette-9: #ec4899;
+  --portal-palette-10: #10b981;
+}

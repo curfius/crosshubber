@@ -1,0 +1,83 @@
+<div>
+  <div class="mb-6 flex items-center justify-between">
+    <div>
+      <h1 class="ds-heading-3">{{ i18n.t('i18n.languages.title') }}</h1>
+      <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('i18n.languages.description') }}</p>
+    </div>
+    @if (saving()) {
+    <span class="ds-badge ds-badge-info">{{ i18n.t('common.loading') }}</span>
+    }
+  </div>
+
+  @if (loadError()) {
+  <div class="ds-alert ds-alert-danger mb-4">
+    <span>{{ i18n.t('common.error') }}</span>
+  </div>
+  }
+
+  @if (!canEdit()) {
+  <div class="ds-alert ds-alert-warning mb-4">
+    <span>{{ i18n.t('settings.readonly') }} — {{ i18n.t('settings.readonlyHint') }}</span>
+  </div>
+  }
+
+  <div class="ds-card p-5">
+    @if (blockedCode(); as blocked) {
+    <div class="ds-alert ds-alert-danger mb-4">
+      <span>{{ lockReason(blocked) ?? i18n.t('common.error') }}</span>
+    </div>
+    }
+
+    <div class="ds-table-wrapper">
+      <table class="ds-table">
+        <thead>
+          <tr>
+            <th>{{ i18n.t('i18n.languages.nativeName') }}</th>
+            <th>{{ i18n.t('i18n.languages.code') }}</th>
+            <th>{{ i18n.t('i18n.languages.name') }}</th>
+            <th>{{ i18n.t('i18n.languages.status') }}</th>
+            <th class="text-right">{{ i18n.t('i18n.languages.catalog') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (lang of languages(); track lang.code) {
+          <tr>
+            <td>
+              <span class="font-medium text-[var(--portal-text-primary)]">{{ lang.nativeName }}</span>
+              @if (lang.code === defaultLanguage()) {
+              <span class="ds-badge ds-badge-info ml-2">{{ i18n.t('i18n.languages.default') }}</span>
+              }
+              @if (lang.code === fallbackLanguage() && lang.code !== defaultLanguage()) {
+              <span class="ds-badge ds-badge-outline ml-2">{{ i18n.t('i18n.languages.fallback') }}</span>
+              }
+            </td>
+            <td><span class="font-mono text-xs text-[var(--portal-text-secondary)]">{{ lang.code }}</span></td>
+            <td><span class="text-sm text-[var(--portal-text-secondary)]">{{ lang.name }}</span></td>
+            <td>
+              <button
+                type="button"
+                (click)="toggle(lang.code, lang.enabled)"
+                [disabled]="!canEdit() || saving() || !!lockReason(lang.code) && lang.enabled"
+                [class]="
+                  lang.enabled
+                    ? 'ds-toggle ds-toggle-active'
+                    : 'ds-toggle'
+                "
+                role="switch"
+                [attr.aria-checked]="lang.enabled"
+                [attr.aria-label]="lang.nativeName"
+                [title]="lockReason(lang.code) ?? ''">
+              </button>
+            </td>
+            <td class="text-right">
+              <span class="ds-badge ds-badge-outline" [title]="i18n.t('i18n.languages.catalogHint')">
+                {{ i18n.t('i18n.languages.catalog') }}
+              </span>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,50 @@
+<div class="mx-auto max-w-2xl">
+  <h2 class="ds-heading-3">{{ i18n.t('userSettings.general.title') }}</h2>
+  <p class="mt-1 text-sm text-[var(--portal-text-muted)]">{{ i18n.t('userSettings.general.description') }}</p>
+
+  <!-- Theme -->
+  <div class="ds-card mt-6 p-5">
+    <h3 class="text-sm font-semibold text-[var(--portal-text-primary)]">{{ i18n.t('userSettings.general.theme') }}</h3>
+    <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('userSettings.general.themeHint') }}</p>
+    <div class="mt-3 max-h-72 overflow-y-auto rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-modal-bg)] py-1">
+      @for (t of themes; track t.value) {
+      <button
+        type="button"
+        (click)="selectTheme(t.value)"
+        class="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm transition"
+        [class]="t.value === currentTheme() ? 'bg-[var(--portal-accent-primary-subtle)] text-[var(--portal-accent-primary)]' : 'text-[var(--portal-text-secondary)] hover:bg-[var(--portal-bg-hover)]'">
+        {{ i18n.t('themes.' + t.value) }}
+        @if (t.value === currentTheme()) {
+        <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+        }
+      </button>
+      }
+    </div>
+  </div>
+
+  <!-- Language -->
+  @if (showLanguages()) {
+  <div class="ds-card mt-4 p-5">
+    <h3 class="text-sm font-semibold text-[var(--portal-text-primary)]">{{ i18n.t('userSettings.general.language') }}</h3>
+    <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('userSettings.general.languageHint') }}</p>
+    <div class="mt-3 max-h-72 overflow-y-auto rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-modal-bg)] py-1">
+      @for (l of languages(); track l.code) {
+      <button
+        type="button"
+        (click)="selectLanguage(l.code)"
+        class="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm transition"
+        [class]="l.code === currentLanguage() ? 'bg-[var(--portal-accent-primary-subtle)] text-[var(--portal-accent-primary)]' : 'text-[var(--portal-text-secondary)] hover:bg-[var(--portal-bg-hover)]'">
+        {{ l.nativeName }}
+        @if (l.code === currentLanguage()) {
+        <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+        }
+      </button>
+      }
+    </div>
+  </div>
+  }
+</div>

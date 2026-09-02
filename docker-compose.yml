@@ -1,0 +1,106 @@
+name: crosshubber-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    env_file:
+      - ./config-management/tenants-config/dev/secrets.env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-crosshubber_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-portal}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Tenant init/seed — run once on FRESH pgdata (docker-entrypoint-initdb.d order 01,03).
+      # Real portal DDL is applied by Flyway at portal boot; data seeding by the Reconciler.
+      - ./config-management/tenants-config/_default/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./config-management/tenants-config/_default/seed.sql:/docker-entrypoint-initdb.d/03-seed.sql:ro
+    ports:
+      - "${PG_HOST_PORT:-15432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-portal} -d ${POSTGRES_DB:-crosshubber_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [tenant]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7
+    command: ["start-dev", "--import-realm"]
+    env_file:
+      - ./config-management/tenants-config/dev/secrets.env
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME: ${KC_PUBLIC_URL:-http://localhost:28080}
+      KC_DB: dev-file
+    volumes:
+      - ./config-management/tenants-config/dev/realm.json:/opt/keycloak/data/import/realm.json:ro
+      # Also mount _default? Not needed — realm.json is per tenant
+    ports:
+      - "${KC_HOST_PORT:-18080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
+      interval: 10s
+      timeout: 5s
+      retries: 36
+      start_period: 40s
+    networks: [tenant]
+
+  nats:
+    image: nats:2.12-alpine
+    ports:
+      - "${NATS_HTTP_PORT:-22252}:8222"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8222/healthz || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks: [tenant]
+
+  portal:
+    build:
+      context: ./portal
+    extra_hosts:
+      - "localhost:host-gateway"
+    env_file:
+      - ./config-management/tenants-config/dev/secrets.env
+    environment:
+      TENANT_SLUG: ${TENANT_SLUG:-dev}
+      TENANT_CONFIG_DIR: /app/tenants
+      PGSCHEMA: ${PGSCHEMA:-dev}
+      PUBLIC_BASE_URL: ${PORTAL_PUBLIC_URL:-http://localhost:28084}
+      OIDC_ISSUER: http://keycloak:8080/realms/${REALM_NAME:-dev}
+      SSRF_ALLOW_PRIVATE: "true"
+      KEYCLOAK_ADMIN_BASE_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_CLIENT_ID: portal-admin
+      KEYCLOAK_REALM: ${REALM_NAME:-dev}
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-crosshubber_dev}
+      PGUSER: ${POSTGRES_USER:-portal}
+      PORT: 3000
+    volumes:
+      - ./config-management/tenants-config:/app/tenants:ro
+    ports:
+      - "${PORTAL_HOST_PORT:-18084}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:3000/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    networks: [tenant]
+
+networks:
+  tenant:
+    driver: bridge
+
+volumes:
+  pgdata:

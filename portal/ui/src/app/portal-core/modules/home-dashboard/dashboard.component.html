@@ -1,0 +1,143 @@
+<div class="h-full overflow-y-auto p-6">
+  <div class="mb-5 flex items-center gap-4">
+    <h1 class="ds-heading-2 shrink-0">{{ i18n.t('dashboard.title') }}</h1>
+    <div class="relative max-w-xs flex-1">
+      <svg class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[var(--portal-input-placeholder)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+      </svg>
+      <input
+        type="text"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+        [placeholder]="i18n.t('dashboard.search.placeholder')"
+        class="ds-input w-full py-1.5 pl-8 pr-3" />
+    </div>
+  </div>
+
+  @if (workspacesEnabled()) {
+  <section class="mb-5">
+    <button type="button" (click)="collapsedMyWorkspaces.set(!collapsedMyWorkspaces())"
+      class="mb-2 flex w-full items-center gap-2 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--portal-text-muted)] transition hover:text-[var(--portal-text-tertiary)]">
+      <svg class="size-3 shrink-0 transition-transform" [class.rotate-90]="collapsedMyWorkspaces()" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 4l4 4-4 4" />
+      </svg>
+      {{ i18n.t('dashboard.section.workspaces') }}
+      <span class="ml-auto text-[10px] font-normal normal-case tracking-normal text-[var(--portal-text-disabled)]">{{ filteredMyWorkspaces().length }}</span>
+    </button>
+    @if (!collapsedMyWorkspaces()) {
+    <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+      @for (ws of filteredMyWorkspaces(); track ws.name) {
+      <div (click)="openWorkspace(ws.name)"
+        class="group/ws relative flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-[var(--portal-card-border)] bg-[var(--portal-bg-surface)] p-2.5 transition hover:border-[var(--portal-accent-primary-glow)] hover:bg-[var(--portal-bg-hover)]">
+        <div class="flex size-8 items-center justify-center rounded-md text-xs font-bold text-[var(--portal-text-inverse)]"
+          [style.background]="ws.color || 'var(--portal-gradient-primary)'">
+          {{ ws.name.charAt(0) }}
+        </div>
+        <span class="w-full truncate text-center text-xs font-medium text-[var(--portal-text-secondary)]">{{ ws.name }}</span>
+        @if (ws.description) {
+        <span class="hidden w-full truncate text-center text-[10px] text-[var(--portal-text-muted)] group-hover/ws:block">{{ ws.description }}</span>
+        }
+        <span class="text-[10px] text-[var(--portal-text-disabled)]">{{ timeAgo(ws.savedAt) }}</span>
+        <button type="button" (click)="deleteWorkspace(ws.name, $event)"
+          class="absolute right-1.5 top-1.5 text-xs text-[var(--portal-text-disabled)] transition hover:text-[var(--portal-status-danger)]">
+          <svg class="size-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 4h12M6 4V2h4v2M4 4l1 10h6l1-10" />
+          </svg>
+        </button>
+      </div>
+      }
+      @if (filteredMyWorkspaces().length === 0) {
+      <p class="col-span-full py-6 text-center text-xs text-[var(--portal-text-disabled)]">{{ i18n.t('dashboard.empty.workspaces') }}</p>
+      }
+    </div>
+    }
+  </section>
+  }
+
+  @if (pinnedAppsEnabled() && filteredFavApps().length > 0) {
+  <section class="mb-5">
+    <button type="button" (click)="collapsedMyApps.set(!collapsedMyApps())"
+      class="mb-2 flex w-full items-center gap-2 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--portal-text-muted)] transition hover:text-[var(--portal-text-tertiary)]">
+      <svg class="size-3 shrink-0 transition-transform" [class.rotate-90]="collapsedMyApps()" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 4l4 4-4 4" />
+      </svg>
+      {{ i18n.t('dashboard.section.apps') }}
+      <span class="ml-auto text-[10px] font-normal normal-case tracking-normal text-[var(--portal-text-disabled)]">{{ filteredFavApps().length }}</span>
+    </button>
+    @if (!collapsedMyApps()) {
+    <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+      @for (ep of filteredFavApps(); track ep.moduleKey + ':' + ep.entryKey) {
+      <div (click)="openApp(ep)"
+        class="group/ep relative flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-[var(--portal-card-border)] bg-[var(--portal-bg-surface)] p-2.5 transition hover:border-[var(--portal-accent-primary-glow)] hover:bg-[var(--portal-bg-hover)]">
+        <div class="flex size-8 items-center justify-center rounded-md text-xs font-bold text-[var(--portal-text-inverse)]" [style.background]="ep.color || 'var(--portal-accent-primary)'">
+          {{ ep.name.charAt(0) }}
+        </div>
+        <span class="w-full truncate text-center text-xs font-medium text-[var(--portal-text-secondary)]">{{ ep.name }}</span>
+        <span class="rounded bg-[var(--portal-bg-elevated)] px-1 py-0.5 text-[9px] font-medium text-[var(--portal-text-muted)]">{{ typeBadge(ep.type) }}</span>
+        <div class="absolute right-1.5 top-1.5 flex items-center gap-0.5">
+          <button type="button" (click)="openInNewTab(ep, $event)" [title]="i18n.t('dashboard.action.openInNewTab')"
+            class="flex size-4 items-center justify-center rounded text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]">
+            <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+          </button>
+          <button type="button" (click)="toggleFav('app', favKey(ep), $event)"
+            class="flex size-4 items-center justify-center rounded text-xs transition"
+            [class]="isFav('app', favKey(ep))
+              ? 'text-[var(--portal-status-warning)]'
+              : 'text-[var(--portal-text-disabled)] hover:text-[var(--portal-status-warning)]'">
+            {{ isFav('app', favKey(ep)) ? '&#9733;' : '&#9734;' }}
+          </button>
+        </div>
+      </div>
+      }
+    </div>
+    }
+  </section>
+  }
+
+  <section class="mb-5">
+    <button type="button" (click)="collapsedAllApplications.set(!collapsedAllApplications())"
+      class="mb-2 flex w-full items-center gap-2 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--portal-text-muted)] transition hover:text-[var(--portal-text-tertiary)]">
+      <svg class="size-3 shrink-0 transition-transform" [class.rotate-90]="collapsedAllApplications()" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 4l4 4-4 4" />
+      </svg>
+      {{ i18n.t('dashboard.section.allApplications') }}
+      <span class="ml-auto text-[10px] font-normal normal-case tracking-normal text-[var(--portal-text-disabled)]">{{ filteredAllApps().length }}</span>
+    </button>
+    @if (!collapsedAllApplications()) {
+    <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+      @for (ep of filteredAllApps(); track ep.moduleKey + ':' + ep.entryKey) {
+      <div (click)="openApp(ep)"
+        class="group/ep relative flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-[var(--portal-card-border)] bg-[var(--portal-bg-surface)] p-2.5 transition hover:border-[var(--portal-accent-primary-glow)] hover:bg-[var(--portal-bg-hover)]">
+        <div class="flex size-8 items-center justify-center rounded-md text-xs font-bold text-[var(--portal-text-inverse)]" [style.background]="ep.color || 'var(--portal-accent-primary)'">
+          {{ ep.name.charAt(0) }}
+        </div>
+        <span class="w-full truncate text-center text-xs font-medium text-[var(--portal-text-secondary)]">{{ ep.name }}</span>
+        <span class="rounded bg-[var(--portal-bg-elevated)] px-1 py-0.5 text-[9px] font-medium text-[var(--portal-text-muted)]">{{ typeBadge(ep.type) }}</span>
+        <div class="absolute right-1.5 top-1.5 flex items-center gap-0.5">
+          <button type="button" (click)="openInNewTab(ep, $event)" [title]="i18n.t('dashboard.action.openInNewTab')"
+            class="flex size-4 items-center justify-center rounded text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]">
+            <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+          </button>
+          @if (pinnedAppsEnabled()) {
+          <button type="button" (click)="toggleFav('app', favKey(ep), $event)"
+            class="flex size-4 items-center justify-center rounded text-xs transition"
+            [class]="isFav('app', favKey(ep))
+              ? 'text-[var(--portal-status-warning)]'
+              : 'text-[var(--portal-text-disabled)] hover:text-[var(--portal-status-warning)]'">
+            {{ isFav('app', favKey(ep)) ? '&#9733;' : '&#9734;' }}
+          </button>
+          }
+        </div>
+      </div>
+      }
+      @if (filteredAllApps().length === 0) {
+      <p class="col-span-full py-6 text-center text-xs text-[var(--portal-text-disabled)]">{{ i18n.t('dashboard.empty.applications') }}</p>
+      }
+    </div>
+    }
+  </section>
+</div>

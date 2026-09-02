@@ -1,0 +1,98 @@
+<div>
+  <div class="mb-6 flex items-center justify-between">
+    <div>
+      <h1 class="ds-heading-3">{{ i18n.t('i18n.general.title') }}</h1>
+      <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('i18n.general.description') }}</p>
+    </div>
+    @if (saveState() === 'ok') {
+    <span class="ds-badge ds-badge-success">{{ i18n.t('common.saved') }}</span>
+    } @else if (saveState() === 'error') {
+    <span class="ds-badge ds-badge-danger">{{ i18n.t('common.error') }}</span>
+    }
+  </div>
+
+  @if (loadError()) {
+  <div class="ds-alert ds-alert-danger mb-4">
+    <span>{{ i18n.t('common.error') }}</span>
+  </div>
+  }
+
+  @if (!canEdit()) {
+  <div class="ds-alert ds-alert-warning mb-4">
+    <span>{{ i18n.t('settings.readonly') }} — {{ i18n.t('settings.readonlyHint') }}</span>
+  </div>
+  }
+
+  @if (config(); as cfg) {
+  <div class="ds-card p-5">
+    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+      <div class="flex flex-col gap-1.5">
+        <label for="i18n-default-lang" class="ds-label block">{{ i18n.t('i18n.general.defaultLanguage') }}</label>
+        <select
+          id="i18n-default-lang"
+          class="ds-select"
+          [disabled]="!canEdit() || saving()"
+          [value]="cfg.defaultLanguage"
+          (change)="onDefaultLanguageChange($any($event.target).value)">
+          @for (lang of enabledLanguages(); track lang.code) {
+          <option [value]="lang.code" [selected]="lang.code === cfg.defaultLanguage">{{ lang.nativeName }} ({{ lang.code }})</option>
+          }
+        </select>
+        <p class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('i18n.general.defaultLanguageHint') }}</p>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label for="i18n-fallback-lang" class="ds-label block">{{ i18n.t('i18n.general.fallbackLanguage') }}</label>
+        <select
+          id="i18n-fallback-lang"
+          class="ds-select"
+          [disabled]="!canEdit() || saving()"
+          [value]="cfg.fallbackLanguage"
+          (change)="onFallbackLanguageChange($any($event.target).value)">
+          @for (lang of enabledLanguages(); track lang.code) {
+          <option [value]="lang.code" [selected]="lang.code === cfg.fallbackLanguage">{{ lang.nativeName }} ({{ lang.code }})</option>
+          }
+        </select>
+        <p class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('i18n.general.fallbackLanguageHint') }}</p>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label for="i18n-timezone" class="ds-label block">{{ i18n.t('i18n.general.timezone') }}</label>
+        <select
+          id="i18n-timezone"
+          class="ds-select"
+          [disabled]="!canEdit() || saving()"
+          [value]="timezone()"
+          (change)="onTimezoneChange($any($event.target).value)">
+          <option value="">{{ i18n.t('i18n.general.timezoneBrowser') }} ({{ browserTimezone }})</option>
+          @for (tz of timezones; track tz) {
+          <option [value]="tz" [selected]="tz === timezone()">{{ tz }}</option>
+          }
+        </select>
+        <p class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('i18n.general.timezoneHint') }}</p>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label for="i18n-first-day" class="ds-label block">{{ i18n.t('i18n.general.firstDayOfWeek') }}</label>
+        <select
+          id="i18n-first-day"
+          class="ds-select"
+          [disabled]="!canEdit() || saving()"
+          [value]="firstDayOfWeek() < 0 ? '' : firstDayOfWeek()"
+          (change)="onFirstDayOfWeekChange($any($event.target).value)">
+          <option value="">{{ i18n.t('i18n.general.localeDefault') }}</option>
+          @for (key of weekdayKeys; track key; let idx = $index) {
+          <option [value]="idx" [selected]="idx === firstDayOfWeek()">{{ i18n.t(key) }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="mt-5 border-t border-[var(--portal-border-default)] pt-3">
+      <p class="text-xs text-[var(--portal-text-muted)]">
+        {{ i18n.t('i18n.general.contentVersion') }}: <span class="font-mono text-[var(--portal-text-secondary)]">{{ cfg.contentVersion }}</span>
+      </p>
+    </div>
+  </div>
+  }
+</div>

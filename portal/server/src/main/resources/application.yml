@@ -1,0 +1,59 @@
+# Portal Server — Spring Boot configuration
+# Mirrors C:/playground/projects/genportal/portal/src/config.ts
+
+server:
+  port: ${PORT:3000}
+
+portal:
+  tenant-slug: ${TENANT_SLUG:dev}
+  tenant-config-dir: ${TENANT_CONFIG_DIR:}
+  public-base-url: ${PUBLIC_BASE_URL:http://localhost:3000}
+  issuer: ${OIDC_ISSUER:http://localhost:18080/realms/dev}
+  client-secret: ${OIDC_CLIENT_SECRET:portal-secret}
+  session-secret: ${SESSION_SECRET:change-me-session-secret-32-chars-min}
+  encryption-key: ${PORTAL_ENCRYPTION_KEY:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+  session-hours: 8
+  session-max-age: 28800000 # 8h in ms
+  ssrf-allow-private: ${SSRF_ALLOW_PRIVATE:false}
+  cookie-secure: ${COOKIE_SECURE:false}
+  nats-http-url: ${NATS_HTTP_URL:}
+  keycloak-public-url: ${KEYCLOAK_PUBLIC_URL:}
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:crosshubber_dev}
+    username: ${PGUSER:portal}
+    password: ${PGPASSWORD:portal}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 5000
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate.default_schema: ${PGSCHEMA:${TENANT_SLUG:dev}}
+      hibernate.jdbc.lob.non_contextual_creation: true
+      hibernate.format_sql: false
+  flyway:
+    enabled: true
+    schemas: ${PGSCHEMA:${TENANT_SLUG:dev}}
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  jackson:
+    serialization.write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+# Keycloak Admin (optional — all 4 must be present)
+portal.kc-admin:
+  base-url: ${KEYCLOAK_ADMIN_BASE_URL:}
+  client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:}
+  client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:}
+  realm: ${KEYCLOAK_REALM:}
+
+logging:
+  level:
+    com.crosshubber.portal: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN

@@ -1,0 +1,142 @@
+<div class="h-full overflow-y-auto p-6">
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="ds-heading-3">{{ i18n.t('navigation.portal.title') }}</h1>
+      <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('navigation.portal.description') }}</p>
+    </div>
+    @if (tab() === 'layout') {
+    <div class="flex items-center gap-2">
+      @if (saveSuccess() && !dirty()) {
+      <span class="text-xs text-[var(--portal-status-success)]">{{ i18n.t('common.saved') }}</span>
+      }
+      <button type="button" class="ds-btn-secondary" [disabled]="!dirty() || saving()" (click)="discard()">
+        {{ i18n.t('common.cancel') }}
+      </button>
+      <button type="button" class="ds-btn-primary" [disabled]="!dirty() || saving()" (click)="save()">
+        {{ saving() ? i18n.t('common.loading') : i18n.t('common.save') }}
+      </button>
+    </div>
+    }
+  </div>
+
+  <!-- Tabs -->
+  <div class="mb-4 flex gap-1 border-b border-[var(--portal-border)]">
+    <button type="button" (click)="selectTab('layout')"
+      class="px-3 py-1.5 text-xs font-medium transition"
+      [class]="tab() === 'layout'
+        ? 'border-b-2 border-[var(--portal-accent-primary)] text-[var(--portal-text-primary)]'
+        : 'text-[var(--portal-text-muted)] hover:text-[var(--portal-text-secondary)]'">
+      {{ i18n.t('navigation.portal.layoutTab') }}
+    </button>
+    <button type="button" (click)="selectTab('general')"
+      class="px-3 py-1.5 text-xs font-medium transition"
+      [class]="tab() === 'general'
+        ? 'border-b-2 border-[var(--portal-accent-primary)] text-[var(--portal-text-primary)]'
+        : 'text-[var(--portal-text-muted)] hover:text-[var(--portal-text-secondary)]'">
+      {{ i18n.t('navigation.portal.generalTab') }}
+    </button>
+  </div>
+
+  @if (saveError()) {
+  <div class="mb-4 rounded-lg border border-[var(--portal-status-danger)] bg-[var(--portal-bg-surface)] px-3 py-2 text-xs text-[var(--portal-status-danger)]">
+    {{ i18n.t('navigation.portal.saveFailed') }}: {{ saveError() }}
+  </div>
+  }
+
+  @if (loading()) {
+  <p class="py-8 text-center text-xs text-[var(--portal-text-disabled)]">{{ i18n.t('common.loading') }}</p>
+  } @else if (tab() === 'layout') {
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
+    <div class="ds-card p-4">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="ds-heading-3 text-sm">{{ i18n.t('navigation.portal.sectionsTree') }}</h3>
+        <button type="button" (click)="togglePinnedSection()"
+          class="flex items-center gap-2 text-xs text-[var(--portal-text-secondary)]">
+          <span class="text-[var(--portal-text-muted)]">{{ i18n.t('navigation.portal.pinnedSection') }}</span>
+          <span
+            [class]="pinnedSectionEnabled()
+              ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-[var(--portal-accent-primary)] transition-colors duration-200'
+              : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-[var(--portal-border-strong)] transition-colors duration-200'"
+            role="switch" [attr.aria-checked]="pinnedSectionEnabled()">
+            <span
+              [class]="pinnedSectionEnabled()
+                ? 'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 translate-x-4'
+                : 'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 translate-x-0'"></span>
+          </span>
+        </button>
+      </div>
+      <app-dnd-tree
+        [nodes]="dndNodes()"
+        [maxDepth]="10"
+        [addFolderLabel]="i18n.t('navigation.portal.newSection')"
+        [disabledIds]="disabledIds()"
+        (nodesChange)="onTreeChange($event)" />
+      @if (dndNodes().length === 0) {
+      <p class="py-6 text-center text-xs text-[var(--portal-text-disabled)]">{{ i18n.t('navigation.portal.empty') }}</p>
+      }
+    </div>
+
+    <div class="ds-card h-fit p-4">
+      <h3 class="ds-heading-3 mb-2 text-sm">{{ i18n.t('navigation.pinned.palette') }}</h3>
+      <input
+        type="text"
+        [ngModel]="appFilter()"
+        (ngModelChange)="appFilter.set($event)"
+        [placeholder]="i18n.t('common.search')"
+        class="ds-input mb-2 w-full py-1.5 text-xs" />
+      <div class="max-h-96 space-y-1 overflow-y-auto">
+        @for (ep of availableApps(); track ep.moduleKey + ':' + ep.entryKey) {
+        <button type="button" (click)="addApp(ep)"
+          class="flex w-full items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-left transition hover:border-[var(--portal-card-border)] hover:bg-[var(--portal-bg-hover)]">
+          <span class="flex size-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-[var(--portal-text-inverse)]"
+            [style.background]="ep.color || 'var(--portal-accent-primary)'">{{ ep.name.charAt(0) }}</span>
+          <span class="min-w-0 flex-1 truncate text-xs text-[var(--portal-text-secondary)]">{{ ep.name }}</span>
+          <svg class="size-3.5 shrink-0 text-[var(--portal-text-disabled)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        </button>
+        }
+      </div>
+    </div>
+  </div>
+  } @else {
+  <!-- General tab: feature switches -->
+  <div class="max-w-xl space-y-4">
+    <div class="ds-card p-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="ds-heading-3 text-sm">{{ i18n.t('navigation.features.pinnedApps') }}</h3>
+          <p class="mt-1 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('navigation.features.pinnedAppsHint') }}</p>
+        </div>
+        <button type="button" (click)="nav.saveFeatures({ pinnedAppsEnabled: !nav.features().pinnedAppsEnabled })"
+          [class]="nav.features().pinnedAppsEnabled
+            ? 'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-[var(--portal-accent-primary)] transition-colors duration-200'
+            : 'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-[var(--portal-border-strong)] transition-colors duration-200'"
+          role="switch" [attr.aria-checked]="nav.features().pinnedAppsEnabled">
+          <span
+            [class]="nav.features().pinnedAppsEnabled
+              ? 'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 translate-x-5'
+              : 'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 translate-x-0'"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="ds-card p-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="ds-heading-3 text-sm">{{ i18n.t('navigation.features.workspaces') }}</h3>
+          <p class="mt-1 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('navigation.features.workspacesHint') }}</p>
+        </div>
+        <button type="button" (click)="nav.saveFeatures({ workspacesEnabled: !nav.features().workspacesEnabled })"
+          [class]="nav.features().workspacesEnabled
+            ? 'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-[var(--portal-accent-primary)] transition-colors duration-200'
+            : 'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-[var(--portal-border-strong)] transition-colors duration-200'"
+          role="switch" [attr.aria-checked]="nav.features().workspacesEnabled">
+          <span
+            [class]="nav.features().workspacesEnabled
+              ? 'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 translate-x-5'
+              : 'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 translate-x-0'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+</div>

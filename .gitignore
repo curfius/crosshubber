@@ -1,0 +1,33 @@
+# Maven
+target/
+*.jar
+*.war
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+portal/ui/dist/
+portal/ui/.angular/
+
+# Env / secrets
+.env
+secrets.env
+**/secrets.env
+
+# Deployments (generated)
+deployments/
+config-management/deployments/
+portal/server/src/main/resources/static/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.log
+.DS_Store
+Thumbs.db
+
+# Temp
+*.tmp
+*.swp

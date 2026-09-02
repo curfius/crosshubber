@@ -1,0 +1,19 @@
+{
+  "configVersion": 1,
+  "slug": "dev",
+  "name": "Local development",
+  "description": "Persistent local development tenant for the genportal team: portal + dedicated database container + dedicated Keycloak realm (dev). Demo external modules are intentionally excluded; install modules via the module registry when needed.",
+  "lifecycle": "persistent",
+  "services": {
+    "database": { "mode": "container" },
+    "keycloak": { "mode": "dedicated", "realmName": "dev" },
+    "nats": { "mode": "dedicated" },
+    "portal": {},
+    "modules": []
+  },
+  "modules": {
+    "external": [],
+    "overrides": []
+  },
+  "settings": { "pinnedAppsEnabled": true, "workspacesEnabled": true }
+}

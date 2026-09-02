@@ -1,0 +1,113 @@
+/* ==========================================================================
+   THEME: HIGH CONTRAST
+   Maximum contrast for accessibility. WCAG AAA compliant.
+   ========================================================================== */
+
+[data-theme="high-contrast"] {
+  --portal-bg-base:         #000000;
+  --portal-bg-surface:      #0a0a0a;
+  --portal-bg-elevated:     #1a1a1a;
+  --portal-bg-overlay:      rgba(0, 0, 0, 0.85);
+  --portal-bg-hover:        rgba(255, 255, 255, 0.10);
+  --portal-bg-active:       rgba(255, 255, 255, 0.15);
+  --portal-bg-subtle:       rgba(255, 255, 255, 0.05);
+  --portal-bg-glass:        rgba(255, 255, 255, 0.08);
+
+  --portal-text-primary:    #ffffff;
+  --portal-text-secondary:  #f0f0f0;
+  --portal-text-tertiary:   #d0d0d0;
+  --portal-text-muted:      #a0a0a0;
+  --portal-text-disabled:   #707070;
+  --portal-text-inverse:    #000000;
+  --portal-text-link:       #60a5fa;
+  --portal-text-link-hover: #93c5fd;
+
+  --portal-border-default:  #333333;
+  --portal-border-subtle:   #555555;
+  --portal-border-strong:   #888888;
+  --portal-border-focus:    #facc15;
+  --portal-border-input:    #555555;
+
+  --portal-accent-primary:        #facc15;
+  --portal-accent-primary-hover:  #fde047;
+  --portal-accent-primary-active: #eab308;
+  --portal-accent-primary-subtle: rgba(250, 204, 21, 0.20);
+  --portal-accent-primary-glow:   rgba(250, 204, 21, 0.40);
+
+  --portal-accent-secondary:        #f472b6;
+  --portal-accent-secondary-hover:  #f9a8d4;
+  --portal-accent-secondary-active: #ec4899;
+  --portal-accent-secondary-subtle: rgba(244, 114, 182, 0.20);
+
+  --portal-status-success:        #4ade80;
+  --portal-status-success-subtle: rgba(74, 222, 128, 0.15);
+  --portal-status-success-bg:     rgba(74, 222, 128, 0.10);
+  --portal-status-warning:        #facc15;
+  --portal-status-warning-subtle: rgba(250, 204, 21, 0.15);
+  --portal-status-warning-bg:     rgba(250, 204, 21, 0.10);
+  --portal-status-danger:         #f87171;
+  --portal-status-danger-subtle:  rgba(248, 113, 113, 0.15);
+  --portal-status-danger-bg:      rgba(248, 113, 113, 0.10);
+  --portal-status-info:           #60a5fa;
+  --portal-status-info-subtle:    rgba(96, 165, 250, 0.15);
+  --portal-status-info-bg:        rgba(96, 165, 250, 0.10);
+
+  --portal-sidebar-bg:             #0a0a0a;
+  --portal-sidebar-border:         #333333;
+  --portal-sidebar-hover:          rgba(255, 255, 255, 0.10);
+  --portal-sidebar-active:         rgba(250, 204, 21, 0.12);
+  --portal-sidebar-text:           #d0d0d0;
+  --portal-sidebar-text-hover:     #ffffff;
+  --portal-sidebar-text-active:    #facc15;
+  --portal-sidebar-section-label:  #a0a0a0;
+
+  --portal-toolbar-bg:     rgba(10, 10, 10, 0.90);
+  --portal-toolbar-border: #333333;
+
+  --portal-tab-bg:              rgba(10, 10, 10, 0.90);
+  --portal-tab-border:          #333333;
+  --portal-tab-active-bg:       #1a1a1a;
+  --portal-tab-active-border:   #facc15;
+  --portal-tab-active-text:     #ffffff;
+  --portal-tab-inactive-text:   #d0d0d0;
+  --portal-tab-hover-bg:        rgba(255, 255, 255, 0.08);
+  --portal-tab-hover-text:      #ffffff;
+
+  --portal-input-bg:             #1a1a1a;
+  --portal-input-border:         #555555;
+  --portal-input-border-focus:   #facc15;
+  --portal-input-text:           #f0f0f0;
+  --portal-input-placeholder:    #a0a0a0;
+
+  --portal-card-bg:          #0a0a0a;
+  --portal-card-border:      #333333;
+  --portal-card-hover-border: #555555;
+
+  --portal-modal-bg:        #0a0a0a;
+  --portal-modal-border:    #555555;
+
+  --portal-btn-primary-bg:        #facc15;
+  --portal-btn-primary-bg-hover:  #fde047;
+  --portal-btn-primary-bg-active: #eab308;
+  --portal-btn-primary-text:      #000000;
+  --portal-btn-secondary-bg:      #1a1a1a;
+  --portal-btn-secondary-bg-hover:#333333;
+  --portal-btn-secondary-text:    #f0f0f0;
+  --portal-btn-danger-bg:         #dc2626;
+  --portal-btn-danger-bg-hover:   #ef4444;
+  --portal-btn-ghost-bg-hover:    rgba(255, 255, 255, 0.10);
+  --portal-btn-ghost-text:        #d0d0d0;
+  --portal-btn-ghost-text-hover:  #ffffff;
+
+  --portal-font-family-sans:     "Arial", "Helvetica Neue", Helvetica, sans-serif;
+  --portal-font-family-display:  "Arial", "Helvetica Neue", Helvetica, sans-serif;
+  --portal-font-weight-normal:   400;
+  --portal-font-weight-medium:   500;
+  --portal-font-weight-semibold: 700;
+  --portal-font-weight-bold:     700;
+
+  --portal-gradient-primary: linear-gradient(to bottom right, #facc15, #f472b6);
+  --portal-gradient-brand:  linear-gradient(to right, #facc15, #f472b6);
+
+  color-scheme: dark;
+}

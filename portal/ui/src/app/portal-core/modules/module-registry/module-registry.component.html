@@ -1,0 +1,1348 @@
+<div>
+  <div class="mb-6">
+    <h1 class="ds-heading-3">{{ i18n.t('registry.title') }}</h1>
+    <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('registry.subtitle') }}</p>
+  </div>
+
+  <div class="flex" style="height: calc(100% - 52px)">
+    <!-- Left panel: modules list -->
+    <div class="w-64 shrink-0 border-r border-[var(--portal-border-default)] flex flex-col lg:w-72">
+      <div class="min-h-0 flex-1 overflow-y-auto p-3">
+        <app-ds-tree
+          [nodes]="moduleNodes()"
+          [selectedId]="selectedModuleId()"
+          [boxed]="false"
+          [searchable]="true"
+          (nodeSelected)="onModuleSelected($event)"
+          (actionClick)="onModuleAction($event)" />
+      </div>
+
+      <div class="border-t border-[var(--portal-border-default)] p-4">
+        <div class="space-y-2">
+          <button type="button" (click)="openInstallWizard()"
+            class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]">
+            <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            {{ i18n.t('registry.action.quickInstall') }}
+          </button>
+          <button type="button" (click)="newModule()"
+            class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]">
+            <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            {{ i18n.t('registry.action.manualInstall') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+  <!-- Right panel: selected module detail -->
+  <div class="flex-1 overflow-y-auto p-4 sm:p-6">
+    @if (selectedModule(); as mod) {
+      <div class="mx-auto max-w-3xl">
+        <!-- Module header -->
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div class="flex min-w-0 items-center gap-3">
+            <span class="size-3 shrink-0 rounded-full"
+              [class]="moduleStatus(mod) === 'disabled'
+                ? 'bg-[var(--portal-text-disabled)]'
+                : moduleStatus(mod) === 'empty'
+                  ? 'bg-[var(--portal-status-warning)]'
+                  : 'bg-[var(--portal-status-success)]'"></span>
+            <div class="min-w-0">
+              <h1 class="ds-heading-2 truncate">{{ mod.name }}</h1>
+              <p class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.key') }}: <code class="text-[var(--portal-text-tertiary)]">{{ mod.key }}</code></p>
+            </div>
+          </div>
+          <div class="flex shrink-0 items-center gap-3">
+            <label class="flex items-center gap-2 text-xs text-[var(--portal-text-tertiary)]">
+              {{ i18n.t('registry.enabled') }}
+              <app-switch [checked]="mod.active" (toggled)="toggleModuleActive(mod, $event)" />
+            </label>
+            @if (!isEditing()) {
+            <button (click)="startEditing()" [title]="i18n.t('registry.tooltip.editModule')"
+              class="cursor-pointer rounded-md px-3 py-1.5 text-xs text-[var(--portal-text-secondary)] transition hover:bg-[var(--portal-bg-hover)]">
+              <svg class="mr-1 inline-block size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              {{ i18n.t('registry.action.editModule') }}
+            </button>
+            } @else {
+            <button (click)="discardDraft()" [title]="i18n.t('registry.action.discardDraft')"
+              class="cursor-pointer rounded-md px-3 py-1.5 text-xs text-[var(--portal-status-danger)] transition hover:bg-[var(--portal-status-danger-subtle)]">{{ i18n.t('registry.action.discardDraft') }}</button>
+            <button (click)="saveDraft()" [disabled]="busy()" [title]="i18n.t('registry.action.saveDraft')"
+              class="cursor-pointer rounded-md px-3 py-1.5 text-xs text-[var(--portal-text-secondary)] transition hover:bg-[var(--portal-bg-hover)]">
+              {{ busy() ? i18n.t('registry.action.saving') : i18n.t('registry.action.saveDraft') }}
+            </button>
+            <button (click)="applyChanges()" [disabled]="busy()" [title]="i18n.t('registry.action.apply')"
+              class="ds-btn ds-btn-accent ds-btn-sm">
+              {{ busy() ? i18n.t('registry.action.applying') : i18n.t('registry.action.apply') }}
+            </button>
+            }
+
+            @if (!mod.builtin) {
+            <button (click)="requestRemoveModule(mod)" [title]="i18n.t('registry.action.deleteModule')"
+              class="cursor-pointer rounded-md p-1.5 text-[var(--portal-status-danger)] transition hover:bg-[var(--portal-status-danger-subtle)]">
+              <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            </button>
+            }
+          </div>
+        </div>
+
+
+
+        <!-- Draft banner -->
+        @if (isEditing()) {
+        <div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <svg class="size-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+              <span class="text-xs font-medium text-amber-800">{{ i18n.t('registry.draft.workingOn') }}</span>
+            </div>
+            <span class="text-xs text-amber-600">{{ i18n.t('registry.draft.notAppliedHint') }}</span>
+          </div>
+          @if (validationErrors().length > 0) {
+          <div class="mt-2 space-y-1">
+            @for (err of validationErrors(); track err) {
+            <p class="text-xs text-red-600">{{ err }}</p>
+            }
+          </div>
+          }
+        </div>
+        }
+
+        <!-- Activation proposal — só para major version e módulo disabled -->
+        @if (showActivationProposal()) {
+        <div class="mt-4 rounded-lg border border-green-300 bg-green-50 px-4 py-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-green-800">{{ i18n.t('registry.activation.ready') }}</p>
+              <p class="text-xs text-green-700">{{ i18n.t('registry.activation.prompt') }}</p>
+            </div>
+            <div class="flex gap-2">
+              <button (click)="dismissActivationProposal()" class="ds-btn ds-btn-ghost ds-btn-sm">{{ i18n.t('registry.activation.notNow') }}</button>
+              <button (click)="confirmActivate()" class="ds-btn ds-btn-accent ds-btn-sm">{{ i18n.t('registry.activation.activate') }}</button>
+            </div>
+          </div>
+        </div>
+        }
+
+        <!-- Content section via workingManifest -->
+        <div class="mt-8">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="ds-heading-3 text-sm">{{ i18n.t('registry.section.content') }}</h2>
+            @if (isEditing()) {
+              <button (click)="newEntryPoint()"
+                class="ds-btn ds-btn-accent ds-btn-sm">{{ i18n.t('registry.action.addContent') }}</button>
+            } @else {
+              <span class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('registry.hint.enableEditToModify') }}</span>
+            }
+          </div>
+
+          @if (isEditing()) {
+            <!-- Editing mode: render from workingManifest -->
+            @for (cat of contentCategories; track cat) {
+              @let entries = contentEntries(cat);
+              @if (isEditing() || entries.length > 0) {
+              <div class="mt-4">
+                <h3 class="text-xs font-semibold text-[var(--portal-text-primary)] capitalize">{{ i18n.t('registry.category.' + cat) }}</h3>
+                @if (entries.length > 0) {
+                <div class="ds-table-wrapper mt-2 overflow-x-auto">
+                  <table class="ds-table w-full min-w-[720px]">
+                    <thead>
+                      <tr>
+                        <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.name') }}</th>
+                        <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.key') }}</th>
+                        <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.type') }}</th>
+                        <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.target') }}</th>
+                        <th class="px-4 py-3 text-right font-semibold">{{ i18n.t('registry.field.actions') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (entry of entries; track entry.key; let idx = $index) {
+                      <tr>
+                        <td class="px-4 py-3">
+                          <input [value]="entry.name" (input)="updateContentField(cat, idx, 'name', $any($event.target).value)"
+                            class="ds-input text-xs" [placeholder]="i18n.t('registry.placeholder.name')" />
+                        </td>
+                        <td class="px-4 py-3">
+                          <input [value]="entry.key" (input)="updateContentField(cat, idx, 'key', $any($event.target).value)"
+                            class="ds-input font-mono text-xs" [placeholder]="i18n.t('registry.placeholder.key')" />
+                        </td>
+                        <td class="px-4 py-3">
+                          <select [value]="entry.type" (change)="updateContentField(cat, idx, 'type', $any($event.target).value)"
+                            class="ds-select text-xs">
+                            <option value="iframe">iframe</option>
+                            <option value="embedded">embedded</option>
+                            <option value="mfe">mfe</option>
+                            <option value="link">link</option>
+                          </select>
+                        </td>
+                        <td class="px-4 py-3">
+                          @if (entry.type === 'iframe' || entry.type === 'link') {
+                            <input [value]="entry.url ?? entry.path ?? ''" (input)="updateContentField(cat, idx, 'url', $any($event.target).value)"
+                              class="ds-input font-mono text-xs" placeholder="https://..." />
+                          } @else if (entry.type === 'embedded') {
+                            <select [value]="entry.loadPath ?? ''" (change)="updateContentField(cat, idx, 'loadPath', $any($event.target).value)"
+                              class="ds-select font-mono text-xs">
+                              @for (p of loadPaths; track p) { <option [value]="p">{{ p }}</option> }
+                            </select>
+                          } @else {
+                            <input [value]="entry.element ?? ''" (input)="updateContentField(cat, idx, 'element', $any($event.target).value)"
+                              class="ds-input font-mono text-xs" placeholder="element" />
+                          }
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                          <button (click)="removeContent(cat, idx)" [title]="i18n.t('registry.action.remove')"
+                            class="cursor-pointer rounded-md p-1.5 text-[var(--portal-status-danger)] transition hover:bg-[var(--portal-status-danger-subtle)]">
+                            <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                          </button>
+                        </td>
+                      </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+                } @else {
+                  <p class="mt-2 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('registry.empty.noEntries') }}</p>
+                }
+                <button (click)="addContent($any(cat))" class="mt-2 cursor-pointer rounded-md border border-dashed border-[var(--portal-border-default)] px-3 py-1 text-xs text-[var(--portal-text-muted)] hover:border-[var(--portal-text-secondary)]">{{ i18n.t('registry.action.addCategory', { category: i18n.t('registry.category.' + cat) }) }}</button>
+              </div>
+              }
+            }
+          } @else {
+            <!-- Read-only mode: show activeManifest content + legacy entryPoints -->
+            @let active = activeManifest();
+            @if (active) {
+              @for (cat of contentCategories; track cat) {
+                @let entries = contentEntries(cat);
+                @if (entries.length > 0) {
+                <div class="mt-4">
+                  <h3 class="text-xs font-semibold text-[var(--portal-text-primary)] capitalize">{{ i18n.t('registry.category.' + cat) }}</h3>
+                  <div class="ds-table-wrapper mt-2 overflow-x-auto">
+                    <table class="ds-table w-full min-w-[720px]">
+                      <thead>
+                        <tr>
+                          <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.name') }}</th>
+                          <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.key') }}</th>
+                          <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.type') }}</th>
+                          <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.target') }}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (entry of entries; track entry.key) {
+                        <tr>
+                          <td class="px-4 py-3 text-xs font-medium">{{ entry.name }}</td>
+                          <td class="px-4 py-3 font-mono text-xs">{{ entry.key }}</td>
+                          <td class="px-4 py-3"><span class="rounded-full border px-2.5 py-0.5 text-[11px] font-medium" [class]="typeBadge(entry.type)">{{ entry.type }}</span></td>
+                          <td class="px-4 py-3 font-mono text-xs max-w-48 truncate">{{ contentTarget(entry, active.baseUrl) }}</td>
+                        </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                }
+              }
+              @if (!active.content.applications.length && !active.content.features.length && !active.content.adminSettings.length && !active.content.userSettings.length) {
+                <div class="mt-3 rounded-xl border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] px-4 py-8 text-center text-sm text-[var(--portal-text-muted)]">
+                  {{ i18n.t('registry.empty.noContentEdit') }}
+                </div>
+              }
+            } @else {
+              <!-- Fallback to legacy entryPoints table when no manifest -->
+              @if (entryPoints().length > 0) {
+              <div class="ds-table-wrapper mt-3 overflow-x-auto">
+                <table class="ds-table w-full min-w-[720px]">
+                  <thead>
+                    <tr>
+                      <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.name') }}</th>
+                      <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.key') }}</th>
+                      <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.category') }}</th>
+                      <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.type') }}</th>
+                      <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.target') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (ep of entryPoints(); track ep.id) {
+                    <tr>
+                      <td class="px-4 py-3 text-xs">{{ ep.name }}</td>
+                      <td class="px-4 py-3 font-mono text-xs">{{ ep.entryKey }}</td>
+                      <td class="px-4 py-3"><span class="ds-badge ds-badge-default uppercase">{{ ep.category }}</span></td>
+                      <td class="px-4 py-3"><span class="rounded-full border px-2.5 py-0.5 text-[11px] font-medium" [class]="typeBadge(ep.type)">{{ ep.type }}</span></td>
+                      <td class="px-4 py-3 font-mono text-xs max-w-48 truncate">{{ epTarget(ep) }}</td>
+                    </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              } @else {
+              <div class="mt-3 rounded-xl border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] px-4 py-8 text-center text-sm text-[var(--portal-text-muted)]">
+                {{ i18n.t('registry.empty.noContent') }}
+              </div>
+              }
+            }
+          }
+        </div>
+
+        <!-- Module block — editable -->
+        @let moduleRoot = (workingManifest() ?? activeManifest());
+        @if (moduleRoot) {
+        <div class="mt-8 rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-2.5 border-b border-[var(--portal-border-default)]">
+            <h3 class="text-xs font-semibold text-[var(--portal-text-primary)]">{{ i18n.t('registry.section.module') }}</h3>
+            @if (isEditing()) { <span class="text-[10px] text-amber-600">{{ i18n.t('registry.state.editable') }}</span> } @else { <span class="text-[10px] text-[var(--portal-text-muted)]">{{ i18n.t('registry.state.readOnly') }}</span> }
+          </div>
+          <div class="px-4 py-3">
+            @if (isEditing()) {
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
+                <label class="block">
+                  <span class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.name') }}</span>
+                  <input [value]="moduleRoot.name" (input)="updateRootField('name', $any($event.target).value)" class="ds-input mt-1" />
+                </label>
+                <label class="block">
+                  <span class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.key') }}</span>
+                  <input [value]="moduleRoot.key" disabled class="ds-input mt-1 font-mono disabled:opacity-50" />
+                </label>
+                <label class="block">
+                  <span class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.baseUrl') }}</span>
+                  <input [value]="moduleRoot.baseUrl" (input)="updateRootField('baseUrl', $any($event.target).value)" class="ds-input mt-1 font-mono" />
+                </label>
+                <label class="block">
+                  <span class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.health') }}</span>
+                  <input [value]="moduleRoot.health ?? ''" (input)="updateRootField('health', $any($event.target).value)" class="ds-input mt-1 font-mono" placeholder="/healthz" />
+                </label>
+              </div>
+            } @else {
+              <dl class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.name') }}</dt><dd class="font-mono text-[var(--portal-text-tertiary)]">{{ moduleRoot.name }}</dd>
+                <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.key') }}</dt><dd class="font-mono text-[var(--portal-text-tertiary)]">{{ moduleRoot.key }}</dd>
+                <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.baseUrl') }}</dt><dd class="font-mono text-[var(--portal-text-tertiary)]">{{ moduleRoot.baseUrl }}</dd>
+                <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.health') }}</dt><dd class="font-mono text-[var(--portal-text-tertiary)]">{{ moduleRoot.health ?? '-' }}</dd>
+                <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.manifestVersion') }}</dt><dd class="font-mono text-[var(--portal-text-tertiary)]">{{ moduleRoot.manifestVersion }}</dd>
+              </dl>
+            }
+          </div>
+        </div>
+        }
+
+        <!-- Security Roles — editable block -->
+        @if (isEditing()) {
+        <div class="mt-8 rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-2.5 border-b border-[var(--portal-border-default)]">
+            <h3 class="text-xs font-semibold text-[var(--portal-text-primary)]">{{ i18n.t('registry.section.securityRoles') }}</h3>
+            <span class="text-[10px] text-amber-600">{{ i18n.t('registry.state.editable') }}</span>
+          </div>
+          <div class="px-4 py-3">
+            <div class="space-y-2">
+              @for (role of (workingManifest() ?? activeManifest())?.security?.roles ?? []; track $index; let i = $index) {
+              <div class="flex items-center gap-2 rounded border border-[var(--portal-border-default)] px-3 py-2">
+                <input [value]="role.key" (input)="updateRoleField(i, 'key', $any($event.target).value)"
+                  class="w-36 border-0 bg-transparent p-0 text-xs font-mono outline-none placeholder:text-[var(--portal-text-muted)]"
+                  [class.text-red-500]="role.key && !roleKeyValid(role.key)"
+                  placeholder="role-key" />
+                <input [value]="role.name" (input)="updateRoleField(i, 'name', $any($event.target).value)"
+                  class="flex-1 border-0 bg-transparent p-0 text-xs outline-none placeholder:text-[var(--portal-text-muted)]"
+                  [placeholder]="i18n.t('registry.placeholder.roleName')" />
+                <input [value]="role.description ?? ''" (input)="updateRoleField(i, 'description', $any($event.target).value)"
+                  class="w-48 border-0 bg-transparent p-0 text-xs text-[var(--portal-text-muted)] outline-none placeholder:text-[var(--portal-text-muted)]"
+                  [placeholder]="i18n.t('registry.placeholder.roleDescription')" />
+                <button (click)="removeRole(i)" class="shrink-0 cursor-pointer rounded p-1 text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-status-danger)]">
+                  <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                </button>
+              </div>
+              }
+              @if (((workingManifest() ?? activeManifest())?.security?.roles?.length ?? 0) === 0) {
+                <p class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('registry.empty.noRoles') }}</p>
+              }
+              <button (click)="addRole()" [title]="i18n.t('registry.tooltip.addRole')"
+                class="cursor-pointer rounded-md border border-dashed border-[var(--portal-border-default)] px-3 py-1.5 text-xs text-[var(--portal-text-muted)] transition hover:border-[var(--portal-text-secondary)] hover:text-[var(--portal-text-secondary)]">{{ i18n.t('registry.action.addRole') }}</button>
+            </div>
+          </div>
+        </div>
+        } @else if (hasVisibleData('Security Roles')) {
+        <div class="mt-8 rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-2.5 border-b border-[var(--portal-border-default)]">
+            <h3 class="text-xs font-semibold text-[var(--portal-text-primary)]">{{ i18n.t('registry.section.securityRoles') }}</h3>
+          </div>
+          <div class="px-4 py-3">
+            <div class="space-y-2">
+              @for (role of (workingManifest() ?? activeManifest())?.security?.roles ?? []; track role.key) {
+              <div class="rounded border border-[var(--portal-border-default)] px-3 py-2">
+                <span class="font-mono text-xs font-semibold text-[var(--portal-text-primary)]">{{ role.key }}</span>
+                <dl class="mt-1 grid grid-cols-[120px_1fr] gap-x-3 gap-y-0.5 text-[11px]">
+                  <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.name') }}</dt>
+                  <dd class="text-[var(--portal-text-tertiary)]">{{ role.name }}</dd>
+                  @if (role.description) {
+                  <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.description') }}</dt>
+                  <dd class="text-[var(--portal-text-tertiary)]">{{ role.description }}</dd>
+                  }
+                </dl>
+              </div>
+              }
+            </div>
+          </div>
+        </div>
+        }
+
+        <!-- Capabilities — editable block -->
+        @if (isEditing()) {
+        <div class="mt-8 rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-2.5 border-b border-[var(--portal-border-default)]">
+            <h3 class="text-xs font-semibold text-[var(--portal-text-primary)]">{{ i18n.t('registry.section.capabilities') }}</h3>
+            <span class="text-[10px] text-amber-600">{{ i18n.t('registry.state.editable') }}</span>
+          </div>
+          <div class="px-4 py-3">
+            <div class="flex flex-wrap items-center gap-2">
+              @for (cap of (workingManifest() ?? activeManifest())?.capabilities ?? []; track $index; let i = $index) {
+              <span class="ds-badge ds-badge-info">
+                <input [value]="cap.scope" (input)="updateCapabilityScope(i, $any($event.target).value)"
+                  class="w-40 border-0 bg-transparent p-0 text-xs font-mono outline-none placeholder:text-[var(--portal-text-muted)]"
+                  [class.text-red-500]="cap.scope && !scopeValid(cap.scope)"
+                  placeholder="scope.name" />
+                <button (click)="removeCapability(i)" class="ml-1 cursor-pointer text-[var(--portal-text-muted)] hover:text-[var(--portal-status-danger)]">&times;</button>
+              </span>
+              }
+                <button (click)="addCapability()" [title]="i18n.t('registry.tooltip.addCapability')"
+                class="cursor-pointer rounded-md border border-dashed border-[var(--portal-border-default)] px-2 py-1 text-xs text-[var(--portal-text-muted)] transition hover:border-[var(--portal-text-secondary)] hover:text-[var(--portal-text-secondary)]">{{ i18n.t('registry.action.add') }}</button>
+            </div>
+          </div>
+        </div>
+        } @else if (hasVisibleData('Capabilities')) {
+        <div class="mt-8 rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] overflow-hidden">
+          <div class="px-4 py-2.5 border-b border-[var(--portal-border-default)]">
+            <h3 class="text-xs font-semibold text-[var(--portal-text-primary)]">{{ i18n.t('registry.section.capabilities') }}</h3>
+          </div>
+          <div class="px-4 py-3">
+            <div class="flex flex-wrap gap-2">
+              @for (cap of (workingManifest() ?? activeManifest())?.capabilities ?? []; track cap.scope) {
+                <span class="ds-badge ds-badge-info">{{ cap.scope }}</span>
+              }
+            </div>
+          </div>
+        </div>
+        }
+
+        <!-- Events — editable block -->
+        @if (isEditing()) {
+        <div class="mt-8 rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-2.5 border-b border-[var(--portal-border-default)]">
+            <h3 class="text-xs font-semibold text-[var(--portal-text-primary)]">{{ i18n.t('registry.section.events') }}</h3>
+            <span class="text-[10px] text-amber-600">{{ i18n.t('registry.state.editable') }}</span>
+          </div>
+          <div class="px-4 py-3 space-y-3">
+            <div>
+              <span class="text-[11px] text-[var(--portal-text-muted)]">{{ i18n.t('registry.events.published') }}</span>
+              <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                @for (ev of (workingManifest() ?? activeManifest())?.events?.published ?? []; track $index; let i = $index) {
+                <span class="ds-badge ds-badge-default">
+                  <input [value]="ev.subject" (input)="updateEventField('published', i, 'subject', $any($event.target).value)"
+                    class="w-48 border-0 bg-transparent p-0 text-xs font-mono outline-none placeholder:text-[var(--portal-text-muted)]"
+                    [class.text-red-500]="ev.subject && !eventSubjectValid(ev.subject)"
+                    placeholder="module.event.v1" />
+                  <button (click)="removeEvent('published', i)" class="ml-1 cursor-pointer text-[var(--portal-text-muted)] hover:text-[var(--portal-status-danger)]">&times;</button>
+                </span>
+                }
+                <button (click)="addEvent('published')" [title]="i18n.t('registry.tooltip.addPublishedEvent')"
+                  class="cursor-pointer rounded-md border border-dashed border-[var(--portal-border-default)] px-2 py-1 text-xs text-[var(--portal-text-muted)] transition hover:border-[var(--portal-text-secondary)] hover:text-[var(--portal-text-secondary)]">{{ i18n.t('registry.action.add') }}</button>
+              </div>
+            </div>
+            <div>
+              <span class="text-[11px] text-[var(--portal-text-muted)]">{{ i18n.t('registry.events.consumed') }}</span>
+              <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                @for (ev of (workingManifest() ?? activeManifest())?.events?.consumed ?? []; track $index; let i = $index) {
+                <span class="ds-badge ds-badge-default">
+                  <input [value]="ev.subject" (input)="updateEventField('consumed', i, 'subject', $any($event.target).value)"
+                    class="w-48 border-0 bg-transparent p-0 text-xs font-mono outline-none placeholder:text-[var(--portal-text-muted)]"
+                    [class.text-red-500]="ev.subject && !eventSubjectValid(ev.subject)"
+                    placeholder="module.event.v1" />
+                  <button (click)="removeEvent('consumed', i)" class="ml-1 cursor-pointer text-[var(--portal-text-muted)] hover:text-[var(--portal-status-danger)]">&times;</button>
+                </span>
+                }
+                <button (click)="addEvent('consumed')" [title]="i18n.t('registry.tooltip.addConsumedEvent')"
+                  class="cursor-pointer rounded-md border border-dashed border-[var(--portal-border-default)] px-2 py-1 text-xs text-[var(--portal-text-muted)] transition hover:border-[var(--portal-text-secondary)] hover:text-[var(--portal-text-secondary)]">{{ i18n.t('registry.action.add') }}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        } @else if (hasVisibleData('Events')) {
+        <div class="mt-8 rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] overflow-hidden">
+          <div class="px-4 py-2.5 border-b border-[var(--portal-border-default)]">
+            <h3 class="text-xs font-semibold text-[var(--portal-text-primary)]">{{ i18n.t('registry.section.events') }}</h3>
+          </div>
+          <div class="px-4 py-3 space-y-3">
+            @if ((workingManifest() ?? activeManifest())?.events?.published?.length) {
+            <div>
+              <span class="text-[11px] text-[var(--portal-text-muted)]">{{ i18n.t('registry.events.published') }}</span>
+              <div class="mt-1 flex flex-wrap gap-1.5">
+                @for (ev of (workingManifest() ?? activeManifest())!.events!.published!; track ev.subject) {
+                  <span class="ds-badge ds-badge-default">{{ ev.subject }}</span>
+                }
+              </div>
+            </div>
+            }
+            @if ((workingManifest() ?? activeManifest())?.events?.consumed?.length) {
+            <div>
+              <span class="text-[11px] text-[var(--portal-text-muted)]">{{ i18n.t('registry.events.consumed') }}</span>
+              <div class="mt-1 flex flex-wrap gap-1.5">
+                @for (ev of (workingManifest() ?? activeManifest())!.events!.consumed!; track ev.subject) {
+                  <span class="ds-badge ds-badge-default">{{ ev.subject }}</span>
+                }
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+        }
+
+        <!-- Manifest Overview — sempre READONLY recap -->
+        <div class="mt-8">
+          <button (click)="toggleManifestInfo()"
+            class="flex w-full items-center justify-between rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] px-4 py-3 text-left transition hover:bg-[var(--portal-bg-hover)]">
+            <h2 class="ds-heading-3 text-sm">{{ i18n.t('registry.section.overview') }}</h2>
+            <div class="flex items-center gap-2">
+              <svg class="size-4 text-[var(--portal-text-tertiary)] transition-transform" [class.rotate-180]="showManifestInfo()" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </button>
+          @if (showManifestInfo()) {
+          <div class="mt-2 space-y-3">
+            @let overviewRoot = (workingManifest() ?? activeManifest());
+            @if (overviewRoot) {
+            <div class="rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] overflow-hidden">
+              <div class="px-4 py-2.5 border-b border-[var(--portal-border-default)]">
+                <h3 class="text-xs font-semibold text-[var(--portal-text-primary)]">{{ i18n.t('registry.section.module') }}</h3>
+              </div>
+              <div class="px-4 py-3">
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                  <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.name') }}</dt><dd class="font-mono text-[var(--portal-text-tertiary)]">{{ overviewRoot.name }}</dd>
+                  <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.key') }}</dt><dd class="font-mono text-[var(--portal-text-tertiary)]">{{ overviewRoot.key }}</dd>
+                  <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.baseUrl') }}</dt><dd class="font-mono text-[var(--portal-text-tertiary)]">{{ overviewRoot.baseUrl }}</dd>
+                  <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.health') }}</dt><dd class="font-mono text-[var(--portal-text-tertiary)]">{{ overviewRoot.health ?? '-' }}</dd>
+                  <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.manifestVersion') }}</dt><dd class="font-mono text-[var(--portal-text-tertiary)]">{{ overviewRoot.manifestVersion }}</dd>
+                </dl>
+              </div>
+            </div>
+            }
+            @for (section of visibleGenericSections(); track section.title) {
+            <div class="rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] overflow-hidden">
+              <div class="flex items-center justify-between px-4 py-2.5 border-b border-[var(--portal-border-default)]">
+                <h3 class="text-xs font-semibold text-[var(--portal-text-primary)]">{{ sectionTitle(section.title) }}</h3>
+              </div>
+              @if (section.fields) {
+              <div class="px-4 py-3">
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                  @for (f of section.fields; track f.key) {
+                  <dt class="text-[var(--portal-text-muted)]">{{ fieldLabel(f.label) }}</dt>
+                  <dd class="font-mono text-[var(--portal-text-tertiary)]">{{ f.newValue ?? '-' }}</dd>
+                  }
+                </dl>
+              </div>
+              }
+              @if (section.items) {
+              <div class="px-4 py-3 space-y-2">
+                @for (item of section.items; track item.key) {
+                <div class="rounded border border-[var(--portal-border-default)] px-3 py-2">
+                  <span class="font-mono text-xs font-semibold text-[var(--portal-text-primary)]">{{ item.key }}</span>
+                  @if (item.fields.length > 0) {
+                  <dl class="mt-1 grid grid-cols-[120px_1fr] gap-x-3 gap-y-0.5 text-[11px]">
+                    @for (f of item.fields; track f.key) {
+                    <dt class="text-[var(--portal-text-muted)]">{{ fieldLabel(f.label) }}</dt>
+                    <dd class="font-mono text-[var(--portal-text-tertiary)]">{{ f.newValue ?? '-' }}</dd>
+                    }
+                  </dl>
+                  }
+                </div>
+                }
+              </div>
+              }
+            </div>
+            }
+            @if (hasVisibleData('Security Roles')) {
+            <div class="rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] overflow-hidden">
+              <div class="px-4 py-2.5 border-b border-[var(--portal-border-default)]">
+                <h3 class="text-xs font-semibold text-[var(--portal-text-primary)]">{{ i18n.t('registry.section.securityRoles') }}</h3>
+              </div>
+              <div class="px-4 py-3">
+                <div class="space-y-2">
+                  @for (role of (workingManifest() ?? activeManifest())?.security?.roles ?? []; track role.key) {
+                  <div class="rounded border border-[var(--portal-border-default)] px-3 py-2">
+                    <span class="font-mono text-xs font-semibold text-[var(--portal-text-primary)]">{{ role.key }}</span>
+                    <dl class="mt-1 grid grid-cols-[120px_1fr] gap-x-3 gap-y-0.5 text-[11px]">
+                      <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.name') }}</dt>
+                      <dd class="text-[var(--portal-text-tertiary)]">{{ role.name }}</dd>
+                      @if (role.description) {
+                      <dt class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.field.description') }}</dt>
+                      <dd class="text-[var(--portal-text-tertiary)]">{{ role.description }}</dd>
+                      }
+                    </dl>
+                  </div>
+                  }
+                </div>
+              </div>
+            </div>
+            }
+            @if (hasVisibleData('Capabilities')) {
+            <div class="rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] overflow-hidden">
+              <div class="px-4 py-2.5 border-b border-[var(--portal-border-default)]">
+                <h3 class="text-xs font-semibold text-[var(--portal-text-primary)]">{{ i18n.t('registry.section.capabilities') }}</h3>
+              </div>
+              <div class="px-4 py-3">
+                <div class="flex flex-wrap gap-2">
+                  @for (cap of (workingManifest() ?? activeManifest())?.capabilities ?? []; track cap.scope) {
+                    <span class="ds-badge ds-badge-info">{{ cap.scope }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+            }
+            @if (hasVisibleData('Events')) {
+            <div class="rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] overflow-hidden">
+              <div class="px-4 py-2.5 border-b border-[var(--portal-border-default)]">
+                <h3 class="text-xs font-semibold text-[var(--portal-text-primary)]">{{ i18n.t('registry.section.events') }}</h3>
+              </div>
+              <div class="px-4 py-3 space-y-3">
+                @if ((workingManifest() ?? activeManifest())?.events?.published?.length) {
+                <div>
+                  <span class="text-[11px] text-[var(--portal-text-muted)]">{{ i18n.t('registry.events.published') }}</span>
+                  <div class="mt-1 flex flex-wrap gap-1.5">
+                    @for (ev of (workingManifest() ?? activeManifest())!.events!.published!; track ev.subject) {
+                      <span class="ds-badge ds-badge-default">{{ ev.subject }}</span>
+                    }
+                  </div>
+                </div>
+                }
+                @if ((workingManifest() ?? activeManifest())?.events?.consumed?.length) {
+                <div>
+                  <span class="text-[11px] text-[var(--portal-text-muted)]">{{ i18n.t('registry.events.consumed') }}</span>
+                  <div class="mt-1 flex flex-wrap gap-1.5">
+                    @for (ev of (workingManifest() ?? activeManifest())!.events!.consumed!; track ev.subject) {
+                      <span class="ds-badge ds-badge-default">{{ ev.subject }}</span>
+                    }
+                  </div>
+                </div>
+                }
+              </div>
+            </div>
+            }
+            <div class="flex gap-2">
+              <button (click)="showJsonViewer()" class="ds-btn ds-btn-ghost ds-btn-sm">
+                <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                {{ i18n.t('registry.action.viewJson') }}
+              </button>
+              <button (click)="copyManifestJson()" class="ds-btn ds-btn-ghost ds-btn-sm">
+                <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                {{ i18n.t('registry.action.copyJson') }}
+              </button>
+            </div>
+          </div>
+          }
+        </div>
+
+        <!-- Versions section -->
+        @if (versions().length > 0) {
+        <div class="mt-8">
+          <button (click)="toggleVersions()"
+            class="flex w-full items-center justify-between rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] px-4 py-3 text-left transition hover:bg-[var(--portal-bg-hover)]">
+            <h2 class="ds-heading-3 text-sm">{{ i18n.t('registry.section.versions') }}</h2>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-[var(--portal-text-muted)]">{{ versions().length === 1 ? i18n.t('registry.versions.countOne') : i18n.t('registry.versions.countMany', { count: versions().length }) }}</span>
+              <svg class="size-4 text-[var(--portal-text-tertiary)] transition-transform" [class.rotate-180]="showVersions()" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </button>
+          @if (showVersions()) {
+          <div class="ds-table-wrapper mt-2 overflow-x-auto rounded-lg border border-[var(--portal-border-default)]">
+            <table class="ds-table w-full min-w-[660px]">
+              <thead>
+                <tr>
+                  <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.version') }}</th>
+                  <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.digest') }}</th>
+                  <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.installedAt') }}</th>
+                  <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.installedBy') }}</th>
+                  <th class="px-4 py-3 font-semibold">{{ i18n.t('registry.field.status') }}</th>
+                  <th class="px-4 py-3 text-right font-semibold">{{ i18n.t('registry.field.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (v of versions(); track v.id) {
+                <tr [class.bg-amber-50]="v.status === 'draft'">
+                  <td class="px-4 py-3 font-mono text-sm" [class.text-amber-700]="v.status === 'draft'">{{ v.version }}</td>
+                  <td class="px-4 py-3 font-mono text-xs text-[var(--portal-text-tertiary)]">{{ v.digest ? (v.digest | slice:0:12) + '...' : '-' }}</td>
+                  <td class="px-4 py-3 text-xs">{{ v.installedAt | slice:0:19 }}</td>
+                  <td class="px-4 py-3 text-xs">{{ v.installedBy }}</td>
+                  <td class="px-4 py-3">
+                    <span class="ds-badge" [class]="v.status === 'active' ? 'ds-badge-success' : v.status === 'draft' ? 'ds-badge-warning' : 'ds-badge-default'">{{ v.status }}</span>
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <div class="flex justify-end gap-1">
+                    @if (v.status === 'active' || v.status === 'superseded') {
+                      <button (click)="downloadVersion(v)" [title]="i18n.t('registry.tooltip.download')"
+                        class="cursor-pointer rounded-md p-1.5 text-[var(--portal-text-secondary)] transition hover:bg-[var(--portal-bg-hover)]">
+                        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                      </button>
+                    }
+                    @if (v.status === 'active') {
+                    <button (click)="loadVersionAsDraft(v)" [title]="i18n.t('registry.tooltip.loadAsDraft')"
+                      class="cursor-pointer rounded-md p-1.5 text-[var(--portal-text-secondary)] transition hover:bg-[var(--portal-bg-hover)]">
+                      <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 12 0 9 9 0 0 0-12 0"/><path d="M12 8v4l3 2"/></svg>
+                    </button>
+                    }
+                    @if (v.status !== 'active' && v.status !== 'draft') {
+                    <button (click)="requestRollback(v)" [title]="i18n.t('registry.tooltip.rollback')"
+                      class="cursor-pointer rounded-md p-1.5 text-[var(--portal-text-secondary)] transition hover:bg-[var(--portal-bg-hover)]">
+                      <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    </button>
+                    }
+                    <button (click)="startCompare(v)" [title]="i18n.t('registry.tooltip.compare')"
+                      class="cursor-pointer rounded-md p-1.5 text-[var(--portal-text-secondary)] transition hover:bg-[var(--portal-bg-hover)]">
+                      <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M8 3H3v5M12 22v-8.5a3.5 3.5 0 0 0-7 0V22M16 22h5v-5M8 22H3v-5"/><line x1="12" y1="2" x2="12" y2="10"/></svg>
+                    </button>
+                    </div>
+                  </td>
+                </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          }
+        </div>
+        }
+      </div>
+    } @else {
+      <div class="flex h-full items-center justify-center text-sm text-[var(--portal-text-muted)]">
+        {{ i18n.t('registry.empty.selectModule') }}
+        </div>
+        }
+      </div>
+  </div>
+</div>
+
+<!-- Draft choice modal -->
+@if (showDraftChoice()) {
+<div class="ds-modal-backdrop">
+  <div class="ds-modal w-full max-w-lg">
+    <div class="ds-modal-header">
+      <h2 class="ds-modal-title">{{ i18n.t('registry.draftChoice.title') }}</h2>
+      <button (click)="closeDraftChoice()" class="ds-modal-close" [attr.aria-label]="i18n.t('registry.action.close')">&times;</button>
+    </div>
+    <div class="ds-modal-body space-y-3">
+      <p class="text-sm text-[var(--portal-text-secondary)]">
+        {{ i18n.t('registry.draftChoice.newerThan') }}
+        <strong>{{ liveVersionForChoice()?.version ?? '—' }}</strong>.
+      </p>
+      <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+        <p class="text-xs font-medium text-amber-800">{{ i18n.t('registry.draftChoice.pendingDrafts') }}</p>
+        <ul class="mt-1 list-disc pl-4 text-xs text-amber-700">
+          @for (d of pendingDrafts(); track d.id) {
+            <li>v{{ d.version }} — {{ d.installedAt | slice:0:19 }} {{ i18n.t('registry.draftChoice.by', { user: d.installedBy }) }}</li>
+          }
+        </ul>
+      </div>
+      <p class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('registry.draftChoice.prompt') }}</p>
+    </div>
+    <div class="ds-modal-footer">
+      <button (click)="chooseViewLive()" class="ds-btn ds-btn-ghost">{{ i18n.t('registry.draftChoice.viewActive') }}</button>
+      <button (click)="chooseContinueEditing()" class="ds-btn ds-btn-accent">{{ i18n.t('registry.draftChoice.continueEditing') }}</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Entry Point form dialog -->
+@if (showEpForm()) {
+<div class="ds-modal-backdrop">
+  <div class="ds-modal ds-modal-lg w-full">
+    <div class="ds-modal-header">
+      <h2 class="ds-modal-title">{{ editingEpId() ? i18n.t('registry.content.edit') : i18n.t('registry.content.new') }}</h2>
+      <button (click)="closeEpForm()" class="ds-modal-close" [attr.aria-label]="i18n.t('registry.action.close')">&times;</button>
+    </div>
+    <div class="ds-modal-body">
+      <div class="flex items-end gap-3">
+        <div class="relative pb-0.5">
+          <button type="button" (click)="showColorPicker.set(!showColorPicker())"
+            class="flex size-9 cursor-pointer items-center justify-center rounded-full text-sm font-semibold text-white transition hover:ring-2 hover:ring-[var(--portal-border-strong)]"
+            [style.background]="epForm().color ?? 'var(--portal-border-strong)'" [title]="i18n.t('registry.tooltip.changeColor')">
+            {{ (epForm().name || '?') | slice:0:1 | uppercase }}
+          </button>
+          @if (showColorPicker()) {
+          <div class="absolute left-0 top-11 z-10 flex w-44 flex-wrap gap-2 rounded-xl border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] p-3 shadow-xl">
+            @for (c of colors; track c) {
+            <button type="button" (click)="selectColor(c)"
+              class="size-6 cursor-pointer rounded-full border-2 transition"
+              [style.background]="c"
+              [class]="epForm().color === c ? 'border-[var(--portal-text-primary)]' : 'border-transparent'"
+              [attr.aria-label]="i18n.t('registry.aria.color', { color: c })"></button>
+            }
+          </div>
+          }
+        </div>
+        <label class="block min-w-0 flex-1">
+          <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.displayName') }}</span>
+          <input [value]="epForm().name" (input)="onNameInput($any($event.target).value)"
+            class="ds-input mt-1" />
+        </label>
+        <label class="flex shrink-0 flex-col items-center gap-1 pb-0.5">
+          <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.active') }}</span>
+          <app-switch [checked]="epForm().active ?? true" (toggled)="setEpField('active', $event)" />
+        </label>
+      </div>
+
+      <div class="flex items-end gap-3">
+        <label class="block min-w-0 flex-1">
+          <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.key') }}</span>
+          <input [value]="epForm().entryKey" (input)="setEpField('entryKey', $any($event.target).value)" [disabled]="!!editingEpId()"
+            class="ds-input mt-1 font-mono disabled:opacity-50" />
+        </label>
+        @if (epForm().category === 'applications') {
+        <label class="flex shrink-0 flex-col items-center gap-1 pb-0.5">
+          <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.multiInstance') }}</span>
+          <app-switch [checked]="epForm().multi ?? false" (toggled)="setEpField('multi', $event)" />
+        </label>
+        }
+      </div>
+
+      <label class="block">
+        <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.description') }}</span>
+        <textarea rows="3" [value]="epForm().description ?? ''" (input)="setEpField('description', $any($event.target).value || undefined)"
+          [placeholder]="i18n.t('registry.placeholder.description')"
+          class="ds-textarea mt-1 placeholder:text-[var(--portal-input-placeholder)]"></textarea>
+      </label>
+
+      <hr class="border-[var(--portal-border-default)]" />
+
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block">
+          <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.portalCategory') }}</span>
+          <select [value]="epForm().category" (change)="setEpCategory($any($event.target).value)"
+            class="ds-select mt-1">
+            <option value="applications">applications</option>
+            <option value="settings">settings</option>
+            <option value="features">features</option>
+          </select>
+          <p class="mt-1 text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('registry.hint.categoryPurpose') }}</p>
+        </label>
+        <label class="block">
+          <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.type') }}</span>
+          <select [value]="epForm().type" (change)="setEpType($any($event.target).value)"
+            class="ds-select mt-1">
+            <option value="iframe">iframe</option>
+            <option value="embedded">embedded</option>
+            <option value="mfe">mfe</option>
+            <option value="link">link</option>
+          </select>
+        </label>
+      </div>
+
+      @if (epForm().type === 'iframe' || epForm().type === 'link') {
+      <label class="block">
+        <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.url') }}</span>
+        <input [value]="epForm().url" (input)="setEpField('url', $any($event.target).value)"
+          placeholder="https://example.com"
+          class="ds-input mt-1 font-mono placeholder:text-[var(--portal-input-placeholder)]" />
+      </label>
+      @if (epForm().type === 'iframe') {
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block">
+          <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">sandbox</span>
+          <input [value]="epForm().sandbox" (input)="setEpField('sandbox', $any($event.target).value)"
+            placeholder="allow-scripts, allow-popups, allow-forms"
+            class="ds-input mt-1 font-mono placeholder:text-[var(--portal-input-placeholder)]" />
+        </label>
+        <label class="block">
+          <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">allow</span>
+          <input [value]="epForm().allow" (input)="setEpField('allow', $any($event.target).value)"
+            placeholder="clipboard-write; camera"
+            class="ds-input mt-1 font-mono placeholder:text-[var(--portal-input-placeholder)]" />
+        </label>
+      </div>
+      }
+      } @else if (epForm().type === 'embedded') {
+      <label class="block">
+        <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">loadPath</span>
+        <select [value]="epForm().loadPath" (change)="setEpField('loadPath', $any($event.target).value)"
+          class="mt-1 w-full ds-select mt-1 font-mono w-full">
+          @for (p of loadPaths; track p) {
+          <option [value]="p">{{ p }}</option>
+          }
+        </select>
+      </label>
+      } @else {
+      <label class="block">
+        <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.entryUrl') }}</span>
+        <input [value]="epForm().entryUrl" (input)="setEpField('entryUrl', $any($event.target).value)"
+          placeholder="https://cdn.example.com/mfe.js"
+          class="ds-input mt-1 font-mono placeholder:text-[var(--portal-input-placeholder)]" />
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.element') }}</span>
+        <input [value]="epForm().element" (input)="setEpField('element', $any($event.target).value)"
+          placeholder="mfe-my-app"
+          class="ds-input mt-1 font-mono placeholder:text-[var(--portal-input-placeholder)]" />
+      </label>
+      }
+
+      @if (error()) {
+      <div class="ds-alert ds-alert-danger">{{ error() }}</div>
+      }
+    </div>
+    <div class="ds-modal-footer">
+      <button (click)="closeEpForm()" class="ds-btn ds-btn-ghost">{{ i18n.t('registry.action.cancel') }}</button>
+      <button (click)="saveEntryPoint()" [disabled]="busy()" class="ds-btn ds-btn-accent">
+        {{ busy() ? i18n.t('registry.action.saving') : i18n.t('registry.action.save') }}
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Install Wizard -->
+@if (showInstallWizard()) {
+<div class="ds-modal-backdrop" (click)="closeInstallWizard()">
+  <div class="ds-modal ds-modal-lg w-full" (click)="$event.stopPropagation()">
+    <div class="ds-modal-header">
+      <h2 class="ds-modal-title">{{ wizardMode() === 'quick' ? i18n.t('registry.wizard.titleQuick') : i18n.t('registry.wizard.titleManual') }}</h2>
+      <button (click)="closeInstallWizard()" class="ds-modal-close" [attr.aria-label]="i18n.t('registry.action.close')">&times;</button>
+    </div>
+    <div class="ds-modal-body" style="padding:0">
+      <app-ds-wizard-horizontal
+        [steps]="activeStepDefs()"
+        [activeIndex]="wizardStepIndex()"
+        [completed]="wizardCompleted()"
+        [errors]="wizardErrors()"
+        [busy]="installBusy()"
+        (next)="onInstallNext()"
+        (back)="onInstallBack()"
+        (cancel)="closeInstallWizard()">
+
+        <!-- ═══ Quick install: input step ═══ -->
+        @if (wizardMode() === 'quick' && installStep() === 'input') {
+          <div class="space-y-4">
+            <div class="flex gap-3">
+              <button type="button" (click)="setInstallInputMode('url')"
+                [class]="installInputMode() === 'url' ? 'ds-btn ds-btn-accent ds-btn-sm' : 'ds-btn ds-btn-ghost ds-btn-sm'">URL</button>
+              <button type="button" (click)="setInstallInputMode('json')"
+                [class]="installInputMode() === 'json' ? 'ds-btn ds-btn-accent ds-btn-sm' : 'ds-btn ds-btn-ghost ds-btn-sm'">JSON</button>
+            </div>
+            @if (installInputMode() === 'url') {
+              <label class="block">
+                <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.wizard.moduleUrl') }}</span>
+                <input [value]="installInput()" (input)="installInput.set($any($event.target).value)"
+                  placeholder="http://yourmodule/[path to manifest]"
+                  class="ds-input mt-1 font-mono" />
+                <p class="mt-1 text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('registry.wizard.urlHintBefore') }} <code class="text-[var(--portal-text-tertiary)]">/.well-known/portal-module.json</code>. {{ i18n.t('registry.wizard.urlHintAfter') }}</p>
+              </label>
+            } @else {
+              <div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.wizard.manifestJson') }}</span>
+                  <button type="button" (click)="fillDummyManifest()"
+                    class="cursor-pointer text-[10px] text-[var(--portal-text-disabled)] transition hover:text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.wizard.fillDummy') }}</button>
+                </div>
+                <textarea rows="12" [value]="installInput()" (input)="installInput.set($any($event.target).value)"
+                  placeholder='{"manifestVersion":1,"key":"my-module",...}'
+                  class="ds-textarea mt-1 font-mono text-xs"></textarea>
+              </div>
+            }
+            @if (installError()) {
+              <div class="ds-alert ds-alert-danger">{{ installError() }}</div>
+            }
+          </div>
+        }
+
+        <!-- ═══ Manual: basic info step ═══ -->
+        @if (wizardMode() === 'manual' && installStep() === 'basic') {
+          <div class="space-y-4">
+            <label class="block">
+              <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.wizard.moduleKey') }}</span>
+              <input [value]="manualKey()" (input)="manualKey.set($any($event.target).value)"
+                placeholder="my-module" class="ds-input mt-1 font-mono" />
+              <p class="mt-1 text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('registry.wizard.keyHint') }}</p>
+            </label>
+            <label class="block">
+              <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.wizard.moduleName') }}</span>
+              <input [value]="manualName()" (input)="manualName.set($any($event.target).value)"
+                [placeholder]="i18n.t('registry.placeholder.moduleName')" class="ds-input mt-1" />
+            </label>
+            <label class="block">
+              <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.baseUrl') }}</span>
+              <input [value]="manualBaseUrl()" (input)="manualBaseUrl.set($any($event.target).value)"
+                placeholder="http://localhost:3000" class="ds-input mt-1 font-mono" />
+            </label>
+            <label class="block">
+              <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.wizard.healthEndpoint') }} <span class="text-[var(--portal-text-disabled)]">{{ i18n.t('registry.hint.optional') }}</span></span>
+              <input [value]="manualHealth()" (input)="manualHealth.set($any($event.target).value)"
+                placeholder="/healthz" class="ds-input mt-1 font-mono" />
+            </label>
+            @if (installError()) {
+              <div class="ds-alert ds-alert-danger">{{ installError() }}</div>
+            }
+          </div>
+        }
+
+        <!-- ═══ Manual: content step ═══ -->
+        @if (wizardMode() === 'manual' && installStep() === 'content') {
+          <div class="space-y-4">
+            <p class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('registry.wizard.contentHint') }}</p>
+            @for (entry of manualContentEntries(); track $index; let i = $index) {
+              <div class="rounded-lg border border-[var(--portal-border-default)] p-3 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-[var(--portal-text-secondary)]">{{ i18n.t('registry.wizard.entryNumber', { number: i + 1 }) }}</span>
+                  @if (manualContentEntries().length > 1) {
+                    <button (click)="removeManualContentEntry(i)" class="text-[10px] text-[var(--portal-status-danger)] hover:underline">{{ i18n.t('registry.action.remove') }}</button>
+                  }
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="block">
+                    <span class="text-[10px] font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.key') }}</span>
+                      <input [value]="entry.key" (input)="updateManualContentEntry(i, 'key', $any($event.target).value)"
+                      placeholder="my-app" class="ds-input mt-0.5 font-mono text-xs" />
+                  </label>
+                  <label class="block">
+                    <span class="text-[10px] font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.name') }}</span>
+                    <input [value]="entry.name" (input)="updateManualContentEntry(i, 'name', $any($event.target).value)"
+                    [placeholder]="i18n.t('registry.placeholder.entryName')" class="ds-input mt-0.5 text-xs" />
+                  </label>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="block">
+                    <span class="text-[10px] font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.type') }}</span>
+                    <select [value]="entry.type" (change)="updateManualContentEntry(i, 'type', $any($event.target).value)"
+                      class="ds-select mt-0.5 text-xs">
+                      <option value="iframe">iframe</option>
+                      <option value="embedded">embedded</option>
+                      <option value="mfe">mfe</option>
+                      <option value="link">link</option>
+                    </select>
+                  </label>
+                  <label class="block">
+                    <span class="text-[10px] font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.wizard.urlPath') }}</span>
+                    <input [value]="entry.url" (input)="updateManualContentEntry(i, 'url', $any($event.target).value)"
+                      placeholder="http://localhost:3000/app" class="ds-input mt-0.5 font-mono text-xs" />
+                  </label>
+                </div>
+                <label class="block">
+                  <span class="text-[10px] font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.wizard.requiredRoles') }} <span class="text-[var(--portal-text-disabled)]">{{ i18n.t('registry.wizard.requiredRolesHint') }}</span></span>
+                  <input [value]="entry.requiredRoles" (input)="updateManualContentEntry(i, 'requiredRoles', $any($event.target).value)"
+                    placeholder="app-user, admin" class="ds-input mt-0.5 font-mono text-xs" />
+                </label>
+              </div>
+            }
+            <button (click)="addManualContentEntry()" class="ds-btn ds-btn-ghost ds-btn-sm">
+              <svg class="mr-1 inline-block size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              {{ i18n.t('registry.wizard.addEntry') }}
+            </button>
+          </div>
+        }
+
+        <!-- ═══ Manual: security step ═══ -->
+        @if (wizardMode() === 'manual' && installStep() === 'security') {
+          <div class="space-y-4">
+            <p class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('registry.wizard.securityHint') }}</p>
+            @for (role of manualRoles(); track $index; let i = $index) {
+              <div class="rounded-lg border border-[var(--portal-border-default)] p-3 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-[var(--portal-text-secondary)]">{{ i18n.t('registry.wizard.roleNumber', { number: i + 1 }) }}</span>
+                  @if (manualRoles().length > 1) {
+                    <button (click)="removeManualRole(i)" class="text-[10px] text-[var(--portal-status-danger)] hover:underline">{{ i18n.t('registry.action.remove') }}</button>
+                  }
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="block">
+                    <span class="text-[10px] font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.key') }}</span>
+                    <input [value]="role.key" (input)="updateManualRole(i, 'key', $any($event.target).value)"
+                      placeholder="app-user" class="ds-input mt-0.5 font-mono text-xs" />
+                  </label>
+                  <label class="block">
+                    <span class="text-[10px] font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.name') }}</span>
+                    <input [value]="role.name" (input)="updateManualRole(i, 'name', $any($event.target).value)"
+                      [placeholder]="i18n.t('registry.placeholder.roleNameExample')" class="ds-input mt-0.5 text-xs" />
+                  </label>
+                </div>
+                <label class="block">
+                  <span class="text-[10px] font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.description') }} <span class="text-[var(--portal-text-disabled)]">{{ i18n.t('registry.hint.optional') }}</span></span>
+                  <input [value]="role.description" (input)="updateManualRole(i, 'description', $any($event.target).value)"
+                    [placeholder]="i18n.t('registry.placeholder.roleExample')" class="ds-input mt-0.5 text-xs" />
+                </label>
+              </div>
+            }
+            <button (click)="addManualRole()" class="ds-btn ds-btn-ghost ds-btn-sm">
+              <svg class="mr-1 inline-block size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              {{ i18n.t('registry.wizard.addRole') }}
+            </button>
+          </div>
+        }
+
+        <!-- ═══ Preview (shared: quick review + manual review) ═══ -->
+        @if (installStep() === 'preview' || installStep() === 'review') {
+          <div class="space-y-4">
+            @if (installError()) {
+              <div class="ds-alert ds-alert-danger">{{ installError() }}</div>
+            }
+
+            @if (moduleExists()) {
+              <div class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+                {{ i18n.t('registry.wizard.existsBefore') }} <strong>{{ parsedManifest()?.key }}</strong> {{ i18n.t('registry.wizard.existsAfter') }}
+              </div>
+            }
+
+            @for (section of diffSections(); track section.title) {
+            <div class="rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)] overflow-hidden">
+              <div class="flex items-center justify-between px-4 py-3 border-b border-[var(--portal-border-default)]">
+                <div class="flex items-center gap-2">
+                  <h3 class="text-sm font-semibold text-[var(--portal-text-primary)]">{{ sectionTitle(section.title) }}</h3>
+                </div>
+                <span class="ds-badge"
+                  [class]="section.action === 'create' ? 'ds-badge-success' : section.action === 'update' ? 'ds-badge-warning' : 'ds-badge-default'">
+                  {{ section.action }}
+                </span>
+              </div>
+
+              @if (section.fields) {
+              <div class="px-4 py-3">
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  @for (f of section.fields; track f.key) {
+                  <dt class="text-[var(--portal-text-muted)]">{{ fieldLabel(f.label) }}</dt>
+                  <dd class="font-mono text-xs">
+                    @if (f.changed) {
+                      <span class="text-red-500 line-through italic">{{ f.oldValue }}</span>
+                      <span class="ml-1 text-green-600 font-semibold">{{ f.newValue }}</span>
+                    } @else {
+                      <span class="text-[var(--portal-text-tertiary)]">{{ f.newValue ?? '-' }}</span>
+                    }
+                  </dd>
+                  }
+                </dl>
+              </div>
+              }
+
+              @if (section.items) {
+              <div class="px-4 py-3 space-y-3">
+                @for (item of section.items; track item.key) {
+                <div class="rounded-md border border-[var(--portal-border-default)] p-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono text-xs font-semibold text-[var(--portal-text-primary)]">{{ item.key }}</span>
+                      @if (item.action !== 'unchanged') {
+                        <span class="ds-badge text-[10px]"
+                          [class]="item.action === 'create' ? 'ds-badge-success' : 'ds-badge-warning'">
+                          {{ item.action }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+                  @if (item.fields.length > 0) {
+                  <dl class="grid grid-cols-[120px_1fr] gap-x-3 gap-y-1 text-xs">
+                    @for (f of item.fields; track f.key) {
+                    <dt class="text-[var(--portal-text-muted)]">{{ fieldLabel(f.label) }}</dt>
+                    <dd class="font-mono">
+                      @if (f.changed) {
+                        <span class="text-red-500 line-through italic">{{ f.oldValue }}</span>
+                        <span class="ml-1 text-green-600 font-semibold">{{ f.newValue }}</span>
+                      } @else {
+                        <span class="text-[var(--portal-text-tertiary)]">{{ f.newValue ?? '-' }}</span>
+                      }
+                    </dd>
+                    }
+                  </dl>
+                  }
+                </div>
+                }
+              </div>
+              }
+            </div>
+            }
+          </div>
+        }
+
+        <!-- ═══ Done (shared) ═══ -->
+        @if (installStep() === 'done') {
+          <div class="space-y-4 text-center">
+            @if (installResult()?.ok) {
+              <div class="text-[var(--portal-status-success)]">
+                <svg class="mx-auto size-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <p class="mt-2 text-sm font-medium">{{ i18n.t('registry.install.success') }}</p>
+                <p class="mt-1 text-xs text-[var(--portal-text-muted)]">{{ installResult()?.moduleKey }} v{{ installResult()?.version }}</p>
+              </div>
+            } @else {
+              <div class="ds-alert ds-alert-danger">{{ installResult()?.error }}</div>
+            }
+          </div>
+        }
+
+        <!-- ═══ Footer ═══ -->
+        <div footer>
+          @if (installStep() === 'input') {
+            <button (click)="closeInstallWizard()" class="ds-btn ds-btn-ghost">{{ i18n.t('registry.action.cancel') }}</button>
+            <button (click)="fetchManifest()" [disabled]="installBusy()" class="ds-btn ds-btn-accent">
+              {{ installBusy() ? i18n.t('registry.wizard.fetching') : i18n.t('registry.wizard.fetchAndPreview') }}
+            </button>
+          } @else if (installStep() === 'basic' || installStep() === 'content' || installStep() === 'security') {
+            @if (installStep() !== 'basic') {
+              <button (click)="onInstallBack()" class="ds-btn ds-btn-ghost">{{ i18n.t('registry.wizard.back') }}</button>
+            } @else {
+              <button (click)="closeInstallWizard()" class="ds-btn ds-btn-ghost">{{ i18n.t('registry.action.cancel') }}</button>
+            }
+            <button (click)="onInstallNext()" class="ds-btn ds-btn-accent">{{ i18n.t('registry.wizard.continue') }}</button>
+          } @else if (installStep() === 'preview' || installStep() === 'review') {
+            <button (click)="onInstallBack()" class="ds-btn ds-btn-ghost">{{ i18n.t('registry.wizard.back') }}</button>
+            @if (moduleExists()) {
+              <button (click)="executeInstallAsNew()" [disabled]="installBusy()" class="ds-btn ds-btn-ghost">
+                {{ installBusy() ? i18n.t('registry.wizard.installing') : i18n.t('registry.wizard.installAsNew') }}
+              </button>
+              <button (click)="executeInstall()" [disabled]="installBusy()" class="ds-btn ds-btn-accent">
+                {{ installBusy() ? i18n.t('registry.wizard.updating') : i18n.t('registry.wizard.updateExisting') }}
+              </button>
+            } @else {
+              <button (click)="executeInstall()" [disabled]="installBusy()" class="ds-btn ds-btn-accent">
+                {{ installBusy() ? i18n.t('registry.wizard.installing') : i18n.t('registry.wizard.install') }}
+              </button>
+            }
+          } @else {
+            <button (click)="closeInstallWizard()" class="ds-btn ds-btn-accent">{{ i18n.t('registry.wizard.done') }}</button>
+          }
+        </div>
+      </app-ds-wizard-horizontal>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Version Comparison modal -->
+@if (comparingVersion(); as cv) {
+<div class="ds-modal-backdrop">
+  <div class="ds-modal ds-modal-lg w-full">
+    <div class="ds-modal-header">
+      <h2 class="ds-modal-title">{{ i18n.t('registry.compare.title') }}</h2>
+      <button (click)="closeCompare()" class="ds-modal-close" [attr.aria-label]="i18n.t('registry.action.close')">&times;</button>
+    </div>
+    <div class="ds-modal-body">
+      <div class="mb-4 flex flex-wrap items-center gap-2 text-xs">
+        <span class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.compare.left') }}</span>
+        <select [ngModel]="compareLeftId()" (ngModelChange)="onCompareLeftChange($event)"
+          class="ds-select text-xs border-red-300 bg-red-50 text-red-700">
+          @for (v of versions(); track v.id) {
+            <option [ngValue]="v.id"
+              [class.text-red-600]="v.id === comparingVersion()?.id"
+              [style.background]="v.id === comparingVersion()?.id ? '#fef2f2' : ''">
+              v{{ v.version }} ({{ v.status }})
+            </option>
+          }
+        </select>
+        <span class="text-[var(--portal-text-muted)]">{{ i18n.t('registry.compare.vs') }}</span>
+        <select [ngModel]="compareRightId()" (ngModelChange)="onCompareRightChange($event)"
+          class="ds-select text-xs border-green-300 bg-green-50 text-green-700">
+          @for (v of versions(); track v.id) {
+            <option [ngValue]="v.id">v{{ v.version }} ({{ v.status }})</option>
+          }
+        </select>
+      </div>
+      <div class="space-y-4">
+        @for (section of compareDiff(); track section.title) {
+        <div class="rounded-lg border border-[var(--portal-border-default)] overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-2 border-b border-[var(--portal-border-default)] bg-[var(--portal-bg-subtle)]">
+            <h3 class="text-xs font-semibold text-[var(--portal-text-primary)]">{{ sectionTitle(section.title) }}</h3>
+            <span class="ds-badge text-[10px]"
+              [class]="section.action === 'create' ? 'ds-badge-success' : section.action === 'update' ? 'ds-badge-warning' : 'ds-badge-default'">
+              {{ section.action }}
+            </span>
+          </div>
+          @if (section.fields) {
+          <div class="px-4 py-3">
+            <dl class="grid grid-cols-[120px_1fr] gap-x-3 gap-y-1 text-xs">
+              @for (f of section.fields; track f.key) {
+              <dt class="text-[var(--portal-text-muted)]">{{ fieldLabel(f.label) }}</dt>
+              <dd class="font-mono">
+                @if (f.changed) {
+                  <span class="text-green-600 font-semibold">{{ f.newValue }}</span>
+                  <span class="ml-1 text-red-500">{{ f.oldValue }}</span>
+                } @else {
+                  <span class="text-[var(--portal-text-tertiary)]">{{ f.newValue ?? '-' }}</span>
+                }
+              </dd>
+              }
+            </dl>
+          </div>
+          }
+          @if (section.items) {
+          <div class="px-4 py-3 space-y-2">
+            @for (item of section.items; track item.key) {
+            <div class="rounded border border-[var(--portal-border-default)] p-2">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="font-mono text-xs font-semibold">{{ item.key }}</span>
+                <span class="ds-badge text-[10px]"
+                  [class]="item.action === 'create' ? 'ds-badge-success' : item.action === 'update' ? 'ds-badge-warning' : 'ds-badge-default'">
+                  {{ item.action }}
+                </span>
+              </div>
+              @if (item.fields.length > 0) {
+              <dl class="grid grid-cols-[100px_1fr] gap-x-2 gap-y-0.5 text-[11px]">
+                @for (f of item.fields; track f.key) {
+                <dt class="text-[var(--portal-text-muted)]">{{ fieldLabel(f.label) }}</dt>
+                <dd class="font-mono">
+                  @if (f.changed) {
+                    <span class="text-green-600 font-semibold">{{ f.newValue }}</span>
+                    <span class="ml-1 text-red-500">{{ f.oldValue }}</span>
+                  } @else {
+                    <span class="text-[var(--portal-text-tertiary)]">{{ f.newValue ?? '-' }}</span>
+                  }
+                </dd>
+                }
+              </dl>
+              }
+            </div>
+            }
+          </div>
+          }
+        </div>
+        }
+      </div>
+    </div>
+    <div class="ds-modal-footer">
+      <button (click)="closeCompare()" class="ds-btn ds-btn-accent">{{ i18n.t('registry.action.close') }}</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- JSON viewer modal -->
+@if (showJsonModal()) {
+<div class="ds-modal-backdrop">
+  <div class="ds-modal w-full max-w-2xl">
+    <div class="ds-modal-header">
+      <h2 class="ds-modal-title">{{ i18n.t('registry.json.title') }}</h2>
+      <button (click)="closeJsonModal()" class="ds-modal-close" [attr.aria-label]="i18n.t('registry.action.close')">&times;</button>
+    </div>
+    <div class="ds-modal-body">
+      <pre class="max-h-96 overflow-auto rounded-lg bg-[var(--portal-bg-subtle)] p-4 text-xs font-mono text-[var(--portal-text-secondary)]">{{ (workingManifest() ?? activeManifest()) | json }}</pre>
+    </div>
+    <div class="ds-modal-footer">
+      <button (click)="copyManifestJson()" class="ds-btn ds-btn-ghost">
+        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        {{ i18n.t('registry.action.copy') }}
+      </button>
+      <button (click)="closeJsonModal()" class="ds-btn ds-btn-accent">{{ i18n.t('registry.action.close') }}</button>
+    </div>
+  </div>
+</div>
+}
+
+@if (pendingDeleteModule(); as mod) {
+<app-confirm-dialog
+  [title]="i18n.t('registry.confirm.deleteModule')"
+  [message]="i18n.t('registry.confirm.deleteModuleMessage', { name: mod.name })"
+  [confirmLabel]="i18n.t('registry.confirm.deleteModule')"
+  (confirmed)="confirmRemoveModule()"
+  (cancelled)="cancelRemoveModule()" />
+}
+
+@if (pendingDeleteEp(); as ep) {
+<app-confirm-dialog
+  [title]="i18n.t('registry.confirm.deleteContent')"
+  [message]="i18n.t('registry.confirm.deleteContentMessage', { name: ep.name })"
+  [confirmLabel]="i18n.t('registry.confirm.delete')"
+  (confirmed)="confirmRemoveEntryPoint()"
+  (cancelled)="cancelRemoveEntryPoint()" />
+}
+
+@if (pendingRollback(); as v) {
+<app-confirm-dialog
+  [title]="i18n.t('registry.confirm.rollbackTitle')"
+  [message]="i18n.t('registry.confirm.rollbackMessage', { version: v.version })"
+  [confirmLabel]="i18n.t('registry.confirm.rollbackConfirm')"
+  (confirmed)="confirmRollback()"
+  (cancelled)="cancelRollback()" />
+}

@@ -1,0 +1,41 @@
+<div>
+  <div class="mb-6 flex items-center justify-between">
+    <div>
+      <h1 class="ds-heading-3">{{ i18n.t('settings.general.title') }}</h1>
+      <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('settings.general.description') }}</p>
+    </div>
+  </div>
+
+  <!-- Home tab application -->
+  <div class="mb-4 ds-card p-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="min-w-0">
+        <h3 class="ds-heading-3 text-sm">{{ i18n.t('settings.general.homeApp') }}</h3>
+        <p class="mt-1 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('settings.general.homeAppHint') }}</p>
+      </div>
+      <div class="flex items-center gap-3">
+        @if (saveSuccess()) {
+        <span class="text-xs text-[var(--portal-status-success)]">{{ i18n.t('common.saved') }}</span>
+        }
+        @if (saveError()) {
+        <span class="text-xs text-[var(--portal-status-danger)]">{{ i18n.t('common.error') }}</span>
+        }
+        <select
+          class="ds-input w-56 py-1.5 text-xs"
+          [disabled]="!isAdmin() || saving()"
+          [ngModel]="homeApp()"
+          (ngModelChange)="onHomeAppChange($event)"
+          [attr.aria-label]="i18n.t('settings.general.homeApp')">
+          @for (ep of homeAppOptions(); track refOf(ep)) {
+          <option [value]="refOf(ep)">{{ ep.name }}</option>
+          }
+        </select>
+      </div>
+    </div>
+    @if (!isAdmin()) {
+    <p class="mt-3 text-xs text-[var(--portal-text-disabled)]">
+      {{ i18n.t('settings.readonlyHint') }}
+    </p>
+    }
+  </div>
+</div>

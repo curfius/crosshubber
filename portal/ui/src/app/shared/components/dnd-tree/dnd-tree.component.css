@@ -1,0 +1,208 @@
+:host {
+  display: block;
+}
+
+.dnd-tree-root {
+  width: 100%;
+}
+
+/* Each row list is a disjoint rect wrapping exactly one row. */
+.dnd-row-list {
+  min-height: 30px;
+  border-radius: 8px;
+}
+
+.dnd-node-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--portal-card-border);
+  background: var(--portal-bg-surface);
+  cursor: grab;
+  min-height: 30px;
+}
+
+.dnd-node-main:hover {
+  background: var(--portal-bg-hover);
+  border-color: var(--portal-accent-primary-glow);
+}
+
+.dnd-node-leaf .dnd-node-main {
+  cursor: pointer;
+}
+
+.dnd-node-disabled .dnd-label {
+  color: var(--portal-text-disabled);
+  text-decoration: line-through;
+}
+
+.dnd-grip {
+  display: flex;
+  align-items: center;
+  color: var(--portal-text-disabled);
+  cursor: grab;
+  padding: 2px;
+  border-radius: 4px;
+}
+
+.dnd-grip:hover {
+  color: var(--portal-text-tertiary);
+}
+
+.cdk-drag-preview .dnd-node-main {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  opacity: 0.9;
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.25;
+}
+
+.dnd-icon-spacer {
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.dnd-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--portal-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.dnd-icon-btn:hover {
+  background: var(--portal-bg-elevated);
+  color: var(--portal-text-primary);
+}
+
+.dnd-icon-danger:hover {
+  color: var(--portal-status-danger);
+}
+
+.dnd-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--portal-text-inverse);
+  flex-shrink: 0;
+}
+
+.dnd-label {
+  font-size: 12px;
+  color: var(--portal-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+
+.dnd-folder .dnd-label {
+  font-weight: 600;
+  color: var(--portal-text-primary);
+}
+
+.dnd-rename-input {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--portal-accent-primary);
+  background: var(--portal-bg-base);
+  color: var(--portal-text-primary);
+  outline: none;
+  min-width: 140px;
+}
+
+.dnd-node-actions {
+  display: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.dnd-node-main:hover .dnd-node-actions {
+  display: inline-flex;
+}
+
+/* Drop-into strip under every folder row (disjoint rect). */
+.dnd-into-strip {
+  display: flex;
+  align-items: center;
+  min-height: 6px;
+  margin: 2px 8px 2px 0;
+  border-radius: 6px;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.dnd-into-line {
+  display: block;
+  width: 100%;
+  height: 0;
+  border-top: 2px dashed transparent;
+  transition: border-color 120ms ease;
+}
+
+.dnd-into-armed {
+  min-height: 12px;
+  background: var(--portal-bg-elevated);
+}
+
+.dnd-into-armed .dnd-into-line {
+  border-top-color: var(--portal-border-strong);
+}
+
+.dnd-into-strip.cdk-drop-list-receiving {
+  background: color-mix(in srgb, var(--portal-accent-primary) 12%, transparent);
+}
+
+.dnd-into-strip.cdk-drop-list-receiving .dnd-into-line {
+  border-top-color: var(--portal-accent-primary);
+}
+
+/* Empty tree root target. */
+.dnd-empty-root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  border: 1px dashed var(--portal-border-strong);
+  border-radius: 8px;
+}
+
+.dnd-empty-hint {
+  font-size: 11px;
+  color: var(--portal-text-disabled);
+  pointer-events: none;
+}
+
+.dnd-add-root {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--portal-border-strong);
+  font-size: 11px;
+  color: var(--portal-text-muted);
+  cursor: pointer;
+}
+
+.dnd-add-root:hover {
+  color: var(--portal-text-primary);
+  border-color: var(--portal-accent-primary-glow);
+}
+
+.cdk-drop-list-dragging .dnd-node-main {
+  opacity: 0.5;
+}

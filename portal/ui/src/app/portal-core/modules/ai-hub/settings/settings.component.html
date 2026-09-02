@@ -1,0 +1,127 @@
+﻿<div>
+  <div class="mb-6 flex items-center justify-between">
+    <div>
+      <h1 class="ds-heading-3">{{ i18n.t('aihub.settings.title') }}</h1>
+      <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('aihub.settings.description') }}</p>
+    </div>
+  </div>
+
+  <div class="mx-auto max-w-2xl space-y-6">
+    <!-- System Prompt (first) -->
+    <div class="ds-card p-5">
+      <h3 class="ds-heading-3 mb-1 text-sm">{{ i18n.t('aihub.settings.system-prompt') }}</h3>
+      <p class="mb-4 text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.settings.system-prompt-hint') }}</p>
+      <app-markdown-editor
+        [content]="systemPrompt()"
+        (contentChange)="systemPrompt.set($event)"
+        [rows]="12"
+        [placeholder]="i18n.t('aihub.settings.system-prompt-placeholder')"></app-markdown-editor>
+    </div>
+
+    <!-- Token Selection -->
+    <div class="ds-card p-5">
+      <h3 class="ds-heading-3 mb-1 text-sm">{{ i18n.t('aihub.settings.api-tokens') }}</h3>
+      <p class="mb-4 text-[10px] text-[var(--portal-text-muted)]">{{ i18n.t('aihub.settings.api-tokens-hint') }}</p>
+
+      @if (activeTokens().length === 0) {
+      <p class="py-4 text-center text-xs text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.settings.no-active-tokens') }}</p>
+      } @else {
+      <div class="space-y-1">
+        @for (row of activeTokens(); track row.token.id) {
+        <div class="flex items-center gap-3 rounded-lg px-3 py-2.5 transition"
+          [class]="isTokenSelected(row.token.id)
+            ? 'border border-[var(--portal-accent-primary-glow)] bg-[var(--portal-accent-primary-subtle)]'
+            : 'border border-transparent bg-[var(--portal-bg-hover)] hover:bg-[var(--portal-bg-active)]'">
+          <div class="min-w-0 flex-1">
+            <div class="flex min-w-0 flex-wrap items-center gap-2">
+              <p class="truncate text-sm font-medium text-[var(--portal-text-secondary)]">{{ row.token.name }}</p>
+              <span class="shrink-0 rounded-full border border-[var(--portal-border-subtle)] bg-[var(--portal-bg-elevated)] px-2 py-0.5 text-[9px] uppercase tracking-wide text-[var(--portal-text-tertiary)]">{{ row.providerName }}</span>
+              @if (!row.providerEnabled) {
+              <span class="shrink-0 rounded bg-[var(--portal-bg-elevated)] px-1.5 py-0.5 text-[9px] text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.settings.provider-disabled') }}</span>
+              }
+            </div>
+            <p class="text-[10px] text-[var(--portal-text-disabled)]">{{ row.token.maskedKey }} &middot; {{ i18n.t('aihub.settings.enabled-models', { count: enabledModelCount(row.token) }) }}</p>
+          </div>
+          <app-switch [checked]="isTokenSelected(row.token.id)" (toggled)="toggleToken(row.token.id, $event)" />
+        </div>
+        }
+      </div>
+      }
+
+      @if (models().length > 0) {
+      <div class="mt-4 rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-subtle)] p-3">
+        <p class="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--portal-text-muted)]">{{ i18n.t('aihub.settings.available-models', { count: models().length }) }}</p>
+        <div class="space-y-1">
+          @for (m of models(); track m.modelId + m.tokenId) {
+          <div class="flex items-center gap-2 text-xs text-[var(--portal-text-tertiary)]">
+            <span class="size-1.5 shrink-0 rounded-full bg-[var(--portal-status-success)]"></span>
+            <span class="text-[var(--portal-text-secondary)]">{{ m.providerName }}</span>
+            <span class="text-[var(--portal-text-disabled)]">/</span>
+            <span>{{ m.modelName }}</span>
+            <span class="ml-auto text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.settings.via-token', { token: m.tokenName }) }}</span>
+          </div>
+          }
+        </div>
+      </div>
+      }
+    </div>
+
+    <!-- Parameters -->
+    <div class="ds-card p-5">
+      <h3 class="ds-heading-3 mb-4 text-sm">{{ i18n.t('aihub.settings.parameters') }}</h3>
+      <div class="space-y-5">
+        <div>
+          <div class="mb-2">
+            <label class="ds-label">{{ i18n.t('aihub.settings.input-placeholder') }}</label>
+          </div>
+          <input type="text"
+            [value]="inputPlaceholder()"
+            (input)="inputPlaceholder.set($any($event.target).value)"
+            [placeholder]="i18n.t('aihub.settings.input-placeholder-example')"
+            class="ds-input" />
+          <p class="mt-1 text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.settings.input-placeholder-hint') }}</p>
+        </div>
+        <div>
+          <div class="mb-2 flex items-center justify-between">
+            <label class="ds-label">{{ i18n.t('aihub.settings.temperature') }}</label>
+            <span class="text-xs text-[var(--portal-text-tertiary)]">{{ temperature() }}</span>
+          </div>
+          <input type="range" min="0" max="2" step="0.1"
+            [value]="temperature()"
+            (input)="temperature.set(+($any($event.target).value))"
+            class="w-full accent-[var(--portal-accent-primary)]" />
+          <div class="mt-1 flex justify-between text-[10px] text-[var(--portal-text-disabled)]">
+            <span>{{ i18n.t('aihub.settings.temperature-low') }}</span>
+            <span>{{ i18n.t('aihub.settings.temperature-high') }}</span>
+          </div>
+        </div>
+        <div>
+          <div class="mb-2 flex items-center justify-between">
+            <label class="ds-label">{{ i18n.t('aihub.settings.max-tokens') }}</label>
+            <span class="text-xs text-[var(--portal-text-tertiary)]">{{ maxTokens() }}</span>
+          </div>
+          <input type="range" min="100" max="4096" step="100"
+            [value]="maxTokens()"
+            (input)="maxTokens.set(+($any($event.target).value))"
+            class="w-full accent-[var(--portal-accent-primary)]" />
+          <div class="mt-1 flex justify-between text-[10px] text-[var(--portal-text-disabled)]">
+            <span>{{ i18n.t('aihub.settings.max-tokens-low') }}</span>
+            <span>{{ i18n.t('aihub.settings.max-tokens-high') }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Save -->
+    <div class="flex items-center gap-3">
+      <button type="button" (click)="save()"
+        [disabled]="saving()"
+        class="ds-btn ds-btn-primary">
+        {{ saving() ? i18n.t('aihub.settings.saving') : i18n.t('aihub.settings.save') }}
+      </button>
+      @if (saved()) {
+      <span class="text-xs text-[var(--portal-status-success)]">{{ i18n.t('aihub.settings.saved') }}</span>
+      }
+    </div>
+  </div>
+</div>

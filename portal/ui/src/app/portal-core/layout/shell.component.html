@@ -1,0 +1,38 @@
+﻿@if (config(); as cfg) {
+@if (i18n.initialized()) {
+<div class="flex h-screen w-full overflow-hidden bg-[var(--portal-bg-base)] text-[var(--portal-text-secondary)]">
+  <app-sidebar
+    [entryPoints]="appEntryPoints()"
+    [workspaces]="workspaces()"
+    [activeWorkspace]="activeWorkspace()"
+    [activeAppKey]="activeAppKey()"
+    [workspacesEnabled]="nav.features().workspacesEnabled"
+    (homeClick)="onHomeClick()"
+    (entryPointClick)="openApp($event)"
+    (workspaceClick)="onWorkspaceClick($event)"
+    (chatClick)="toggleQuickChat()"
+    />
+
+  <main class="flex min-w-0 flex-1 flex-col">
+    <app-workspace-toolbar [userName]="cfg.user.name" [workspacesEnabled]="nav.features().workspacesEnabled" (logout)="logout()" />
+    <div cdkDropListGroup class="relative flex min-h-0 flex-1 flex-col">
+      @if (hasTabs()) {
+      <app-layout [node]="layout()!" [user]="cfg.user" [primaryGroupId]="primaryGroupId()" [editMode]="wb.editMode()" [hideSingleTabToolbar]="wb.hideSingleTabToolbar()" [allEntryPoints]="appEntryPoints()" />
+      } @else {
+      <div class="flex flex-1 flex-col items-center justify-center gap-4">
+        <p class="text-sm text-[var(--portal-text-muted)]">{{ i18n.t('tabs.noTabs') }}</p>
+        <p class="text-xs text-[var(--portal-text-disabled)]">{{ i18n.t('tabs.noTabsHint') }}</p>
+      </div>
+      }
+    </div>
+  </main>
+</div>
+
+<!-- Quick Chat Modal -->
+@if (showQuickChat()) {
+<div class="fixed bottom-20 right-4 z-50 h-[500px] w-96 overflow-hidden rounded-2xl border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] shadow-2xl">
+  <app-ai-hub-quick-chat (close)="showQuickChat.set(false)" />
+</div>
+}
+}
+}

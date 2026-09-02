@@ -1,0 +1,134 @@
+{
+  "realm": "dev",
+  "enabled": true,
+  "displayName": "genportal — dev",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": false,
+  "verifyEmail": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "sslRequired": "none",
+  "accessTokenLifespan": 300,
+  "defaultSignatureAlgorithm": "RS256",
+  "roles": {
+    "realm": [
+      {
+        "name": "portal-settings-edit",
+        "description": "Can manage portal instance settings"
+      },
+      {
+        "name": "portal-registry-edit",
+        "description": "Can manage the tenant module registry"
+      },
+      {
+        "name": "portal-i18n-edit",
+        "description": "Can manage portal languages and translated labels"
+      },
+      {
+        "name": "portal-navigation-edit",
+        "description": "Can manage portal navigation configuration"
+      },
+      {
+        "name": "portal-ai-hub-edit",
+        "description": "Can manage the AI Hub (providers, tokens, channels)"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "portal-admins",
+      "path": "/portal-admins",
+      "realmRoles": [
+        "portal-settings-edit",
+        "portal-registry-edit",
+        "portal-i18n-edit",
+        "portal-navigation-edit",
+        "portal-ai-hub-edit"
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "portal",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "secret": "${PORTAL_CLIENT_SECRET}",
+      "clientAuthenticatorType": "client-secret",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://localhost:18084/*",
+        "http://localhost:28084/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:18084/*##http://localhost:28084/*"
+      }
+    },
+    {
+      "clientId": "portal-admin",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "secret": "${KC_ADMIN_CLIENT_SECRET}",
+      "clientAuthenticatorType": "client-secret",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [],
+      "webOrigins": []
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-portal-admin",
+      "enabled": true,
+      "serviceAccountClientId": "portal-admin",
+      "clientRoles": {
+        "realm-management": [
+          "manage-realm",
+          "view-users",
+          "query-users"
+        ]
+      }
+    },
+    {
+      "username": "dev",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Dev",
+      "lastName": "User",
+      "email": "dev@genportal.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_USER_DEV_PASSWORD}"
+        }
+      ],
+      "groups": [
+        "/portal-admins"
+      ]
+    },
+    {
+      "username": "devuser",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Dev",
+      "lastName": "Plain",
+      "email": "devuser@genportal.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_USER_DEVUSER_PASSWORD}"
+        }
+      ]
+    }
+  ]
+}

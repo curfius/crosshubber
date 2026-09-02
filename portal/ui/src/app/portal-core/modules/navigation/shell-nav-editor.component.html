@@ -1,0 +1,41 @@
+<div class="h-full overflow-y-auto p-6">
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="ds-heading-3">
+        {{ category() === 'settings' ? i18n.t('navigation.shell.settingsTitle') : i18n.t('navigation.shell.userSettingsTitle') }}
+      </h1>
+      <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('navigation.shell.description') }}</p>
+    </div>
+    <div class="flex items-center gap-2">
+      @if (saveSuccess() && !dirty()) {
+      <span class="text-xs text-[var(--portal-status-success)]">{{ i18n.t('common.saved') }}</span>
+      }
+      <button type="button" class="ds-btn-secondary" [disabled]="!dirty() || saving()" (click)="discard()">
+        {{ i18n.t('common.cancel') }}
+      </button>
+      <button type="button" class="ds-btn-primary" [disabled]="!dirty() || saving()" (click)="save()">
+        {{ saving() ? i18n.t('common.loading') : i18n.t('common.save') }}
+      </button>
+    </div>
+  </div>
+
+  @if (saveError()) {
+  <div class="mb-4 rounded-lg border border-[var(--portal-status-danger)] bg-[var(--portal-bg-surface)] px-3 py-2 text-xs text-[var(--portal-status-danger)]">
+    {{ i18n.t('navigation.shell.saveFailed') }}: {{ saveError() }}
+  </div>
+  }
+
+  @if (loading()) {
+  <p class="py-8 text-center text-xs text-[var(--portal-text-disabled)]">{{ i18n.t('common.loading') }}</p>
+  } @else if (loadError()) {
+  <p class="py-8 text-center text-xs text-[var(--portal-status-danger)]">{{ i18n.t('common.error') }}</p>
+  } @else {
+  <div class="ds-card p-4">
+    <app-dnd-tree
+      [nodes]="dndNodes()"
+      [maxDepth]="3"
+      [addFolderLabel]="i18n.t('navigation.shell.newSection')"
+      (nodesChange)="onTreeChange($event)" />
+  </div>
+  }
+</div>

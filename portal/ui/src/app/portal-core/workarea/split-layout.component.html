@@ -1,0 +1,31 @@
+@if (isSplit()) {
+<div class="flex min-h-0 min-w-0 flex-1" [class.flex-row]="row()" [class.flex-col]="!row()">
+  <div class="flex min-h-0 min-w-0 overflow-hidden" [style.flex-basis]="ratioA() * 100 + '%'">
+    <app-layout [node]="splitNode().a" [user]="user()" [primaryGroupId]="primaryGroupId()" [editMode]="editMode()" [hideSingleTabToolbar]="hideSingleTabToolbar()" [allEntryPoints]="allEntryPoints()" />
+  </div>
+  <div
+    role="separator"
+    tabindex="0"
+    (pointerdown)="editMode() ? onDividerDown($event) : null"
+    (keydown.arrowleft)="editMode() ? nudge(-0.02) : null"
+    (keydown.arrowright)="editMode() ? nudge(0.02) : null"
+    (keydown.arrowup)="editMode() ? nudge(-0.02) : null"
+    (keydown.arrowdown)="editMode() ? nudge(0.02) : null"
+    [attr.aria-orientation]="row() ? 'vertical' : 'horizontal'"
+    [class]="
+      'shrink-0 bg-[var(--portal-border-default)] transition-colors focus-visible:outline-none'
+        + (editMode()
+          ? ' hover:bg-[var(--portal-accent-primary-glow)] focus-visible:bg-[var(--portal-accent-primary-glow)]'
+          : ' pointer-events-none opacity-40')
+    "
+    [class.w-1]="row()"
+    [class.h-1]="!row()"
+    [class.cursor-col-resize]="row() && editMode()"
+    [class.cursor-row-resize]="!row() && editMode()"></div>
+  <div class="flex min-h-0 min-w-0 overflow-hidden" [style.flex-basis]="ratioB() * 100 + '%'">
+    <app-layout [node]="splitNode().b" [user]="user()" [primaryGroupId]="primaryGroupId()" [editMode]="editMode()" [hideSingleTabToolbar]="hideSingleTabToolbar()" [allEntryPoints]="allEntryPoints()" />
+  </div>
+</div>
+} @else {
+<app-area [groupId]="leafNode().groupId" [user]="user()" [primaryGroupId]="primaryGroupId()" [editMode]="editMode()" [hideSingleTabToolbar]="hideSingleTabToolbar()" [allEntryPoints]="allEntryPoints()" (closeAllExceptHome)="onCloseAllExceptHome($event)" />
+}

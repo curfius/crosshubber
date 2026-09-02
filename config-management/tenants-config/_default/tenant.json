@@ -1,0 +1,36 @@
+{
+  "configVersion": 1,
+  "slug": "_default",
+  "name": "Portal Baseline",
+  "description": "Complete default installation: all built-in embedded modules, the demo external modules and default settings. This profile is never deployed as a live tenant.",
+  "baseline": true,
+  "lifecycle": "persistent",
+  "services": {
+    "database": { "mode": "container" },
+    "keycloak": { "mode": "dedicated" },
+    "nats": { "mode": "dedicated" },
+    "portal": {},
+    "modules": [
+      { "key": "huey", "kind": "app", "mode": "dedicated", "port": 8081 },
+      { "key": "louie-mfe", "kind": "mfe", "mode": "dedicated", "port": 8085 }
+    ]
+  },
+  "modules": {
+    "builtin": [
+      { "key": "portal-dashboard", "active": true, "roles": [] },
+      { "key": "module-registry", "active": true, "roles": [] },
+      { "key": "settings", "active": true, "roles": [] },
+      { "key": "user-settings", "active": true, "roles": [] },
+      { "key": "navigation", "active": true, "roles": [] },
+      { "key": "i18n-settings", "active": true, "roles": ["portal-i18n-edit"] },
+      { "key": "ai-hub", "active": true, "roles": [] },
+      { "key": "sample-embedded", "active": true, "roles": [] }
+    ],
+    "external": [
+      { "key": "huey", "serviceKey": "huey", "manifestUrl": "http://huey:3000/.well-known/portal-module.json", "active": true },
+      { "key": "louie-mfe", "serviceKey": "louie-mfe", "manifestUrl": "http://louie-mfe:80/.well-known/portal-module.json", "active": true }
+    ],
+    "overrides": []
+  },
+  "settings": { "homeApp": "portal-navigation:portal", "pinnedAppsEnabled": true, "workspacesEnabled": true }
+}

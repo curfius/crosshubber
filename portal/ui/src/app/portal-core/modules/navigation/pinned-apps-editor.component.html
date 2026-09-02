@@ -1,0 +1,62 @@
+<div class="h-full overflow-y-auto p-6">
+  <div class="mb-5 flex items-center justify-between">
+    <div>
+      <h1 class="ds-heading-3">{{ i18n.t('navigation.pinned.title') }}</h1>
+      <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('navigation.pinned.description') }}</p>
+    </div>
+  </div>
+
+  @if (saveError()) {
+  <div class="mb-4 rounded-lg border border-[var(--portal-status-danger)] bg-[var(--portal-bg-surface)] px-3 py-2 text-xs text-[var(--portal-status-danger)]">
+    {{ i18n.t('navigation.pinned.saveFailed') }}
+  </div>
+  }
+
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
+    <!-- Tree -->
+    <div class="ds-card p-4">
+      <div class="mb-2 flex items-center justify-between">
+        <h3 class="ds-heading-3 text-sm">{{ i18n.t('navigation.pinned.tree') }}</h3>
+        <span class="text-[10px] text-[var(--portal-text-disabled)]">{{ saving() ? i18n.t('common.loading') : i18n.t('navigation.pinned.autosaveHint') }}</span>
+      </div>
+      <app-dnd-tree
+        [nodes]="dndNodes()"
+        [maxDepth]="3"
+        [addFolderLabel]="i18n.t('navigation.pinned.newFolder')"
+        (nodesChange)="onTreeChange($event)"
+        (itemClick)="openApp($event)" />
+      @if (dndNodes().length === 0) {
+      <p class="py-6 text-center text-xs text-[var(--portal-text-disabled)]">{{ i18n.t('navigation.pinned.empty') }}</p>
+      }
+    </div>
+
+    <!-- App palette -->
+    <div class="ds-card h-fit p-4">
+      <h3 class="ds-heading-3 mb-2 text-sm">{{ i18n.t('navigation.pinned.palette') }}</h3>
+      <input
+        type="text"
+        [ngModel]="appFilter()"
+        (ngModelChange)="appFilter.set($event)"
+        [placeholder]="i18n.t('common.search')"
+        class="ds-input mb-2 w-full py-1.5 text-xs" />
+      <div class="max-h-96 space-y-1 overflow-y-auto">
+        @for (ep of availableApps(); track ep.moduleKey + ':' + ep.entryKey) {
+        <button
+          type="button"
+          (click)="addApp(ep)"
+          [disabled]="pinnedRefs().has(ep.moduleKey + ':' + ep.entryKey)"
+          class="flex w-full items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-left transition hover:border-[var(--portal-card-border)] hover:bg-[var(--portal-bg-hover)] disabled:cursor-not-allowed disabled:opacity-40">
+          <span class="flex size-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-[var(--portal-text-inverse)]"
+            [style.background]="ep.color || 'var(--portal-accent-primary)'">{{ ep.name.charAt(0) }}</span>
+          <span class="min-w-0 flex-1 truncate text-xs text-[var(--portal-text-secondary)]">{{ ep.name }}</span>
+          @if (pinnedRefs().has(ep.moduleKey + ':' + ep.entryKey)) {
+          <svg class="size-3.5 shrink-0 text-[var(--portal-status-success)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          } @else {
+          <svg class="size-3.5 shrink-0 text-[var(--portal-text-disabled)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          }
+        </button>
+        }
+      </div>
+    </div>
+  </div>
+</div>
