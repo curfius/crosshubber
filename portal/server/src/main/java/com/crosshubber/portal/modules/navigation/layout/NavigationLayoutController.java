@@ -41,7 +41,8 @@ public class NavigationLayoutController {
     if (!validation.success()) {
       return ResponseEntity.badRequest().body(Map.of("error", validation.error()));
     }
-    layoutService.saveLayout(body);
-    return ResponseEntity.ok(Map.of("layout", layoutService.getLayoutRaw()));
+    JsonNode stripped = NavigationValidationService.stripLayout(body);
+    layoutService.saveLayout(stripped);
+    return ResponseEntity.ok(Map.of("layout", stripped));
   }
 }

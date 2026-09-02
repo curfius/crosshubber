@@ -29,6 +29,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 @Service
 public class ShellTreeService {
 
+  private static final String KEY_RE = "^[a-z0-9][a-z0-9-]{0,63}$";
+
   private final EntryPointGroupRepository groupRepo;
   private final EntryPointRepository entryPointRepo;
 
@@ -61,6 +63,61 @@ public class ShellTreeService {
   public Map<String, Object> saveShellTree(String category, JsonNode body) {
     JsonNode groupInputs = body.path("groups");
     JsonNode itemInputs = body.path("items");
+
+    // Validate counts
+    if (groupInputs.size() > 200) {
+      throw new IllegalArgumentException("groups: must not have more than 200 items");
+    }
+    if (itemInputs.size() > 500) {
+      throw new IllegalArgumentException("items: must not have more than 500 items");
+    }
+    // Validate each group
+    for (int i = 0; i < groupInputs.size(); i++) {
+      JsonNode g = groupInputs.get(i);
+      String groupKey = g.path("groupKey").asText(null);
+      if (groupKey != null && !groupKey.isEmpty() && !groupKey.matches(KEY_RE)) {
+        throw new IllegalArgumentException(
+            "groups[" + i + "].groupKey: must match [a-z0-9][a-z0-9-]{0,63}");
+      }
+      String parentKey = g.path("parentKey").asText(null);
+      if (parentKey != null && !parentKey.isEmpty() && !parentKey.matches(KEY_RE)) {
+        throw new IllegalArgumentException(
+            "groups[" + i + "].parentKey: must match [a-z0-9][a-z0-9-]{0,63}");
+      }
+      String name = g.path("name").asText(null);
+      if (name == null || name.isEmpty()) {
+        throw new IllegalArgumentException("groups[" + i + "].name: Required");
+      }
+      if (name.length() > 256) {
+        throw new IllegalArgumentException(
+            "groups[" + i + "].name: must not be longer than 256 characters");
+      }
+      String icon = g.path("icon").asText(null);
+      if (icon != null && icon.length() > 64) {
+        throw new IllegalArgumentException(
+            "groups[" + i + "].icon: must not be longer than 64 characters");
+      }
+    }
+    // Validate each item
+    for (int i = 0; i < itemInputs.size(); i++) {
+      JsonNode item = itemInputs.get(i);
+      String moduleKey = item.path("moduleKey").asText(null);
+      if (moduleKey == null || moduleKey.isEmpty()) {
+        throw new IllegalArgumentException("items[" + i + "].moduleKey: Required");
+      }
+      if (!moduleKey.matches(KEY_RE)) {
+        throw new IllegalArgumentException(
+            "items[" + i + "].moduleKey: must match [a-z0-9][a-z0-9-]{0,63}");
+      }
+      String entryKey = item.path("entryKey").asText(null);
+      if (entryKey == null || entryKey.isEmpty()) {
+        throw new IllegalArgumentException("items[" + i + "].entryKey: Required");
+      }
+      if (!entryKey.matches(KEY_RE)) {
+        throw new IllegalArgumentException(
+            "items[" + i + "].entryKey: must match [a-z0-9][a-z0-9-]{0,63}");
+      }
+    }
 
     // Resolve group keys: client keys win; missing keys are slugified (unique
     // across ALL groups, mirroring the route helper).
@@ -147,7 +204,9 @@ public class ShellTreeService {
                     created.setRoles("");
                     return created;
                   });
-      entity.setCategory(category);
+      if (entity.getCategory() == null) {
+        entity.setCategory(category);
+      }
       entity.setName(g.name());
       entity.setParentKey(g.parentKey());
       entity.setSortOrder(order);

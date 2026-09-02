@@ -1,15 +1,20 @@
 package com.crosshubber.portal.modules.navigation;
 
+import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * Pure navigation tree validators + default builders — mirrors {@code
@@ -21,6 +26,15 @@ public final class NavigationValidationService {
 
   public static final int MAX_PINNED_DEPTH = 3;
   public static final int MAX_SHELL_DEPTH = 3;
+
+  /** Zod parity: sections/children arrays accept at most 500 items. */
+  public static final int MAX_LAYOUT_SECTIONS = 500;
+
+  /**
+   * JS {@code localeCompare} parity for name tiebreaks (ICU collation). Locale.ROOT is the closest
+   * deterministic match — JS itself is locale-dependent.
+   */
+  private static final Collator NAME_COLLATOR = Collator.getInstance(Locale.ROOT);
 
   /** Mirrors REF_RE in navigation.service.ts. */
   public static final String REF_RE = "^[a-z0-9][a-z0-9-]{0,63}:[a-z0-9][a-z0-9-]{0,63}$";
@@ -59,6 +73,16 @@ public final class NavigationValidationService {
       if (node == null || !node.isObject()) {
         return Validation.fail("tree nodes must be objects");
       }
+      // id: optional, string, <=64 chars (zod parity — numeric ids must not be coerced)
+      JsonNode id = node.get("id");
+      if (id != null && !id.isNull()) {
+        if (!id.isTextual()) {
+          return Validation.fail("id: Invalid input: expected string, received " + jsonType(id));
+        }
+        if (id.asText().length() > 64) {
+          return Validation.fail("id: Too big: expected string to have <=64 characters");
+        }
+      }
       String nodeType = node.path("nodeType").asText(null);
       if (!"folder".equals(nodeType) && !"item".equals(nodeType)) {
         return Validation.fail("nodeType must be \"folder\" or \"item\"");
@@ -67,12 +91,16 @@ public final class NavigationValidationService {
         if (!nonBlank(node.path("name"))) {
           return Validation.fail("folders require a name");
         }
-        if (node.has("ref") && !node.path("ref").isNull()) {
+        if (node.path("name").asText().length() > 256) {
+          return Validation.fail("name: Too big: expected string to have <=256 characters");
+        }
+        if (node.has("ref")) {
           return Validation.fail("folders must not carry a ref");
         }
         JsonNode children = node.get("children");
         if (children != null && !children.isNull() && !children.isArray()) {
-          return Validation.fail("children must be an array");
+          return Validation.fail(
+              "children: Invalid input: expected array, received " + jsonType(children));
         }
         Validation res =
             walkPinned(
@@ -88,11 +116,18 @@ public final class NavigationValidationService {
         if (ref == null || !ref.matches(REF_RE)) {
           return Validation.fail("items require a ref of the form \"moduleKey:entryKey\"");
         }
+        if (ref.length() > 255) {
+          return Validation.fail("ref: Too big: expected string to have <=255 characters");
+        }
         if (!knownRefs.contains(ref)) {
           return Validation.fail("unknown app ref \"" + ref + "\"");
         }
         JsonNode children = node.get("children");
-        if (children != null && !children.isNull() && children.isArray() && !children.isEmpty()) {
+        if (children != null && !children.isNull() && !children.isArray()) {
+          return Validation.fail(
+              "children: Invalid input: expected array, received " + jsonType(children));
+        }
+        if (children != null && children.isArray() && !children.isEmpty()) {
           return Validation.fail("items must not have children");
         }
         if (seenRefs.contains(ref)) {
@@ -104,18 +139,83 @@ public final class NavigationValidationService {
     return Validation.ok();
   }
 
+  /** Zod-style JSON type name for "expected X, received Y" messages. */
+  private static String jsonType(JsonNode node) {
+    if (node.isTextual()) {
+      return "string";
+    }
+    if (node.isNumber()) {
+      return "number";
+    }
+    if (node.isBoolean()) {
+      return "boolean";
+    }
+    if (node.isArray()) {
+      return "array";
+    }
+    if (node.isObject()) {
+      return "object";
+    }
+    return "null";
+  }
+
   // ── Portal Navigation layout ─────────────────────────────────────────
+
+  /** Strips unknown keys from a layout payload before persisting (zod strict-schema parity). */
+  public static JsonNode stripLayout(JsonNode layout) {
+    if (layout == null || !layout.isObject()) {
+      return layout;
+    }
+    ObjectNode out = JsonNodeFactory.instance.objectNode();
+    if (layout.has("pinnedSectionEnabled")) {
+      out.set("pinnedSectionEnabled", layout.get("pinnedSectionEnabled").deepCopy());
+    }
+    JsonNode sections = layout.path("sections");
+    if (sections.isArray()) {
+      ArrayNode arr = JsonNodeFactory.instance.arrayNode();
+      for (JsonNode section : sections) {
+        arr.add(stripLayoutNode(section));
+      }
+      out.set("sections", arr);
+    }
+    return out;
+  }
+
+  private static JsonNode stripLayoutNode(JsonNode node) {
+    if (node == null || !node.isObject()) {
+      return node;
+    }
+    ObjectNode out = JsonNodeFactory.instance.objectNode();
+    for (String key : List.of("id", "type", "name", "ref")) {
+      if (node.has(key)) {
+        out.set(key, node.get(key).deepCopy());
+      }
+    }
+    JsonNode children = node.path("children");
+    if (children.isArray()) {
+      ArrayNode arr = JsonNodeFactory.instance.arrayNode();
+      for (JsonNode child : children) {
+        arr.add(stripLayoutNode(child));
+      }
+      out.set("children", arr);
+    }
+    return out;
+  }
 
   public static Validation validateLayout(JsonNode layout, Set<String> knownRefs) {
     if (layout == null || !layout.isObject()) {
       return Validation.fail("layout must be an object");
     }
     if (!(layout.path("pinnedSectionEnabled").isBoolean())) {
-      return Validation.fail("pinnedSectionEnabled must be a boolean");
+      return Validation.fail(
+          "pinnedSectionEnabled: Invalid input: expected boolean, received undefined");
     }
     JsonNode sections = layout.path("sections");
     if (!sections.isArray()) {
-      return Validation.fail("sections must be an array");
+      return Validation.fail("sections: Invalid input: expected array, received undefined");
+    }
+    if (sections.size() > MAX_LAYOUT_SECTIONS) {
+      return Validation.fail("sections: Too big: expected array to have <=500 items");
     }
     Set<String> seenIds = new LinkedHashSet<>();
     Set<String> seenRefs = new LinkedHashSet<>();
@@ -124,6 +224,9 @@ public final class NavigationValidationService {
 
   private static Validation walkLayout(
       JsonNode nodes, int depth, Set<String> knownRefs, Set<String> seenIds, Set<String> seenRefs) {
+    if (nodes.size() > MAX_LAYOUT_SECTIONS) {
+      return Validation.fail("children: Too big: expected array to have <=500 items");
+    }
     for (JsonNode node : nodes) {
       if (node == null || !node.isObject()) {
         return Validation.fail("layout nodes must be objects");
@@ -131,6 +234,9 @@ public final class NavigationValidationService {
       String id = node.path("id").asText(null);
       if (id == null || id.isBlank()) {
         return Validation.fail("layout nodes require an id");
+      }
+      if (id.length() > 128) {
+        return Validation.fail("id: Too big: expected string to have <=128 characters");
       }
       if (seenIds.contains(id)) {
         return Validation.fail("duplicate layout node id \"" + id + "\"");
@@ -140,6 +246,9 @@ public final class NavigationValidationService {
         String ref = node.path("ref").asText(null);
         if (ref == null || !ref.matches(REF_RE)) {
           return Validation.fail("layout items require a ref of the form \"moduleKey:entryKey\"");
+        }
+        if (ref.length() > 255) {
+          return Validation.fail("ref: Too big: expected string to have <=255 characters");
         }
         if (!knownRefs.contains(ref)) {
           return Validation.fail("unknown app ref \"" + ref + "\"");
@@ -151,6 +260,9 @@ public final class NavigationValidationService {
       } else {
         if (!nonBlank(node.path("name"))) {
           return Validation.fail("sections require a name");
+        }
+        if (node.path("name").asText().length() > 256) {
+          return Validation.fail("name: Too big: expected string to have <=256 characters");
         }
         JsonNode children = node.path("children");
         if (!children.isArray()) {
@@ -240,7 +352,7 @@ public final class NavigationValidationService {
         .filter(NavigationValidationService::isDefaultSidebarApp)
         .sorted(
             Comparator.comparingInt(EntryPointEntity::getSortOrder)
-                .thenComparing(EntryPointEntity::getName))
+                .thenComparing(EntryPointEntity::getName, NAME_COLLATOR))
         .map(NavigationValidationService::entryPointRef)
         .toList();
   }
@@ -264,7 +376,7 @@ public final class NavigationValidationService {
             .filter(NavigationValidationService::isDefaultSidebarApp)
             .sorted(
                 Comparator.comparingInt(EntryPointEntity::getSortOrder)
-                    .thenComparing(EntryPointEntity::getName))
+                    .thenComparing(EntryPointEntity::getName, NAME_COLLATOR))
             .toList();
     children.clear();
     for (EntryPointEntity ep : sorted) {

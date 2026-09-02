@@ -92,21 +92,34 @@ public class NavigationUserSettingsService {
     if (body == null || !body.isObject()) {
       return "body must be an object";
     }
+    // Explicit null for a known key is rejected (zod parity), not silently ignored.
     JsonNode sidebar = body.get("sidebar");
-    if (sidebar != null && !sidebar.isNull()) {
+    if (sidebar != null && sidebar.isNull()) {
+      return "sidebar: Invalid input: expected object, received null";
+    }
+    if (sidebar != null) {
       if (!sidebar.isObject()) {
         return "sidebar: must be an object";
       }
       JsonNode showPinned = sidebar.get("showPinned");
-      if (showPinned != null && !showPinned.isNull() && !showPinned.isBoolean()) {
+      if (showPinned != null && showPinned.isNull()) {
+        return "sidebar.showPinned: Invalid input: expected boolean, received null";
+      }
+      if (showPinned != null && !showPinned.isBoolean()) {
         return "sidebar.showPinned: must be a boolean";
       }
       JsonNode showWorkspaces = sidebar.get("showWorkspaces");
-      if (showWorkspaces != null && !showWorkspaces.isNull() && !showWorkspaces.isBoolean()) {
+      if (showWorkspaces != null && showWorkspaces.isNull()) {
+        return "sidebar.showWorkspaces: Invalid input: expected boolean, received null";
+      }
+      if (showWorkspaces != null && !showWorkspaces.isBoolean()) {
         return "sidebar.showWorkspaces: must be a boolean";
       }
       JsonNode apps = sidebar.get("apps");
-      if (apps != null && !apps.isNull()) {
+      if (apps != null && apps.isNull()) {
+        return "sidebar.apps: Invalid input: expected array, received null";
+      }
+      if (apps != null) {
         if (!apps.isArray() || apps.size() > 500) {
           return "sidebar.apps: must be an array of at most 500 strings";
         }
@@ -118,7 +131,10 @@ public class NavigationUserSettingsService {
       }
     }
     JsonNode expanded = body.get("sidebarExpanded");
-    if (expanded != null && !expanded.isNull()) {
+    if (expanded != null && expanded.isNull()) {
+      return "sidebarExpanded: Invalid input: expected array, received null";
+    }
+    if (expanded != null) {
       if (!expanded.isArray() || expanded.size() > 500) {
         return "sidebarExpanded: must be an array of at most 500 strings";
       }

@@ -1,5 +1,6 @@
 package com.crosshubber.portal.modules.aihub.conversations;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.crosshubber.portal.common.NodeDates;
 
 /**
  * Chat conversations (portal + channel origins) — mirrors {@code
@@ -33,8 +36,25 @@ public class AiHubConversationsService {
     out.put("id", c.getId());
     out.put("user_id", c.getUserId());
     out.put("title", c.getTitle());
-    out.put("created_at", c.getCreatedAt().toString());
-    out.put("updated_at", c.getUpdatedAt().toString());
+    out.put("created_at", NodeDates.format(c.getCreatedAt()));
+    out.put("updated_at", NodeDates.format(c.getUpdatedAt()));
+    return out;
+  }
+
+  /**
+   * Full-row shape (mirrors {@code RETURNING *} / {@code SELECT *} column order in
+   * conversations.repository.ts — used by POST /conversations).
+   */
+  public static Map<String, Object> fullConversationDto(AiHubConversationEntity c) {
+    Map<String, Object> out = new LinkedHashMap<>();
+    out.put("id", c.getId());
+    out.put("user_id", c.getUserId());
+    out.put("channel_id", c.getChannelId());
+    out.put("external_chat_id", c.getExternalChatId());
+    out.put("origin", c.getOrigin());
+    out.put("title", c.getTitle());
+    out.put("created_at", NodeDates.format(c.getCreatedAt()));
+    out.put("updated_at", NodeDates.format(c.getUpdatedAt()));
     return out;
   }
 
@@ -46,7 +66,7 @@ public class AiHubConversationsService {
     out.put("content", m.getContent());
     out.put("provider_id", m.getProviderId());
     out.put("model", m.getModel());
-    out.put("created_at", m.getCreatedAt().toString());
+    out.put("created_at", NodeDates.format(m.getCreatedAt()));
     return out;
   }
 
@@ -67,7 +87,7 @@ public class AiHubConversationsService {
     conversation.setOrigin("portal");
     conversation.setTitle(title);
     conversation = conversationRepo.saveAndFlush(conversation);
-    return conversationDto(conversation);
+    return fullConversationDto(conversation);
   }
 
   @Transactional
@@ -109,7 +129,15 @@ public class AiHubConversationsService {
     message.setProviderId(providerId);
     message.setModel(model);
     message = messageRepo.saveAndFlush(message);
-    conversationRepo.findById(conversationId).ifPresent(conversationRepo::save);
+    // Explicit updated_at bump — an unmodified entity would never dirty-flush, so @PreUpdate
+    // would not fire and the conversation list (ORDER BY updated_at DESC) would stay frozen.
+    conversationRepo
+        .findById(conversationId)
+        .ifPresent(
+            conversation -> {
+              conversation.setUpdatedAt(Instant.now());
+              conversationRepo.save(conversation);
+            });
     return messageDto(message);
   }
 

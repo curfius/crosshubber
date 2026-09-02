@@ -107,7 +107,7 @@ public class AiHubProvidersController {
       if (provider == null) {
         return ResponseEntity.status(404).body(Map.of("error", "provider not found"));
       }
-      if (provider.getBaseUrl() == null) {
+      if (provider.getBaseUrl() == null || provider.getBaseUrl().isBlank()) {
         return ResponseEntity.badRequest().body(Map.of("error", "provider has no base URL"));
       }
       resolved = new AiHubProvidersService.ResolvedKey(null, provider.getBaseUrl());
@@ -137,13 +137,19 @@ public class AiHubProvidersController {
       if (data.get("data") instanceof List<?> upstreamModels) {
         for (Object item : upstreamModels) {
           if (item instanceof Map<?, ?> m) {
+            // Mirrors providers.routes.ts:107-111: `id: m.id` drops the key when the upstream
+            // omits it; `name: m.name ?? m.id` falls back to the id.
             Map<String, Object> model = new LinkedHashMap<>();
-            model.put("id", String.valueOf(m.get("id")));
-            model.put(
-                "name",
-                m.get("name") != null
-                    ? String.valueOf(m.get("name"))
-                    : String.valueOf(m.get("id")));
+            boolean hasId = m.containsKey("id");
+            Object upstreamId = m.get("id");
+            Object rawName = m.get("name");
+            Object name = rawName != null ? rawName : upstreamId;
+            if (hasId) {
+              model.put("id", upstreamId);
+            }
+            if (rawName != null || hasId) {
+              model.put("name", name);
+            }
             model.put("enabled", false);
             models.add(model);
           }

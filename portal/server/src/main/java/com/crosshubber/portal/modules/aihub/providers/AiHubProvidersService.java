@@ -79,7 +79,7 @@ public class AiHubProvidersService {
   @Transactional(readOnly = true)
   public ResolvedKey resolveApiKey(String providerId, String tokenId) {
     AiHubProviderEntity provider = providerRepo.findById(providerId).orElse(null);
-    if (provider == null || provider.getBaseUrl() == null) {
+    if (provider == null || provider.getBaseUrl() == null || provider.getBaseUrl().isBlank()) {
       return null;
     }
     AiHubTokenEntity token = null;
@@ -87,7 +87,7 @@ public class AiHubProvidersService {
       token = tokenRepo.findById(tokenId).orElse(null);
     } else {
       token =
-          tokenRepo.findByProviderId(providerId).stream()
+          tokenRepo.findByProviderIdOrderByNameAsc(providerId).stream()
               .filter(t -> Boolean.TRUE.equals(t.getEnabled()))
               .findFirst()
               .orElse(null);
@@ -110,6 +110,11 @@ public class AiHubProvidersService {
   @Transactional
   public Map<String, Object> updateProvider(
       String id, Boolean enabled, String name, String baseUrl) {
+    // Node quirk: an empty patch (no recognized fields) → 404 even for existing rows
+    // (providers.repository.ts:67 — sets.length === 0 → null).
+    if (enabled == null && name == null && baseUrl == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "provider not found");
+    }
     AiHubProviderEntity provider =
         providerRepo
             .findById(id)
@@ -155,6 +160,11 @@ public class AiHubProvidersService {
   @Transactional
   public Map<String, Object> updateToken(
       String tokenId, String name, String providedApiKey, Boolean enabled, List<Object> models) {
+    // Node quirk: an empty patch (no recognized fields) → 404 even for existing rows
+    // (providers.repository.ts:86 — sets.length === 0 → null).
+    if (name == null && providedApiKey == null && enabled == null && models == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "token not found");
+    }
     AiHubTokenEntity token =
         tokenRepo
             .findById(tokenId)
@@ -221,7 +231,7 @@ public class AiHubProvidersService {
       out.put("baseURL", p.getBaseUrl());
     }
     List<Map<String, Object>> tokens = new java.util.ArrayList<>();
-    for (AiHubTokenEntity t : tokenRepo.findByProviderId(p.getId())) {
+    for (AiHubTokenEntity t : tokenRepo.findByProviderIdOrderByNameAsc(p.getId())) {
       tokens.add(tokenDto(t));
     }
     out.put("tokens", tokens);

@@ -3,17 +3,17 @@ package com.crosshubber.portal.modules.navigation.pinnedapps;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.springframework.data.domain.Persistable;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.PostLoad;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
-
-import org.springframework.data.domain.Persistable;
 
 /** JPA entity for {@code navigation_pinned_apps} table. */
 @Entity
@@ -59,8 +59,7 @@ public class NavigationPinnedAppEntity implements Persistable<UUID> {
     }
   }
 
-    @Transient
-  private boolean isNew = true;
+  @Transient private boolean isNew = true;
 
   @Override
   public boolean isNew() {
@@ -71,7 +70,8 @@ public class NavigationPinnedAppEntity implements Persistable<UUID> {
   void markNotNew() {
     this.isNew = false;
   }
-public UUID getId() {
+
+  public UUID getId() {
     return id;
   }
 

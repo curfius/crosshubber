@@ -2,16 +2,16 @@ package com.crosshubber.portal.modules.aihub.providers;
 
 import java.time.Instant;
 
+import org.springframework.data.domain.Persistable;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
-import jakarta.persistence.PostLoad;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
-
-import org.springframework.data.domain.Persistable;
 
 /** JPA entity for {@code ai_hub_providers} table. */
 @Entity
@@ -56,8 +56,7 @@ public class AiHubProviderEntity implements Persistable<String> {
     updatedAt = Instant.now();
   }
 
-    @Transient
-  private boolean isNew = true;
+  @Transient private boolean isNew = true;
 
   @Override
   public boolean isNew() {
@@ -68,7 +67,8 @@ public class AiHubProviderEntity implements Persistable<String> {
   void markNotNew() {
     this.isNew = false;
   }
-public String getId() {
+
+  public String getId() {
     return id;
   }
 

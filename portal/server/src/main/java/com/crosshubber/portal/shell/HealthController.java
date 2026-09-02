@@ -1,5 +1,6 @@
 package com.crosshubber.portal.shell;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,10 @@ public class HealthController {
   @GetMapping("/healthz")
   public ResponseEntity<Map<String, Object>> healthz() {
     boolean up = healthService.dbStatus();
-    return ResponseEntity.ok(Map.of("ok", true, "app", "portal", "db", up ? "up" : "down"));
+    Map<String, Object> response = new LinkedHashMap<>();
+    response.put("ok", true);
+    response.put("app", "portal");
+    response.put("db", up ? "up" : "down");
+    return ResponseEntity.ok(response);
   }
 }

@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.crosshubber.portal.common.Roles;
+import com.crosshubber.portal.config.PortalProperties;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupEntity;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupRepository;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
@@ -33,11 +34,15 @@ public class ShellConfigService {
 
   private static final Logger log = LoggerFactory.getLogger(ShellConfigService.class);
 
+  private static final List<String> CATEGORY_ORDER =
+      List.of("applications", "settings", "features", "user-settings");
+
   private final ModuleRepository moduleRepo;
   private final EntryPointRepository entryPointRepo;
   private final EntryPointGroupRepository groupRepo;
   private final UserSettingsRepository userSettingsRepo;
   private final ObjectMapper objectMapper;
+  private final PortalProperties props;
 
   @Value("${portal.nats-http-url:}")
   private String natsHttpUrl;
@@ -50,12 +55,14 @@ public class ShellConfigService {
       EntryPointRepository entryPointRepo,
       EntryPointGroupRepository groupRepo,
       UserSettingsRepository userSettingsRepo,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      PortalProperties props) {
     this.moduleRepo = moduleRepo;
     this.entryPointRepo = entryPointRepo;
     this.groupRepo = groupRepo;
     this.userSettingsRepo = userSettingsRepo;
     this.objectMapper = objectMapper;
+    this.props = props;
   }
 
   /** Builds the full config payload for the given user. */
@@ -92,12 +99,16 @@ public class ShellConfigService {
     }
 
     // 3. Entry points visible (module visible + role + group allowed)
+    //    Category filter: exclude admin-settings (Node parity)
     List<Map<String, Object>> visibleEps = new ArrayList<>();
     for (EntryPointEntity ep : entryPointRepo.findAll()) {
       if (!visibleModuleKeys.contains(ep.getModuleKey())) {
         continue;
       }
       if (Boolean.FALSE.equals(ep.getActive())) {
+        continue;
+      }
+      if (!CATEGORY_ORDER.contains(ep.getCategory())) {
         continue;
       }
       if (!Roles.hasAnyRole(userRoles, Roles.parse(ep.getRoles()))) {
@@ -108,6 +119,23 @@ public class ShellConfigService {
       }
       visibleEps.add(toEntryPointDto(ep));
     }
+    // Sort by category order, then sort_order, then name
+    visibleEps.sort(
+        (a, b) -> {
+          int catA = CATEGORY_ORDER.indexOf(a.get("category"));
+          int catB = CATEGORY_ORDER.indexOf(b.get("category"));
+          if (catA != catB) {
+            return Integer.compare(catA, catB);
+          }
+          int orderA = a.get("sortOrder") instanceof Number n ? n.intValue() : 0;
+          int orderB = b.get("sortOrder") instanceof Number n ? n.intValue() : 0;
+          if (orderA != orderB) {
+            return Integer.compare(orderA, orderB);
+          }
+          String nameA = (String) a.get("name");
+          String nameB = (String) b.get("name");
+          return nameA != null ? nameA.compareToIgnoreCase(nameB) : 0;
+        });
 
     // Groups actually used by visible entry points
     List<Map<String, Object>> usedGroups = new ArrayList<>();
@@ -133,12 +161,26 @@ public class ShellConfigService {
         usedGroups.add(dto);
       }
     }
+    // Sort groups by sort_order, then name
+    usedGroups.sort(
+        (a, b) -> {
+          int orderA = a.get("sortOrder") instanceof Number n ? n.intValue() : 0;
+          int orderB = b.get("sortOrder") instanceof Number n ? n.intValue() : 0;
+          if (orderA != orderB) {
+            return Integer.compare(orderA, orderB);
+          }
+          String nameA = (String) a.get("name");
+          String nameB = (String) b.get("name");
+          return nameA != null ? nameA.compareToIgnoreCase(nameB) : 0;
+        });
 
     Map<String, Object> body = new LinkedHashMap<>();
     Map<String, Object> userDto = new LinkedHashMap<>();
     userDto.put("sub", user.sub());
     userDto.put("name", user.name());
-    userDto.put("email", user.email());
+    if (user.email() != null) {
+      userDto.put("email", user.email());
+    }
     userDto.put("roles", userRoles);
     body.put("user", userDto);
     body.put("preferences", loadPreferences(user.sub()));
@@ -197,6 +239,23 @@ public class ShellConfigService {
     pg.put("name", "PostgreSQL");
     pg.put("url", null);
     pg.put("color", "#60a5fa");
+    // Build hint from PortalProperties.db user/database (fallback to "portal")
+    String dbUser = "portal";
+    String dbDatabase = "portal";
+    if (props.getDb() != null) {
+      if (props.getDb().getUser() != null && !props.getDb().getUser().isBlank()) {
+        dbUser = props.getDb().getUser();
+      }
+      if (props.getDb().getDatabase() != null && !props.getDb().getDatabase().isBlank()) {
+        dbDatabase = props.getDb().getDatabase();
+      }
+    }
+    pg.put(
+        "hint",
+        "No web UI \u2014 connect via psql: docker compose exec postgres psql -U "
+            + dbUser
+            + " -d "
+            + dbDatabase);
     services.add(pg);
     return services;
   }

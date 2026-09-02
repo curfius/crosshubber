@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.crosshubber.portal.common.NodeDates;
 import com.crosshubber.portal.modules.aihub.channels.AiHubChannelEntity;
 import com.crosshubber.portal.modules.aihub.channels.AiHubChannelsService;
 import com.crosshubber.portal.modules.aihub.channels.dto.ChannelCredentials;
@@ -122,7 +123,8 @@ public class ChannelPipeline {
         return;
       }
 
-      channelsService.updateStatus(channelId, Map.of("lastInboundAt", Instant.now().toString()));
+      channelsService.updateStatus(
+          channelId, Map.of("lastInboundAt", NodeDates.format(Instant.now())));
       setTyping(channel, msg.externalChatId());
 
       Map<String, Object> cfg = parseJson(channel.getConfig());
@@ -173,7 +175,7 @@ public class ChannelPipeline {
       conversationsService.addMessage(
           conversationId, "assistant", reply, binding.providerId(), binding.model());
       sendReply(channel, msg.externalChatId(), reply);
-      // Success clears any stale error (null = JSONB key removal).
+      // Success clears any stale error (JSONB || merge keeps lastError as an explicit null).
       Map<String, Object> clear = new LinkedHashMap<>();
       clear.put("lastError", null);
       clear.put("lastErrorAt", null);
@@ -184,7 +186,7 @@ public class ChannelPipeline {
       try {
         Map<String, Object> failure = new LinkedHashMap<>();
         failure.put("lastError", message);
-        failure.put("lastErrorAt", Instant.now().toString());
+        failure.put("lastErrorAt", NodeDates.format(Instant.now()));
         channelsService.updateStatus(channelId, failure);
         Map<String, Object> cfg = channel != null ? parseJson(channel.getConfig()) : Map.of();
         if (channel != null && Boolean.TRUE.equals(cfg.get("errorReplyEnabled"))) {
@@ -200,6 +202,10 @@ public class ChannelPipeline {
   /** Sends a reply through the platform adapter. */
   public void sendReply(AiHubChannelEntity channel, String externalChatId, String text)
       throws Exception {
+    if (!Boolean.TRUE.equals(channel.getEnabled())) {
+      // Mirrors outbound.service.ts:12 — sends on a disabled channel must fail, never deliver.
+      throw new IllegalStateException("channel is disabled");
+    }
     ChannelCredentials creds = channelsService.getCredentials(channel);
     if (creds == null) {
       throw new IllegalStateException("channel credentials unavailable");

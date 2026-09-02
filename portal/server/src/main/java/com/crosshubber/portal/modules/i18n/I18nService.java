@@ -124,6 +124,11 @@ public class I18nService {
   @Transactional
   public I18nLanguageEntity updateLanguage(
       String code, Boolean enabled, String name, String nativeName, Integer sortOrder) {
+    // Node parity (i18n.repository.ts:167): an empty patch returns the language without saving
+    // or bumping content_version (spurious bumps force clients to re-download bundles).
+    if (enabled == null && name == null && nativeName == null && sortOrder == null) {
+      return languageRepo.findById(code).orElse(null);
+    }
     I18nLanguageEntity language = languageRepo.findById(code).orElseThrow();
     if (enabled != null) {
       language.setEnabled(enabled);

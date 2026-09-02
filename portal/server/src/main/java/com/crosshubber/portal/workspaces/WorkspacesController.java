@@ -1,7 +1,9 @@
 package com.crosshubber.portal.workspaces;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -20,6 +22,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.crosshubber.portal.security.PortalUser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.PersistenceException;
+
 /**
  * Workspace routes â€” mirrors {@code portal/src/modules/workspaces/workspaces.routes.ts} +
  * service.ts: per-user CRUD with name-conflict retry ("name (n)").
@@ -31,6 +37,8 @@ public class WorkspacesController {
 
   private final WorkspaceRepository repo;
   private final ObjectMapper objectMapper;
+
+  @PersistenceContext private EntityManager em;
 
   public WorkspacesController(WorkspaceRepository repo, ObjectMapper objectMapper) {
     this.repo = repo;
@@ -97,7 +105,7 @@ public class WorkspacesController {
         finalName = name + " (" + (attempt + 2) + ")";
       }
     }
-    return ResponseEntity.internalServerError().body(Map.of("error", "could not find unique name"));
+    return ResponseEntity.internalServerError().body(Map.of("error", "internal server error"));
   }
 
   @PutMapping("/api/workspaces/{id}")
@@ -118,26 +126,48 @@ public class WorkspacesController {
     if (entity == null) {
       return ResponseEntity.status(404).body(Map.of("error", "not found"));
     }
-    entity.setDescription(body.get("description") instanceof String s ? s : "");
-    entity.setLayout(body.get("layout") != null ? writeJson(body.get("layout")) : null);
-    entity.setGroups(body.get("groups") != null ? writeJson(body.get("groups")) : "{}");
-    entity.setFocusedGroupId(body.get("focusedGroupId") instanceof String s ? s : null);
-    entity.setHideSingleTabToolbar(Boolean.TRUE.equals(body.get("hideSingleTabToolbar")));
-    entity.setLocked(Boolean.TRUE.equals(body.get("locked")));
-    entity.setColor(body.get("color") instanceof String s ? s : "");
-    entity.setStatus(body.get("status") instanceof String s ? s : "");
+
+    // Snapshot of the pre-request row — restored after a failed rename attempt so the retry
+    // loop always starts from the original state (Node's failed UPDATE leaves the row as-is).
+    WorkspaceEntity snapshot = copyRow(entity);
+    WorkspaceEntity updated = copyRow(entity);
+    updated.setDescription(body.get("description") instanceof String s ? s : "");
+    updated.setLayout(body.get("layout") != null ? writeJson(body.get("layout")) : null);
+    updated.setGroups(body.get("groups") != null ? writeJson(body.get("groups")) : "{}");
+    updated.setFocusedGroupId(body.get("focusedGroupId") instanceof String s ? s : null);
+    updated.setHideSingleTabToolbar(Boolean.TRUE.equals(body.get("hideSingleTabToolbar")));
+    updated.setLocked(Boolean.TRUE.equals(body.get("locked")));
+    updated.setColor(body.get("color") instanceof String s ? s : "");
+    updated.setStatus(body.get("status") instanceof String s ? s : "");
 
     String finalName = name;
     for (int attempt = 0; attempt < MAX_NAME_ATTEMPTS; attempt++) {
       try {
-        entity.setName(finalName);
-        repo.save(entity);
-        return ResponseEntity.ok(Map.of("ok", true, "id", id, "name", finalName));
-      } catch (DataIntegrityViolationException e) {
+        // name is part of the composite PK — a rename is delete-old-row + insert-new-row with
+        // the same UUID id (in-place PK mutation would merge into a duplicate row). The fresh
+        // saved_at also covers the plain-save case (Node: saved_at = now() on every update).
+        WorkspaceEntity replacement = copyRow(updated);
+        replacement.setName(finalName);
+        replacement.setSavedAt(Instant.now());
+        em.remove(em.contains(entity) ? entity : em.merge(entity));
+        em.flush();
+        em.persist(replacement);
+        em.flush();
+        // Node responds with the REQUESTED (trimmed) name even when a "name (2)" suffix was
+        // stored (workspaces.routes.ts:47).
+        return ResponseEntity.ok(Map.of("ok", true, "id", id, "name", name));
+      } catch (DataIntegrityViolationException | PersistenceException e) {
+        if (!isDuplicateKey(e)) {
+          throw e;
+        }
+        em.clear();
+        em.persist(copyRow(snapshot));
+        em.flush();
         finalName = name + " (" + (attempt + 2) + ")";
       }
     }
-    return ResponseEntity.internalServerError().body(Map.of("error", "could not find unique name"));
+    // Retry exhaustion — Node throws and errors.ts returns the generic 500 body.
+    return ResponseEntity.internalServerError().body(Map.of("error", "internal server error"));
   }
 
   @DeleteMapping("/api/workspaces/{name}")
@@ -151,6 +181,36 @@ public class WorkspacesController {
   }
 
   // ── DTOs (camelCase, mirroring workspaces.service.ts) ──
+
+  /** Field-by-field copy (identity fields included) for rename replacements and restores. */
+  private static WorkspaceEntity copyRow(WorkspaceEntity source) {
+    WorkspaceEntity copy = new WorkspaceEntity();
+    copy.setUserId(source.getUserId());
+    copy.setName(source.getName());
+    copy.setId(source.getId());
+    copy.setDescription(source.getDescription());
+    copy.setLayout(source.getLayout());
+    copy.setGroups(source.getGroups());
+    copy.setFocusedGroupId(source.getFocusedGroupId());
+    copy.setHideSingleTabToolbar(source.getHideSingleTabToolbar());
+    copy.setLocked(source.getLocked());
+    copy.setColor(source.getColor());
+    copy.setStatus(source.getStatus());
+    copy.setSavedAt(source.getSavedAt());
+    return copy;
+  }
+
+  /** Mirrors Node's {@code /duplicate key/i.test(String(err))} retry condition. */
+  private static boolean isDuplicateKey(Throwable error) {
+    while (error != null) {
+      String message = error.getMessage();
+      if (message != null && message.toLowerCase(Locale.ROOT).contains("duplicate key")) {
+        return true;
+      }
+      error = error.getCause();
+    }
+    return false;
+  }
 
   private static Map<String, Object> listItem(WorkspaceEntity w) {
     Map<String, Object> out = new LinkedHashMap<>();

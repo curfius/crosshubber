@@ -59,9 +59,13 @@ public class ManifestController {
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> versionManifest(
       @PathVariable String moduleKey, @PathVariable long versionId) {
+    validateVersionId(versionId);
     JsonNode manifest = installService.versionManifest(moduleKey, versionId);
     if (manifest == null) {
-      return ResponseEntity.status(404).body(Map.of("error", "version not found"));
+      // Node: 200 {"manifest": null} — LinkedHashMap, Map.of cannot hold a null value.
+      Map<String, Object> body = new java.util.LinkedHashMap<>();
+      body.put("manifest", null);
+      return ResponseEntity.ok(body);
     }
     return ResponseEntity.ok(manifestPayload(manifest));
   }
@@ -118,6 +122,7 @@ public class ManifestController {
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> rollback(
       @PathVariable String moduleKey, @PathVariable long versionId, Authentication auth) {
+    validateVersionId(versionId);
     InstallService.DraftOutcome result = installService.rollback(moduleKey, versionId, actor(auth));
     if (!result.ok()) {
       return ResponseEntity.badRequest().body(Map.of("error", result.error()));
@@ -140,7 +145,7 @@ public class ManifestController {
     if (!result.ok()) {
       return ResponseEntity.badRequest().body(Map.of("error", result.error()));
     }
-    return draftResponse(result);
+    return draftResponse(result, false);
   }
 
   @PutMapping("/draft/{moduleKey}")
@@ -160,7 +165,7 @@ public class ManifestController {
     if (!result.ok()) {
       return ResponseEntity.badRequest().body(Map.of("error", result.error()));
     }
-    return draftResponse(result);
+    return draftResponse(result, true);
   }
 
   @PostMapping("/draft/{moduleKey}/apply")
@@ -199,12 +204,13 @@ public class ManifestController {
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> loadVersion(
       @PathVariable String moduleKey, @PathVariable long versionId, Authentication auth) {
+    validateVersionId(versionId);
     InstallService.DraftOutcome result =
         installService.loadVersion(moduleKey, versionId, actor(auth));
     if (!result.ok()) {
       return ResponseEntity.badRequest().body(Map.of("error", result.error()));
     }
-    return draftResponse(result);
+    return draftResponse(result, false);
   }
 
   @GetMapping("/draft/{moduleKey}")
@@ -216,6 +222,7 @@ public class ManifestController {
   @GetMapping("/version-download/{moduleKey}/{versionId}")
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> download(@PathVariable String moduleKey, @PathVariable long versionId) {
+    validateVersionId(versionId);
     JsonNode manifest = installService.versionManifest(moduleKey, versionId);
     if (manifest == null) {
       return ResponseEntity.status(404).body(Map.of("error", "version not found"));
@@ -241,12 +248,13 @@ public class ManifestController {
     return out;
   }
 
-  private ResponseEntity<Map<String, Object>> draftResponse(InstallService.DraftOutcome result) {
+  private ResponseEntity<Map<String, Object>> draftResponse(
+      InstallService.DraftOutcome result, boolean includeVersion) {
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("ok", true);
     out.put("draftId", result.draftId());
     out.put("manifest", result.manifest());
-    if (result.version() != null) {
+    if (includeVersion && result.version() != null) {
       out.put("version", result.version());
     }
     return ResponseEntity.ok(out);
@@ -277,5 +285,12 @@ public class ManifestController {
 
   private static String string(Object value) {
     return value instanceof String s ? s : null;
+  }
+
+  private static void validateVersionId(long versionId) {
+    if (versionId <= 0) {
+      throw new org.springframework.web.server.ResponseStatusException(
+          org.springframework.http.HttpStatus.BAD_REQUEST, "invalid versionId");
+    }
   }
 }

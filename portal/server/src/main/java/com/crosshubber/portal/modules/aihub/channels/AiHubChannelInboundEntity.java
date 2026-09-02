@@ -2,16 +2,16 @@ package com.crosshubber.portal.modules.aihub.channels;
 
 import java.time.Instant;
 
+import org.springframework.data.domain.Persistable;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.PostLoad;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
-
-import org.springframework.data.domain.Persistable;
 
 /** JPA entity for {@code ai_hub_channel_inbound} table. */
 @Entity
@@ -37,8 +37,7 @@ public class AiHubChannelInboundEntity implements Persistable<AiHubChannelInboun
     }
   }
 
-  @Transient
-  private boolean isNew = true;
+  @Transient private boolean isNew = true;
 
   @Override
   public boolean isNew() {

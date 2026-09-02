@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.crosshubber.portal.auth.kcadmin.KcAdminClient;
+import com.crosshubber.portal.common.NodeDates;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
 import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
@@ -182,7 +183,7 @@ public class InstallService {
               dto.put("id", v.getId());
               dto.put("version", v.getVersion());
               dto.put("digest", v.getDigest());
-              dto.put("installedAt", v.getInstalledAt().toString());
+              dto.put("installedAt", NodeDates.format(v.getInstalledAt()));
               dto.put("installedBy", v.getInstalledBy());
               dto.put("status", v.getStatus());
               return dto;
@@ -479,11 +480,19 @@ public class InstallService {
     }
   }
 
-  /** sha256 over deterministic (recursively key-sorted) JSON. */
+  /**
+   * sha256 over Node's digest JSON — {@code JSON.stringify(manifest,
+   * Object.keys(manifest).sort())}. The replacer array allow-lists the manifest's top-level key
+   * names at EVERY depth; V8 emits keys in replacer-array order (sorted), so nested objects not
+   * containing those exact key names collapse to empty objects.
+   */
   private String digest(JsonNode manifest) {
+    List<String> allow = new java.util.ArrayList<>();
+    manifest.fieldNames().forEachRemaining(allow::add);
+    java.util.Collections.sort(allow);
     try {
-      Object sorted = sortKeys(manifest);
-      byte[] bytes = objectMapper.writeValueAsBytes(sorted);
+      Object filtered = filterKeys(manifest, allow);
+      byte[] bytes = objectMapper.writeValueAsBytes(filtered);
       byte[] hash = MessageDigest.getInstance("SHA-256").digest(bytes);
       StringBuilder hex = new StringBuilder();
       for (byte b : hash) {
@@ -495,21 +504,20 @@ public class InstallService {
     }
   }
 
-  private Object sortKeys(JsonNode node) {
+  private Object filterKeys(JsonNode node, List<String> allow) {
     if (node.isObject()) {
       Map<String, Object> out = new LinkedHashMap<>();
-      List<String> names = new java.util.ArrayList<>();
-      node.fieldNames().forEachRemaining(names::add);
-      java.util.Collections.sort(names);
-      for (String name : names) {
-        out.put(name, sortKeys(node.get(name)));
+      for (String name : allow) {
+        if (node.has(name)) {
+          out.put(name, filterKeys(node.get(name), allow));
+        }
       }
       return out;
     }
     if (node.isArray()) {
       List<Object> out = new java.util.ArrayList<>();
       for (JsonNode item : node) {
-        out.add(sortKeys(item));
+        out.add(filterKeys(item, allow));
       }
       return out;
     }

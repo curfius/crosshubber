@@ -69,6 +69,14 @@ public class AiHubWebhookController {
   @PostMapping("/api/ai-hub/webhooks/telegram/{channelId}")
   public ResponseEntity<?> telegram(@PathVariable String channelId, HttpServletRequest request)
       throws IOException {
+    // Body parsing happens BEFORE any handler checks in Node (express.json middleware) — a
+    // malformed body must 500 regardless of channel existence/secret, so parse first.
+    Object payload = readJson(request);
+    if (payload == null) {
+      // Mirrors Node: express.json() SyntaxError funnels into the global errorHandler →
+      // 500 {"error":"internal server error"} (middleware/errors.ts ignores the 400 status).
+      return ResponseEntity.status(500).body(Map.of("error", "internal server error"));
+    }
     AiHubChannelEntity channel = channelsService.get(channelId);
     if (channel == null || !"telegram".equals(channel.getType())) {
       return ResponseEntity.status(404).body(Map.of("error", "not found"));
@@ -81,11 +89,12 @@ public class AiHubWebhookController {
     if (!telegramClient.verifyWebhookSecret(secret, creds)) {
       return ResponseEntity.status(401).body(Map.of("error", "invalid secret token"));
     }
-    Map<String, Object> payload = readJson(request);
-    if (payload == null) {
-      return ResponseEntity.ok(Map.of("ok", true));
-    }
-    ChannelPipeline.InboundMessage msg = toPipeline(telegramClient.parseInbound(payload));
+    // Valid JSON that is not an object (e.g. an array) parses fine in Node and yields no inbound
+    // message → 200 {ok:true}.
+    ChannelPipeline.InboundMessage msg =
+        payload instanceof Map<?, ?> map
+            ? toPipeline(telegramClient.parseInbound(asStringMap(map)))
+            : null;
     return handleInbound(channelId, msg);
   }
 
@@ -178,13 +187,18 @@ public class AiHubWebhookController {
   }
 
   @SuppressWarnings("unchecked")
-  private Map<String, Object> readJson(HttpServletRequest request) {
+  private Object readJson(HttpServletRequest request) {
     try {
       String raw = readRawBody(request);
-      return objectMapper.readValue(raw, Map.class);
+      return objectMapper.readValue(raw, Object.class);
     } catch (Exception e) {
       log.debug("[ai-hub] webhook body not JSON: {}", e.getMessage());
       return null;
     }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> asStringMap(Object map) {
+    return (Map<String, Object>) map;
   }
 }

@@ -70,7 +70,18 @@ public class EntryPointGroupsController {
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> reorder(@RequestBody Map<String, Object> body) {
     Object keys = body == null ? null : body.get("keys");
-    if (!(keys instanceof List<?> list) || list.stream().anyMatch(k -> !(k instanceof String))) {
+    // Missing or empty keys → 200 {ok:true} (no-op)
+    if (keys == null) {
+      return ResponseEntity.ok(Map.of("ok", true));
+    }
+    if (!(keys instanceof List<?> list)) {
+      return ResponseEntity.badRequest()
+          .body(Map.of("error", "keys: Invalid input: expected array, received undefined"));
+    }
+    if (list.isEmpty()) {
+      return ResponseEntity.ok(Map.of("ok", true));
+    }
+    if (list.stream().anyMatch(k -> !(k instanceof String))) {
       return ResponseEntity.badRequest().body(Map.of("error", "keys must be an array of strings"));
     }
     @SuppressWarnings("unchecked")

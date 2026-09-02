@@ -58,18 +58,29 @@
       "publicClient": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
       "redirectUris": [
         "http://localhost:18084/*",
-        "http://localhost:28084/*"
+        "http://localhost:28084/*",
+        "http://localhost:3000/*"
       ],
       "webOrigins": [
         "+"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:18084/*##http://localhost:28084/*"
-      }
+        "post.logout.redirect.uris": "http://localhost:18084/*##http://localhost:28084/*##http://localhost:3000/*"
+      },
+      "defaultClientScopes": [
+        "profile",
+        "email",
+        "roles",
+        "web-origins"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
     },
     {
       "clientId": "portal-admin",

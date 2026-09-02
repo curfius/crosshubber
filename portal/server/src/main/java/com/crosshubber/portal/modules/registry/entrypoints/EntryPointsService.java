@@ -38,7 +38,7 @@ public class EntryPointsService {
 
   // ── Output mapping ───────────────────────────────────────────────────
 
-  /** Output DTO — mirrors rowToOutput in entry-points.service.ts. */
+  /** Output DTO — mirrors rowToOutput in entry-points.service.ts (key order matters). */
   public static Map<String, Object> toOutput(EntryPointEntity ep) {
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("id", ep.getId());
@@ -46,15 +46,21 @@ public class EntryPointsService {
     out.put("entryKey", ep.getEntryKey());
     out.put("category", ep.getCategory());
     out.put("name", ep.getName());
+    out.put("type", ep.getType());
+    out.put("sortOrder", ep.getSortOrder());
+    out.put("active", ep.getActive());
+    out.put("multi", ep.getMulti());
     if (notBlank(ep.getDescription())) {
       out.put("description", ep.getDescription());
     }
-    out.put("type", ep.getType());
     if (notBlank(ep.getUrl())) {
       out.put("url", ep.getUrl());
     }
     if (notBlank(ep.getSandbox())) {
-      out.put("sandbox", ep.getSandbox());
+      String[] sandboxArray = ep.getSandbox().split(",");
+      if (sandboxArray.length > 0 && !sandboxArray[0].isEmpty()) {
+        out.put("sandbox", java.util.Arrays.asList(sandboxArray));
+      }
     }
     if (notBlank(ep.getAllow())) {
       out.put("allow", ep.getAllow());
@@ -74,19 +80,16 @@ public class EntryPointsService {
     if (notBlank(ep.getGroupKey())) {
       out.put("groupKey", ep.getGroupKey());
     }
-    out.put("sortOrder", ep.getSortOrder());
     List<String> roles = Roles.parse(ep.getRoles());
     if (!roles.isEmpty()) {
       out.put("roles", roles);
     }
-    out.put("active", ep.getActive());
     if (notBlank(ep.getIcon())) {
       out.put("icon", ep.getIcon());
     }
     if (notBlank(ep.getColor())) {
       out.put("color", ep.getColor());
     }
-    out.put("multi", ep.getMulti());
     return out;
   }
 
@@ -169,8 +172,20 @@ public class EntryPointsService {
       if (element == null || !element.matches("^[a-z][a-z0-9-]*$")) {
         return "mfe entry points require a valid element name";
       }
-      if (isPortalOrigin(entryUrl) && !entryUrl.endsWith(".js")) {
-        return "mfe entryUrl must not point to portal SPA — use a .js bundle URL";
+      // Check if entryUrl points to portal SPA (must be a .js bundle)
+      if (isPortalOrigin(entryUrl)) {
+        try {
+          URI uri = URI.create(entryUrl);
+          String path = uri.getPath();
+          if (path == null || !path.endsWith(".js")) {
+            return "mfe entryUrl must not point to portal SPA — use a .js bundle URL";
+          }
+        } catch (Exception e) {
+          // If URL parsing fails, fall back to simple endsWith check
+          if (!entryUrl.endsWith(".js")) {
+            return "mfe entryUrl must not point to portal SPA — use a .js bundle URL";
+          }
+        }
       }
     }
     return null;

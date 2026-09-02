@@ -57,8 +57,10 @@ public class NavigationFeaturesController {
   }
 
   private static Map<String, Object> featurePayload(Map<String, Object> settings) {
-    return Map.of(
-        "pinnedAppsEnabled", Boolean.TRUE.equals(settings.get("pinnedAppsEnabled")),
-        "workspacesEnabled", Boolean.TRUE.equals(settings.get("workspacesEnabled")));
+    // LinkedHashMap: Map.of iteration order is unspecified — key order must match Node.
+    Map<String, Object> out = new java.util.LinkedHashMap<>();
+    out.put("pinnedAppsEnabled", Boolean.TRUE.equals(settings.get("pinnedAppsEnabled")));
+    out.put("workspacesEnabled", Boolean.TRUE.equals(settings.get("workspacesEnabled")));
+    return out;
   }
 }

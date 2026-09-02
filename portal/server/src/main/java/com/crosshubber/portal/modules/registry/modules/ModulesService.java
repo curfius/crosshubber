@@ -58,7 +58,7 @@ public class ModulesService {
     if (m.getSourceUrl() != null) {
       out.put("sourceUrl", m.getSourceUrl());
     }
-    List<String> securityRoles = parseSecurityRoles(m.getSecurityRoles());
+    List<Map<String, Object>> securityRoles = parseSecurityRolesObjects(m.getSecurityRoles());
     if (!securityRoles.isEmpty()) {
       out.put("securityRoles", securityRoles);
     }
@@ -82,6 +82,7 @@ public class ModulesService {
     if (name == null || name.isBlank()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name is required");
     }
+    boolean isNew = !repo.existsById(key);
     ModuleEntity entity =
         repo.findById(key)
             .orElseGet(
@@ -90,14 +91,52 @@ public class ModulesService {
                   created.setKey(key);
                   return created;
                 });
+    // COALESCE semantics: set from input if present, else preserve existing
     entity.setName(name);
     if (input.get("icon") instanceof String icon) {
       entity.setIcon(icon);
     }
-    entity.setRoles("");
-    entity.setActive(true);
-    entity.setBuiltin(false);
-    entity.setManagedBy("manual");
+    if (input.get("roles") instanceof String roles) {
+      entity.setRoles(roles);
+    } else if (isNew) {
+      entity.setRoles("");
+    }
+    if (input.get("active") instanceof Boolean active) {
+      entity.setActive(active);
+    } else if (isNew) {
+      entity.setActive(true);
+    }
+    // builtin: sticky — never un-set
+    if (input.get("builtin") instanceof Boolean builtin) {
+      entity.setBuiltin(Boolean.TRUE.equals(entity.getBuiltin()) || builtin);
+    } else if (isNew) {
+      entity.setBuiltin(false);
+    }
+    if (input.get("version") instanceof String version) {
+      entity.setVersion(version);
+    }
+    if (input.get("manifestDigest") instanceof String digest) {
+      entity.setManifestDigest(digest);
+    }
+    if (input.get("managedBy") instanceof String managedBy) {
+      entity.setManagedBy(managedBy);
+    } else if (isNew) {
+      entity.setManagedBy("manual");
+    }
+    if (input.get("sourceUrl") instanceof String sourceUrl) {
+      entity.setSourceUrl(sourceUrl);
+    }
+    if (input.get("baseUrl") instanceof String baseUrl) {
+      entity.setBaseUrl(baseUrl);
+    }
+    if (input.get("health") instanceof String health) {
+      entity.setHealth(health);
+    }
+    // Node quirk: security_roles is ALWAYS overwritten — input.securityRoles ?? '[]' — because
+    // the ON CONFLICT COALESCE is fed a never-null EXCLUDED value (modules.repository.ts).
+    entity.setSecurityRoles(
+        writeJson(
+            input.get("securityRoles") == null ? java.util.List.of() : input.get("securityRoles")));
     return repo.save(entity);
   }
 
@@ -111,17 +150,20 @@ public class ModulesService {
     return repo.save(entity);
   }
 
-  /** Deletes a non-builtin module; builtin modules are protected (409). */
+  /**
+   * Deletes a non-builtin module; builtin modules are protected (409). Returns false if missing.
+   */
   @Transactional
-  public void remove(String key) {
-    ModuleEntity entity =
-        repo.findById(key)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "module not found"));
+  public boolean remove(String key) {
+    ModuleEntity entity = repo.findById(key).orElse(null);
+    if (entity == null) {
+      return false;
+    }
     if (Boolean.TRUE.equals(entity.getBuiltin())) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "built-in modules cannot be deleted");
     }
     repo.delete(entity);
+    return true;
   }
 
   /** Declared manager role keys from security_roles (used by module-settings). */
@@ -149,8 +191,27 @@ public class ModulesService {
     }
   }
 
+  private List<Map<String, Object>> parseSecurityRolesObjects(String json) {
+    try {
+      if (json == null || json.isBlank()) {
+        return List.of();
+      }
+      return objectMapper.readValue(json, new TypeReference<>() {});
+    } catch (Exception e) {
+      return List.of();
+    }
+  }
+
   private static String string(Object value) {
     return value instanceof String s ? s : null;
+  }
+
+  private String writeJson(Object value) {
+    try {
+      return objectMapper.writeValueAsString(value);
+    } catch (Exception e) {
+      throw new IllegalStateException("security roles serialization failed", e);
+    }
   }
 
   private static boolean notBlank(String value) {

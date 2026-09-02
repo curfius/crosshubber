@@ -22,11 +22,14 @@ public class InstanceSettingsService {
   private static final Logger log = LoggerFactory.getLogger(InstanceSettingsService.class);
 
   /** Mirrors DEFAULT_SETTINGS in settings.repository.ts. */
-  static final Map<String, Object> DEFAULT_SETTINGS =
-      Map.of(
-          "homeApp", "portal-navigation:portal",
-          "pinnedAppsEnabled", true,
-          "workspacesEnabled", true);
+  static final Map<String, Object> DEFAULT_SETTINGS;
+
+  static {
+    DEFAULT_SETTINGS = new LinkedHashMap<>();
+    DEFAULT_SETTINGS.put("homeApp", "portal-navigation:portal");
+    DEFAULT_SETTINGS.put("pinnedAppsEnabled", true);
+    DEFAULT_SETTINGS.put("workspacesEnabled", true);
+  }
 
   private final InstanceSettingsRepository repo;
   private final ObjectMapper objectMapper;
@@ -74,12 +77,12 @@ public class InstanceSettingsService {
   private Map<String, Object> parseJson(String raw) {
     try {
       if (raw == null || raw.isBlank()) {
-        return Map.of();
+        return new LinkedHashMap<>();
       }
       return objectMapper.readValue(raw, new TypeReference<LinkedHashMap<String, Object>>() {});
     } catch (Exception e) {
       log.warn("[settings] unparseable stored settings: {}", e.getMessage());
-      return Map.of();
+      return new LinkedHashMap<>();
     }
   }
 

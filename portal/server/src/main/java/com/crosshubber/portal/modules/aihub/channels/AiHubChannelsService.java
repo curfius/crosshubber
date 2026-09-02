@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.crosshubber.portal.common.NodeDates;
 import com.crosshubber.portal.modules.aihub.channels.dto.ChannelCredentials;
 import com.crosshubber.portal.security.CryptoService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -21,7 +22,7 @@ import jakarta.persistence.PersistenceContext;
 
 /**
  * Channel store — mirrors {@code portal/src/modules/ai-hub/channels.repository.ts}: credentials
- * encrypted (AES-GCM), config merges (JSONB ||), status shallow-merge with null-clearing.
+ * encrypted (AES-GCM), config merges (JSONB ||), status shallow-merge preserving explicit nulls.
  */
 @Service
 public class AiHubChannelsService {
@@ -48,9 +49,7 @@ public class AiHubChannelsService {
 
   @Transactional(readOnly = true)
   public List<Map<String, Object>> listPublic() {
-    return channelRepo.findAllByOrderByCreatedAtAsc().stream()
-        .map(this::toPublic)
-        .toList();
+    return channelRepo.findAllByOrderByCreatedAtAsc().stream().map(this::toPublic).toList();
   }
 
   @Transactional(readOnly = true)
@@ -148,8 +147,9 @@ public class AiHubChannelsService {
   }
 
   /**
-   * Shallow-merges a patch into the channel status JSONB. A {@code null} value clears the key
-   * (mirrors the Node JSONB merge + null semantics).
+   * Shallow-merges a patch into the channel status JSONB — top-level key replace. Explicit {@code
+   * null} values are KEPT as key-with-null (mirrors the Node JSONB {@code ||} merge, which
+   * preserves nulls — e.g. {@code lastError: null} stays after a clear).
    */
   @Transactional
   public void updateStatus(String id, Map<String, Object> patch) {
@@ -158,13 +158,7 @@ public class AiHubChannelsService {
       return;
     }
     Map<String, Object> status = parseJson(channel.getStatus());
-    for (Map.Entry<String, Object> entry : patch.entrySet()) {
-      if (entry.getValue() == null) {
-        status.remove(entry.getKey());
-      } else {
-        status.put(entry.getKey(), entry.getValue());
-      }
-    }
+    status.putAll(patch);
     channel.setStatus(writeJson(status));
     channelRepo.save(channel);
   }
@@ -198,8 +192,8 @@ public class AiHubChannelsService {
     out.put("meta", parseStatic(c.getCredentialsMeta(), objectMapper));
     out.put("config", parseStatic(c.getConfig(), objectMapper));
     out.put("status", parseStatic(c.getStatus(), objectMapper));
-    out.put("createdAt", c.getCreatedAt().toString());
-    out.put("updatedAt", c.getUpdatedAt().toString());
+    out.put("createdAt", NodeDates.format(c.getCreatedAt()));
+    out.put("updatedAt", NodeDates.format(c.getUpdatedAt()));
     return out;
   }
 

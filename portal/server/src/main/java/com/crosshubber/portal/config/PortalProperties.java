@@ -112,6 +112,25 @@ public class PortalProperties {
     this.issuer = issuer;
   }
 
+  /**
+   * Effective OIDC issuer — the browser-facing Keycloak URL. When {@code keycloak-public-url} is
+   * set (e.g. compose: browser sees {@code localhost:28080} while the server sees {@code
+   * keycloak:8080}), it replaces the issuer host; the realm path is carried over. This must match
+   * what the Keycloak metadata advertises as {@code issuer} (KC_HOSTNAME) and be reachable by the
+   * browser for redirects.
+   */
+  public String getEffectiveIssuer() {
+    if (keycloakPublicUrl == null || keycloakPublicUrl.isBlank()) {
+      return issuer;
+    }
+    String publicBase = keycloakPublicUrl.replaceAll("/+$", "");
+    if (publicBase.contains("/realms/")) {
+      return publicBase;
+    }
+    int idx = issuer.indexOf("/realms/");
+    return idx >= 0 ? publicBase + issuer.substring(idx) : publicBase;
+  }
+
   public String getClientSecret() {
     return clientSecret;
   }

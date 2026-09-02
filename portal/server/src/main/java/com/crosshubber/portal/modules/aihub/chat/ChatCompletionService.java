@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.stereotype.Service;
 
@@ -30,7 +31,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Service
 public class ChatCompletionService {
 
-  private static final Duration COMPLETION_TIMEOUT = Duration.ofSeconds(60);
+  static final Duration COMPLETION_TIMEOUT = Duration.ofSeconds(60);
 
   private final AiHubProvidersService providersService;
   private final ObjectMapper objectMapper;
@@ -93,7 +94,9 @@ public class ChatCompletionService {
       List<Map<String, String>> nonSystem = new ArrayList<>();
       for (Map<String, String> m : messages) {
         if ("system".equals(m.get("role"))) {
-          systemContent = m.get("content");
+          if (systemContent == null) {
+            systemContent = m.get("content");
+          }
         } else {
           nonSystem.add(m);
         }
@@ -164,16 +167,24 @@ public class ChatCompletionService {
   }
 
   /**
-   * Pumps the upstream SSE body, invoking {@code onContent} per normalized delta and finally
-   * signalling end-of-stream. Never throws mid-stream — failures just end the stream (mirrors
-   * streamCompletion).
+   * Pumps the upstream SSE body, invoking {@code onContent} per normalized delta. Returns {@code
+   * true} when the body was consumed to completion and {@code false} on mid-stream failure or when
+   * the {@code timeoutMillis} body-read cap expired (mirrors streamCompletion: the 60s hard cap
+   * covers connect <em>and</em> body read).
    */
-  public void pumpStream(
-      String providerId, HttpResponse<InputStream> response, ContentConsumer onContent) {
+  public boolean pumpStream(
+      String providerId,
+      HttpResponse<InputStream> response,
+      ContentConsumer onContent,
+      long timeoutMillis) {
+    long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
     try (BufferedReader reader =
         new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
       String line;
       while ((line = reader.readLine()) != null) {
+        if (System.nanoTime() - deadlineNanos > 0) {
+          return false;
+        }
         String trimmed = line.trim();
         if (trimmed.isEmpty() || !trimmed.startsWith("data: ")) {
           continue;
@@ -194,7 +205,9 @@ public class ChatCompletionService {
       }
     } catch (Exception streamFailure) {
       // mid-stream failures simply end the stream
+      return false;
     }
+    return true;
   }
 
   @FunctionalInterface
@@ -211,7 +224,7 @@ public class ChatCompletionService {
           "provider API returned " + response.statusCode() + ": " + errText, response.statusCode());
     }
     StringBuilder full = new StringBuilder();
-    pumpStream(req.providerId(), response, full::append);
+    pumpStream(req.providerId(), response, full::append, COMPLETION_TIMEOUT.toMillis());
     return full.toString();
   }
 

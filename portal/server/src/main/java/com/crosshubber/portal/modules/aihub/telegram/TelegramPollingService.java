@@ -15,6 +15,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import com.crosshubber.portal.common.NodeDates;
 import com.crosshubber.portal.modules.aihub.channels.AiHubChannelEntity;
 import com.crosshubber.portal.modules.aihub.channels.AiHubChannelsService;
 import com.crosshubber.portal.modules.aihub.channels.dto.ChannelCredentials;
@@ -154,7 +155,7 @@ public class TelegramPollingService {
           }
           Map<String, Object> status = new java.util.LinkedHashMap<>();
           status.put("pollOffset", newOffset);
-          status.put("pollLastPollAt", Instant.now().toString());
+          status.put("pollLastPollAt", NodeDates.format(Instant.now()));
           status.put("pollRunning", true);
           status.put("lastError", null);
           status.put("lastErrorAt", null);
@@ -195,7 +196,7 @@ public class TelegramPollingService {
   private void recordError(String channelId, String message) {
     Map<String, Object> failure = new java.util.LinkedHashMap<>();
     failure.put("lastError", message);
-    failure.put("lastErrorAt", Instant.now().toString());
+    failure.put("lastErrorAt", NodeDates.format(Instant.now()));
     failure.put("pollRunning", true);
     channelsService.updateStatus(channelId, failure);
   }
@@ -210,8 +211,7 @@ public class TelegramPollingService {
 
   private long statusLong(AiHubChannelEntity row, String key) {
     try {
-      var status =
-          objectMapper.readTree(row.getStatus() == null ? "{}" : row.getStatus());
+      var status = objectMapper.readTree(row.getStatus() == null ? "{}" : row.getStatus());
       return status.path(key).asLong(0);
     } catch (Exception e) {
       return 0;

@@ -88,10 +88,21 @@ public class EntryPointsController {
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> reorder(@RequestBody Map<String, Object> body) {
     Object idsRaw = body == null ? null : body.get("ids");
-    if (!(idsRaw instanceof List<?> ids) || ids.stream().anyMatch(i -> !(i instanceof Number))) {
+    // Missing or empty ids → 200 {ok:true} (no-op)
+    if (idsRaw == null) {
+      return ResponseEntity.ok(Map.of("ok", true));
+    }
+    if (!(idsRaw instanceof List<?> ids)) {
+      return ResponseEntity.badRequest()
+          .body(Map.of("error", "ids: Invalid input: expected array, received undefined"));
+    }
+    if (ids.isEmpty()) {
+      return ResponseEntity.ok(Map.of("ok", true));
+    }
+    if (ids.stream().anyMatch(i -> !(i instanceof Number))) {
       return ResponseEntity.badRequest().body(Map.of("error", "ids must be an array of numbers"));
     }
-    List<Long> idList = ((List<?>) idsRaw).stream().map(i -> ((Number) i).longValue()).toList();
+    List<Long> idList = ids.stream().map(i -> ((Number) i).longValue()).toList();
     entryPointsService.reorder(idList);
     return ResponseEntity.ok(Map.of("ok", true));
   }

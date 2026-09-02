@@ -24,7 +24,8 @@ import com.crosshubber.portal.modules.i18n.I18nService;
 @RestController
 public class I18nLabelsController {
 
-  private static final String LANG_CODE_RE = "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$";
+  // (?i) mirrors Node's case-insensitive LANG_CODE_RE (i18n.routes.ts:9).
+  private static final String LANG_CODE_RE = "(?i)^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$";
   private static final String I18N_KEY_RE = "^[a-z0-9]+(?:[.-][a-z0-9]+)+$";
 
   private final I18nService i18nService;

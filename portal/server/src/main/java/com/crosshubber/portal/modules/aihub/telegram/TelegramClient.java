@@ -211,8 +211,7 @@ public class TelegramClient {
         long updateId = update.path("update_id").asLong(0);
         InboundMessage message =
             parseInbound(
-                objectMapper.convertValue(
-                    update, new TypeReference<Map<String, Object>>() {}));
+                objectMapper.convertValue(update, new TypeReference<Map<String, Object>>() {}));
         updates.add(new TelegramUpdate(updateId, message));
       }
     } catch (Exception ignored) {

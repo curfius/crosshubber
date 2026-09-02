@@ -18,7 +18,10 @@ import com.crosshubber.portal.modules.i18n.I18nService;
 @RestController
 public class I18nLanguagesController {
 
-  private static final String LANG_CODE_RE = "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$";
+  // (?i) mirrors Node's case-insensitive LANG_CODE_RE (i18n.routes.ts:9) — an uppercase code
+  // passes the regex and then falls through to the 404 "unknown language" path (codes are
+  // stored lowercase).
+  private static final String LANG_CODE_RE = "(?i)^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$";
 
   private final I18nService i18nService;
 

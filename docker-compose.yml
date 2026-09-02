@@ -70,6 +70,7 @@ services:
       PGSCHEMA: ${PGSCHEMA:-dev}
       PUBLIC_BASE_URL: ${PORTAL_PUBLIC_URL:-http://localhost:28084}
       OIDC_ISSUER: http://keycloak:8080/realms/${REALM_NAME:-dev}
+      KEYCLOAK_PUBLIC_URL: ${KC_PUBLIC_URL:-http://localhost:28080}
       SSRF_ALLOW_PRIVATE: "true"
       KEYCLOAK_ADMIN_BASE_URL: http://keycloak:8080
       KEYCLOAK_ADMIN_CLIENT_ID: portal-admin

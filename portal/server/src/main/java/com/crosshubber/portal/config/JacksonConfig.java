@@ -12,6 +12,10 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
  * Jackson configuration.
  *
  * <p>Note: Spring Boot 3.4 uses tools.jackson (Jackson 3) — register JSR310 for Instant.
+ *
+ * <p>Why a custom bare mapper? Each DTO controls its own null/empty inclusion (mirrors Node's
+ * per-endpoint behavior). The global {@code spring.jackson.*} properties in application.yml are
+ * dead because this bean backs off auto-configuration.
  */
 @Configuration
 public class JacksonConfig {

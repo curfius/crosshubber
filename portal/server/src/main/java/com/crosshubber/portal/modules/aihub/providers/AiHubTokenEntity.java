@@ -3,15 +3,15 @@ package com.crosshubber.portal.modules.aihub.providers;
 import java.time.Instant;
 
 import org.hibernate.annotations.JdbcTypeCode;
-import org.springframework.data.domain.Persistable;
 import org.hibernate.type.SqlTypes;
+import org.springframework.data.domain.Persistable;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
-import jakarta.persistence.PostLoad;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
@@ -68,8 +68,7 @@ public class AiHubTokenEntity implements Persistable<String> {
     updatedAt = Instant.now();
   }
 
-    @Transient
-  private boolean isNew = true;
+  @Transient private boolean isNew = true;
 
   @Override
   public boolean isNew() {
@@ -80,7 +79,8 @@ public class AiHubTokenEntity implements Persistable<String> {
   void markNotNew() {
     this.isNew = false;
   }
-public String getId() {
+
+  public String getId() {
     return id;
   }
 

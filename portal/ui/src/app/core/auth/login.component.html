@@ -36,34 +36,17 @@
     </div>
     }
 
-    <form class="flex flex-col gap-4" (ngSubmit)="onSubmit()">
-      <div class="flex flex-col gap-1.5">
-        <label for="username" class="ds-label block">{{ i18n.t('login.username') }}</label>
-        <input id="username" name="username" type="text" autocomplete="username" required autofocus
-          [(ngModel)]="username"
-          class="ds-input" />
-      </div>
-
-      <div class="flex flex-col gap-1.5">
-        <label for="password" class="ds-label block">{{ i18n.t('login.password') }}</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required
-          [(ngModel)]="password"
-          class="ds-input" />
-      </div>
-
-      <button type="submit" [disabled]="busy()"
-        class="ds-btn ds-btn-gradient ds-btn-lg mt-2 w-full">
-        @if (busy()) {
+    <div class="flex flex-col items-center gap-4">
+      @if (!error()) {
+      <div class="flex items-center gap-2">
         <svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
         </svg>
-        <span>{{ i18n.t('login.signingIn') }}</span>
-        } @else {
-        <span>{{ i18n.t('login.signIn') }}</span>
-        }
-      </button>
-    </form>
+        <span class="text-sm text-[var(--portal-text-secondary)]">{{ i18n.t('login.signingIn') }}</span>
+      </div>
+      }
+    </div>
 
     <p class="mt-6 text-center text-xs text-[var(--portal-text-muted)]">
       {{ i18n.t('login.footer') }}

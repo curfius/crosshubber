@@ -1,19 +1,12 @@
 package com.crosshubber.portal.auth;
 
-import java.util.Map;
-import java.util.UUID;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.portal.config.PortalProperties;
 import com.crosshubber.portal.security.PortalSessionFilter;
-import com.crosshubber.portal.security.PortalUser;
 import com.crosshubber.portal.security.SessionData;
 import com.crosshubber.portal.security.SessionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,9 +15,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Auth routes — login, logout.
+ * Auth routes — login start + logout.
  *
- * <p>Mirrors {@code portal/src/modules/auth/auth.routes.ts}.
+ * <p>Mirrors {@code portal/src/modules/auth/auth.routes.ts}: login start now redirects into the
+ * standard OIDC authorization-code flow (Spring Security oauth2-client), and logout redirects to
+ * the Keycloak end-session endpoint for valid sessions, {@code /login} for anonymous visitors.
  */
 @RestController
 public class AuthController {
@@ -47,78 +42,47 @@ public class AuthController {
     this.mapper = mapper;
   }
 
-  /** GET /api/login/start — returns flowId (compat stub). */
+  /**
+   * GET /api/login/start — 302 to the OAuth2 authorization endpoint.
+   *
+   * <p>Keeps the UI contract ({@code window.location.href = '/api/login/start'}); the
+   * authorization-code + PKCE dance is owned by Spring Security's oauth2-client filters.
+   */
   @GetMapping("/api/login/start")
-  public ResponseEntity<Map<String, String>> loginStart() {
-    String flowId = UUID.randomUUID().toString();
-    log.info("[auth] login start flowId={}", flowId);
-    return ResponseEntity.ok(Map.of("flowId", flowId));
+  public void loginStart(HttpServletResponse response) throws Exception {
+    log.info("[auth] login start — redirecting to OAuth2 authorization endpoint");
+    response.sendRedirect("/oauth2/authorization/portal");
   }
 
   /**
-   * POST /api/login — {flowId, username, password} -> {ok, user} + Set-Cookie.
-   *
-   * <p>Mirrors Node login flow (without PKCE scraping, uses password grant).
+   * GET /logout — clears the session cookie, then redirects: valid session → Keycloak end-session
+   * with {@code id_token_hint}; anonymous or invalid/expired session → {@code /login} (mirrors
+   * Node: {@code decodeSession} is expiry-checked, so stale cookies take the anonymous path).
    */
-  @PostMapping("/api/login")
-  public ResponseEntity<Map<String, Object>> login(
-      @RequestBody Map<String, String> body, HttpServletResponse response) {
-    String flowId = body.get("flowId");
-    String username = body.get("username");
-    String password = body.get("password");
-    if (username == null || username.isBlank() || password == null || password.isBlank()) {
-      return ResponseEntity.badRequest().body(Map.of("error", "username and password required"));
-    }
-    log.info("[auth] login attempt user={} flowId={}", username, flowId);
-
-    KeycloakService.LoginResult result = keycloak.authenticate(username, password);
-    if (!result.ok()) {
-      log.warn("[auth] login failed user={} error={}", username, result.error());
-      return ResponseEntity.ok(
-          Map.of(
-              "ok",
-              false,
-              "error",
-              result.error() != null ? result.error() : "invalid credentials"));
-    }
-
-    PortalUser user = result.user();
-    long exp = System.currentTimeMillis() + props.getSessionMaxAge();
-    SessionData data = new SessionData(user, result.idToken(), result.refreshToken(), exp);
-    String token = PortalSessionFilter.encodeSession(data, props.getSessionSecret(), mapper);
-    sessionService.registerSession(token, exp);
-
-    response.addHeader("Set-Cookie", PortalSessionFilter.sessionCookie(token, props));
-    log.info("[auth] login ok user={} exp={}", user.name(), exp);
-    return ResponseEntity.ok(
-        Map.of(
-            "ok",
-            true,
-            "user",
-            Map.of(
-                "sub", user.sub(),
-                "name", user.name(),
-                "email", user.email() != null ? user.email() : "",
-                "roles", user.roles())));
-  }
-
-  /** GET /logout — clears cookie and redirects to Keycloak logout. */
   @GetMapping("/logout")
   public void logout(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    String cookie = request.getHeader("Cookie");
-    String token = PortalSessionFilter.parseCookie(cookie, "portalSession");
-    String idToken = null;
+    String token = PortalSessionFilter.parseCookie(request.getHeader("Cookie"), "portalSession");
+    SessionData session =
+        token != null
+            ? PortalSessionFilter.decodeRaw(token, props.getSessionSecret(), mapper)
+            : null;
+    // Expiry check — decodeSession semantics (decodeRaw skips it)
+    if (session != null && session.exp() < System.currentTimeMillis()) {
+      session = null;
+    }
     if (token != null) {
       sessionService.revokeSession(token);
-      SessionData raw = PortalSessionFilter.decodeRaw(token, props.getSessionSecret(), mapper);
-      if (raw != null) {
-        idToken = raw.idToken();
-      }
     }
-    // Clear cookie
-    response.addHeader("Set-Cookie", "portalSession=; Path=/; HttpOnly; Max-Age=0; SameSite=Lax");
-    String redirect = keycloak.logoutUrl(idToken, props.getPublicBaseUrl() + "/login");
-    log.info("[auth] logout redirect={}", redirect);
-    response.sendRedirect(redirect);
+    response.addHeader(
+        "Set-Cookie",
+        PortalSessionFilter.COOKIE_NAME + "=; Path=/; HttpOnly; Max-Age=0; SameSite=Lax");
+    if (session != null) {
+      String redirect = keycloak.logoutUrl(session.idToken(), props.getPublicBaseUrl() + "/login");
+      log.info("[auth] logout → Keycloak end-session");
+      response.sendRedirect(redirect);
+      return;
+    }
+    log.info("[auth] logout anonymous → /login");
+    response.sendRedirect("/login");
   }
 }

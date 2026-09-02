@@ -41,9 +41,7 @@ spring:
     schemas: ${PGSCHEMA:${TENANT_SLUG:dev}}
     locations: classpath:db/migration
     baseline-on-migrate: true
-  jackson:
-    serialization.write-dates-as-timestamps: false
-    default-property-inclusion: non_null
+  # Jackson config: see JacksonConfig.java (custom ObjectMapper per-DTO null/empty control)
 
 # Keycloak Admin (optional — all 4 must be present)
 portal.kc-admin:

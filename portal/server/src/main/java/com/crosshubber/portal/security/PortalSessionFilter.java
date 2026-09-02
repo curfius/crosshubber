@@ -88,7 +88,7 @@ public class PortalSessionFilter extends OncePerRequestFilter {
     SessionData renewed =
         new SessionData(result.user(), result.idToken(), result.refreshToken(), exp);
     String newToken = encodeSession(renewed, props.getSessionSecret(), objectMapper);
-    sessionService.registerSession(newToken, exp);
+    sessionService.registerSession(newToken, exp, result.idToken());
     response.addHeader("Set-Cookie", sessionCookie(newToken, props));
     setAuthentication(renewed);
     log.info("[auth] session refreshed for user={}", result.user().name());

@@ -29,6 +29,7 @@ public class NavigationShellTreeController {
   }
 
   @GetMapping("/api/navigation/shell-tree")
+  @PreAuthorize("hasRole('portal-navigation-edit')")
   public ResponseEntity<?> get(
       @AuthenticationPrincipal PortalUser user, @RequestParam(required = false) String category) {
     if (!isShellCategory(category)) {
@@ -48,13 +49,13 @@ public class NavigationShellTreeController {
       return ResponseEntity.badRequest()
           .body(Map.of("error", "category must be settings|user-settings"));
     }
-    if (body == null
-        || !body.has("groups")
-        || !body.has("items")
-        || !body.get("groups").isArray()
-        || !body.get("items").isArray()) {
+    if (body == null || !body.has("groups") || !body.get("groups").isArray()) {
       return ResponseEntity.badRequest()
-          .body(Map.of("error", "groups and items arrays are required"));
+          .body(Map.of("error", "groups: Invalid input: expected array, received undefined"));
+    }
+    if (!body.has("items") || !body.get("items").isArray()) {
+      return ResponseEntity.badRequest()
+          .body(Map.of("error", "items: Invalid input: expected array, received undefined"));
     }
     try {
       return ResponseEntity.ok(shellTreeService.saveShellTree(category, body));

@@ -49,6 +49,25 @@ Env (`TENANT_SLUG`, `PUBLIC_BASE_URL`, `OIDC_ISSUER`, `PGHOST` etc.) mirrors
   AI Hub provider catalog, instance settings, i18n languages/labels, tenant_meta).
   It is fail-fast: a seeding error aborts boot.
 
+## Contract parity — accepted divergences
+
+The Java portal aims for byte-level API contract parity with the Node reference
+(`genportal/portal`) for identical data; a contract-diff harness
+(`node scripts/contract-diff/harness.mjs` — see `scripts/contract-diff/`) replays both stacks
+and reports diffs. The following divergences are **intentional** (Java keeps its behavior):
+
+| # | Case | Java | Node | Why |
+|---|---|---|---|---|
+| 1 | Proxy upstream fetch failure | 502 `{"error":"upstream fetch failed"}` | 500 `{"error":"internal server error"}` | More accurate status |
+| 2 | Scalar JSON body on PUT/POST | 400 `{"error":"invalid request body"}` | 500 | Correct status |
+| 3 | Tenant config digest | `Object.hashCode()` hex | Node digest algo | Only recorded in `tenant_meta` |
+| 4 | Models listing token pick | first **enabled** token | first token (any state) | More sensible |
+| 5 | `roles` storage | comma-joined TEXT (V11) | `text[]` | Role keys are kebab-case (validated) — no commas possible |
+| 6 | `GET /api/mfe/foo` (no trailing path) | 400 `{"error":"bad path"}` | 404 HTML | JSON is more consistent |
+
+Byte-diffs reported by the harness are limited to volatile fields (UUIDs, timestamps,
+`contentVersion`, masked secrets, per-stack webhook URLs, DB-name in the psql hint).
+
 ## Style
 
 - Google Java Style (2 spaces, 100 col) — `mvn spotless:check` + `mvn checkstyle:check`

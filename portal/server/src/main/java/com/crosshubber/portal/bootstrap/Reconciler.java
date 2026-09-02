@@ -23,6 +23,9 @@ import com.crosshubber.portal.modules.i18n.settings.I18nSettingsEntity;
 import com.crosshubber.portal.modules.i18n.settings.I18nSettingsRepository;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
+import com.crosshubber.portal.modules.registry.manifest.InstallService;
+import com.crosshubber.portal.modules.registry.manifest.ManifestFetcher;
+import com.crosshubber.portal.modules.registry.manifest.ManifestValidator;
 import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
 import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
 import com.crosshubber.portal.modules.settings.instance.InstanceSettingsEntity;
@@ -66,6 +69,9 @@ public class Reconciler implements ApplicationRunner {
   private final I18nSettingsRepository i18nSettingsRepo;
   private final AiHubProviderRepository providerRepo;
   private final TenantMetaRepository tenantMetaRepo;
+  private final InstallService installService;
+  private final ManifestValidator manifestValidator;
+  private final ManifestFetcher manifestFetcher;
   private final ObjectMapper objectMapper;
 
   public Reconciler(
@@ -78,6 +84,9 @@ public class Reconciler implements ApplicationRunner {
       I18nSettingsRepository i18nSettingsRepo,
       AiHubProviderRepository providerRepo,
       TenantMetaRepository tenantMetaRepo,
+      InstallService installService,
+      ManifestValidator manifestValidator,
+      ManifestFetcher manifestFetcher,
       ObjectMapper objectMapper) {
     this.tenantLoader = tenantLoader;
     this.moduleRepo = moduleRepo;
@@ -88,6 +97,9 @@ public class Reconciler implements ApplicationRunner {
     this.i18nSettingsRepo = i18nSettingsRepo;
     this.providerRepo = providerRepo;
     this.tenantMetaRepo = tenantMetaRepo;
+    this.installService = installService;
+    this.manifestValidator = manifestValidator;
+    this.manifestFetcher = manifestFetcher;
     this.objectMapper = objectMapper;
   }
 
@@ -98,6 +110,7 @@ public class Reconciler implements ApplicationRunner {
     TenantConfigLoader.EffectiveTenantConfig tenant = tenantLoader.load();
     log.info("[reconcile] starting for tenant \"{}\"", tenant.slug());
     reconcileBuiltins();
+    reconcileExternalModules(tenant);
     reconcileProviders();
     reconcileInstanceSettings(tenant);
     reconcileI18n();
@@ -171,6 +184,83 @@ public class Reconciler implements ApplicationRunner {
                 }
               });
     }
+  }
+
+  /**
+   * Installs the tenant config's external modules — mirrors {@code reconcileExternalModules} in
+   * {@code reconcile.ts}: inline manifest or fetch via {@code fetchManifestWithRetry} (6 attempts,
+   * 3s apart; module services boot concurrently with the portal), schema-validate, key-guard,
+   * install through the registry flow, then activate per config. Re-installed on every boot (Node
+   * parity — each restart records a new module version). Any failure aborts boot.
+   */
+  private void reconcileExternalModules(TenantConfigLoader.EffectiveTenantConfig tenant) {
+    List<String> installed = new java.util.ArrayList<>();
+    for (TenantConfigLoader.DesiredExternalModule ext : tenant.external()) {
+      JsonNode rawManifest = ext.manifest();
+      if (rawManifest == null && ext.manifestUrl() != null) {
+        rawManifest = fetchManifestWithRetry(ext.manifestUrl());
+      }
+      ManifestValidator.Result parsed = manifestValidator.parse(rawManifest);
+      if (!parsed.ok()) {
+        throw new IllegalStateException(
+            "external module \""
+                + ext.key()
+                + "\" has an invalid manifest: "
+                + ManifestValidator.formatIssues(parsed.issues()));
+      }
+      if (!ext.key().equals(parsed.manifest().path("key").asText())) {
+        throw new IllegalStateException(
+            "external module \""
+                + ext.key()
+                + "\" manifest declares key \""
+                + parsed.manifest().path("key").asText()
+                + "\"");
+      }
+      installService.applyInstall(parsed.manifest(), "tenant-bootstrap:" + tenant.slug());
+      moduleRepo
+          .findById(ext.key())
+          .ifPresent(
+              module -> {
+                module.setActive(ext.active());
+                moduleRepo.save(module);
+              });
+      installed.add(ext.key());
+    }
+    if (!installed.isEmpty()) {
+      log.info("[reconcile] external modules installed: [{}]", String.join(", ", installed));
+    }
+  }
+
+  /** Mirrors {@code fetchManifestWithRetry(url, attempts=6, delayMs=3000)}. */
+  private JsonNode fetchManifestWithRetry(String url) {
+    int attempts = 6;
+    long delayMs = 3000;
+    RuntimeException lastError = null;
+    for (int attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        return manifestFetcher.fetchManifestFromUrl(url);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException("manifest fetch interrupted: " + url, e);
+      } catch (Exception e) {
+        lastError = e instanceof RuntimeException runtime ? runtime : new IllegalStateException(e);
+        if (attempt < attempts) {
+          log.warn(
+              "[reconcile] manifest fetch failed (attempt {}/{}) for {} — retrying in {}s",
+              attempt,
+              attempts,
+              url,
+              delayMs / 1000);
+          try {
+            Thread.sleep(delayMs);
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("manifest fetch interrupted: " + url, ie);
+          }
+        }
+      }
+    }
+    throw lastError;
   }
 
   /** Seeds the AI Hub provider catalog â€” add-only, never overwrites existing rows. */

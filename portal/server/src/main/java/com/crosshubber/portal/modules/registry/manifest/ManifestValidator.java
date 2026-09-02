@@ -75,7 +75,7 @@ public class ManifestValidator {
       issues.add("key: must match [a-z0-9][a-z0-9-]{0,63}");
     }
     if (!nonEmptyString(manifest.path("name"))) {
-      issues.add("name: required");
+      issues.add("name: Required");
     }
     if (!isUrl(manifest.path("baseUrl"))) {
       issues.add("baseUrl: must be a valid url");
@@ -101,6 +101,39 @@ public class ManifestValidator {
       }
     }
     manifest.set("content", content);
+
+    // capabilities, events, agentContributions defaults
+    if (!manifest.has("capabilities") || !manifest.get("capabilities").isArray()) {
+      manifest.set("capabilities", objectMapper.createArrayNode());
+    }
+    if (!manifest.has("events") || !manifest.get("events").isObject()) {
+      ObjectNode events = objectMapper.createObjectNode();
+      events.set("published", objectMapper.createArrayNode());
+      events.set("consumed", objectMapper.createArrayNode());
+      manifest.set("events", events);
+    } else {
+      ObjectNode events = (ObjectNode) manifest.get("events");
+      if (!events.has("published") || !events.get("published").isArray()) {
+        events.set("published", objectMapper.createArrayNode());
+      }
+      if (!events.has("consumed") || !events.get("consumed").isArray()) {
+        events.set("consumed", objectMapper.createArrayNode());
+      }
+    }
+    if (!manifest.has("agentContributions") || !manifest.get("agentContributions").isObject()) {
+      ObjectNode agent = objectMapper.createObjectNode();
+      agent.set("tools", objectMapper.createArrayNode());
+      agent.set("skills", objectMapper.createArrayNode());
+      manifest.set("agentContributions", agent);
+    } else {
+      ObjectNode agent = (ObjectNode) manifest.get("agentContributions");
+      if (!agent.has("tools") || !agent.get("tools").isArray()) {
+        agent.set("tools", objectMapper.createArrayNode());
+      }
+      if (!agent.has("skills") || !agent.get("skills").isArray()) {
+        agent.set("skills", objectMapper.createArrayNode());
+      }
+    }
 
     Set<String> seenKeys = new LinkedHashSet<>();
     for (Map.Entry<String, String> groupEntry : CATEGORY_MAP.entrySet()) {

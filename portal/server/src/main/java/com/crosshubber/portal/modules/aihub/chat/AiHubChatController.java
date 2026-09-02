@@ -1,5 +1,6 @@
 package com.crosshubber.portal.modules.aihub.chat;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.http.HttpResponse;
@@ -91,23 +92,48 @@ public class AiHubChatController {
       return;
     }
 
-    response.setStatus(200);
-    response.setContentType("text/event-stream");
-    response.setHeader("Cache-Control", "no-cache");
-    response.setHeader("Connection", "keep-alive");
-    response.setHeader("X-Accel-Buffering", "no");
+    // Headers are only sent once the first delta arrives (mirrors chat.routes.ts: a zero-delta
+    // stream must become a 502 JSON, not an empty SSE body). Deltas seen before going live are
+    // buffered and flushed first.
     OutputStream out = response.getOutputStream();
-    chatService.pumpStream(
-        providerId,
-        upstream,
-        content -> {
-          String frame =
-              "data: " + objectMapper.writeValueAsString(Map.of("content", content)) + "\n\n";
-          out.write(frame.getBytes(StandardCharsets.UTF_8));
-          out.flush();
-        });
-    out.write("data: [DONE]\n\n".getBytes(StandardCharsets.UTF_8));
-    out.flush();
+    List<String> buffered = new ArrayList<>();
+    boolean[] streaming = {false};
+    boolean completed =
+        chatService.pumpStream(
+            providerId,
+            upstream,
+            content -> {
+              if (!streaming[0]) {
+                response.setStatus(200);
+                response.setContentType("text/event-stream");
+                response.setHeader("Cache-Control", "no-cache");
+                response.setHeader("Connection", "keep-alive");
+                response.setHeader("X-Accel-Buffering", "no");
+                for (String previous : buffered) {
+                  out.write(frame(previous));
+                }
+                buffered.clear();
+                streaming[0] = true;
+              }
+              out.write(frame(content));
+              out.flush();
+            },
+            ChatCompletionService.COMPLETION_TIMEOUT.toMillis());
+    if (!streaming[0]) {
+      writeJson(response, 502, Map.of("error", "no content received from provider"));
+      return;
+    }
+    if (completed) {
+      // Mid-stream failure ends the response WITHOUT the [DONE] sentinel (UI shows "stream
+      // closed" instead of a clean completion).
+      out.write("data: [DONE]\n\n".getBytes(StandardCharsets.UTF_8));
+      out.flush();
+    }
+  }
+
+  private byte[] frame(String content) throws IOException {
+    return ("data: " + objectMapper.writeValueAsString(Map.of("content", content)) + "\n\n")
+        .getBytes(StandardCharsets.UTF_8);
   }
 
   private void writeJson(HttpServletResponse response, int status, Map<String, ?> body)

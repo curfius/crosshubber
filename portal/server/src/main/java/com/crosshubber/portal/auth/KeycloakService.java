@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.crosshubber.portal.config.PortalProperties;
 import com.crosshubber.portal.security.PortalUser;
@@ -19,11 +20,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Keycloak identity provider — simplified password grant.
+ * Keycloak identity provider — token refresh + logout URL building.
  *
- * <p>Mirrors {@code portal/src/adapters/keycloak/keycloak-identity-provider.ts} but uses direct
- * {@code grant_type=password} for simplicity (requires Direct Access Grants enabled for client
- * {@code portal}). For production, replace with PKCE scraping if needed.
+ * <p>The password-grant (ROPC) login path was removed in favor of the standard OIDC
+ * authorization-code redirect flow (see {@link OidcSuccessHandler} and {@code SecurityConfig});
+ * only the transparent-refresh grant remains, mirroring {@code refreshTokenGrant} in {@code
+ * keycloak-identity-provider.ts}.
  */
 @Service
 public class KeycloakService {
@@ -40,60 +42,9 @@ public class KeycloakService {
     this.restClient = RestClient.create();
   }
 
-  public record LoginResult(
-      boolean ok, PortalUser user, String idToken, String refreshToken, String error) {}
-
   public record RefreshResult(boolean ok, PortalUser user, String idToken, String refreshToken) {}
 
-  /**
-   * Authenticates via password grant.
-   *
-   * @param username Keycloak username
-   * @param password password
-   * @return LoginResult
-   */
-  public LoginResult authenticate(String username, String password) {
-    String tokenUrl = props.getIssuer() + "/protocol/openid-connect/token";
-    log.info("[auth] authenticating user={} via {}", username, tokenUrl);
-    try {
-      MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-      form.add("grant_type", "password");
-      form.add("client_id", "portal");
-      form.add("client_secret", props.getClientSecret());
-      form.add("username", username);
-      form.add("password", password);
-      form.add("scope", "openid");
-
-      String body =
-          restClient
-              .post()
-              .uri(tokenUrl)
-              .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-              .body(form)
-              .retrieve()
-              .body(String.class);
-
-      JsonNode root = mapper.readTree(body);
-      String accessToken = root.has("access_token") ? root.get("access_token").asText() : null;
-      String idToken = root.has("id_token") ? root.get("id_token").asText() : accessToken;
-      String refreshToken = root.has("refresh_token") ? root.get("refresh_token").asText() : null;
-
-      if (idToken == null) {
-        log.warn("[auth] no id_token for user={}", username);
-        return new LoginResult(false, null, null, null, "no token");
-      }
-
-      // Access token contains realm_access.roles while id_token may not
-      String userJwt = accessToken != null ? accessToken : idToken;
-      PortalUser user = parseUser(userJwt);
-      log.info("[auth] login ok user={} roles={}", user.name(), user.roles());
-      return new LoginResult(true, user, idToken, refreshToken, null);
-    } catch (Exception e) {
-      log.warn("[auth] login failed for user={}: {}", username, e.getMessage());
-      return new LoginResult(false, null, null, null, e.getMessage());
-    }
-  }
-
+  /** Refresh-token grant — mirrors {@code refreshTokenGrant}. */
   public RefreshResult refresh(String refreshToken) {
     String tokenUrl = props.getIssuer() + "/protocol/openid-connect/token";
     try {
@@ -130,12 +81,19 @@ public class KeycloakService {
     }
   }
 
+  /**
+   * Keycloak end-session URL — mirrors {@code logoutUrl(idTokenHint, postLogoutUri)}: public
+   * issuer, {@code id_token_hint} set only when present, then {@code post_logout_redirect_uri}.
+   */
   public String logoutUrl(String idTokenHint, String postLogoutUri) {
-    return props.getIssuer()
-        + "/protocol/openid-connect/logout?post_logout_redirect_uri="
-        + postLogoutUri
-        + "&id_token_hint="
-        + (idTokenHint != null ? idTokenHint : "");
+    UriComponentsBuilder builder =
+        UriComponentsBuilder.fromHttpUrl(
+            props.getEffectiveIssuer() + "/protocol/openid-connect/logout");
+    if (idTokenHint != null && !idTokenHint.isBlank()) {
+      builder.queryParam("id_token_hint", idTokenHint);
+    }
+    builder.queryParam("post_logout_redirect_uri", postLogoutUri);
+    return builder.build().encode().toUriString();
   }
 
   private PortalUser parseUser(String jwt) {

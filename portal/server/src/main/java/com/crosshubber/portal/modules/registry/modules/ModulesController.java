@@ -53,7 +53,7 @@ public class ModulesController {
   @DeleteMapping("/{key}")
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> remove(@PathVariable String key) {
-    modulesService.remove(key);
-    return ResponseEntity.ok(Map.of("ok", true));
+    boolean deleted = modulesService.remove(key);
+    return ResponseEntity.ok(Map.of("ok", deleted));
   }
 }
