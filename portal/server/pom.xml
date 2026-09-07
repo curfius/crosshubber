@@ -24,7 +24,20 @@
     <google-java-format.version>1.36.1</google-java-format.version>
     <checkstyle.version>10.20.0</checkstyle.version>
     <spotless.version>3.10.0</spotless.version>
+    <spring-ai.version>1.0.0</spring-ai.version>
   </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-bom</artifactId>
+        <version>${spring-ai.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <dependencies>
     <!-- Web + Validation -->
@@ -71,6 +84,16 @@
       <groupId>com.github.ben-manes.caffeine</groupId>
       <artifactId>caffeine</artifactId>
       <version>${caffeine.version}</version>
+    </dependency>
+
+    <!-- Spring AI -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-model-openai</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-model-anthropic</artifactId>
     </dependency>
 
     <!-- Jackson JSR310 -->

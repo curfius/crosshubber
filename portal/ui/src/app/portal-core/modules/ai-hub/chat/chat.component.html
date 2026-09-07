@@ -103,7 +103,7 @@
     </div>
     } @else {
     <div class="mx-auto max-w-2xl space-y-4">
-      @for (msg of messages(); track msg.timestamp) {
+      @for (msg of messages(); track $index) {
       <div [class]="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
         <div [class]="msg.role === 'user'
           ? 'ds-chat-bubble ds-chat-bubble-user'

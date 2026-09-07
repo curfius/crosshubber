@@ -1,13 +1,10 @@
 package com.crosshubber.portal.modules.aihub.providers;
 
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.LinkedHashMap;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,80 +14,68 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestClient;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.crosshubber.portal.modules.aihub.common.EntityNotFoundException;
+import com.crosshubber.portal.modules.aihub.dto.CreateProviderRequest;
+import com.crosshubber.portal.modules.aihub.dto.CreateTokenRequest;
+import com.crosshubber.portal.modules.aihub.dto.ModelDto;
+import com.crosshubber.portal.modules.aihub.dto.ProviderDto;
+import com.crosshubber.portal.modules.aihub.dto.TokenDto;
+import com.crosshubber.portal.modules.aihub.dto.UpdateProviderRequest;
+import com.crosshubber.portal.modules.aihub.dto.UpdateTokenRequest;
 
-/**
- * AI provider routes — mirrors {@code portal/src/modules/ai-hub/providers.routes.ts}. Writes
- * require {@code portal-ai-hub-edit}. Also serves the deprecated {@code /api/llm/providers...} shim
- * (Deprecation headers).
- */
 @RestController
 public class AiHubProvidersController {
 
-  private static final String LEGACY_BASE = "/api/llm";
-
   private final AiHubProvidersService providersService;
-  private final ObjectMapper objectMapper;
-  private final HttpClient httpClient;
+  private final RestClient restClient;
 
-  public AiHubProvidersController(
-      AiHubProvidersService providersService, ObjectMapper objectMapper) {
+  public AiHubProvidersController(AiHubProvidersService providersService) {
     this.providersService = providersService;
-    this.objectMapper = objectMapper;
-    this.httpClient =
-        HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(10)).build();
+    this.restClient =
+        RestClient.builder()
+            .requestFactory(
+                new org.springframework.http.client.JdkClientHttpRequestFactory(
+                    java.net.http.HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofSeconds(10))
+                        .build()))
+            .build();
   }
 
-  @GetMapping({"/api/ai-hub/providers", LEGACY_BASE + "/providers"})
+  @GetMapping({"/api/ai-hub/providers"})
   public Map<String, Object> list() {
-    return providersService.getAll();
+    return Map.of("providers", providersService.getAll());
   }
 
-  @PutMapping({"/api/ai-hub/providers/{id}", LEGACY_BASE + "/providers/{id}"})
+  @PutMapping("/api/ai-hub/providers/{id}")
   @PreAuthorize("hasRole('portal-ai-hub-edit')")
-  public ResponseEntity<?> update(@PathVariable String id, @RequestBody Map<String, Object> body) {
-    Boolean enabled = body.get("enabled") instanceof Boolean b ? b : null;
-    String name = body.get("name") instanceof String s ? s : null;
-    String baseURL = body.get("baseURL") instanceof String s ? s : null;
-    return ResponseEntity.ok(providersService.updateProvider(id, enabled, name, baseURL));
+  public ProviderDto update(@PathVariable String id, @RequestBody UpdateProviderRequest body) {
+    return providersService.updateProvider(id, body.enabled(), body.name(), body.baseURL());
   }
 
-  @PostMapping({"/api/ai-hub/providers/{id}/tokens", LEGACY_BASE + "/providers/{id}/tokens"})
+  @PostMapping("/api/ai-hub/providers/{id}/tokens")
   @PreAuthorize("hasRole('portal-ai-hub-edit')")
-  public ResponseEntity<?> addToken(
-      @PathVariable String id, @RequestBody Map<String, Object> body) {
-    if (!(body.get("name") instanceof String name) || name.isBlank()) {
+  public ResponseEntity<?> addToken(@PathVariable String id, @RequestBody CreateTokenRequest body) {
+    if (body.name() == null || body.name().isBlank()) {
       return ResponseEntity.badRequest().body(Map.of("error", "name is required"));
     }
     if (providersService.findProvider(id) == null) {
       return ResponseEntity.status(404).body(Map.of("error", "provider not found"));
     }
-    String apiKey = body.get("apiKey") instanceof String s ? s : null;
-    return ResponseEntity.status(201).body(providersService.addToken(id, name, apiKey));
+    return ResponseEntity.status(201)
+        .body(providersService.addToken(id, body.name(), body.apiKey()));
   }
 
-  @PutMapping({
-    "/api/ai-hub/providers/{id}/tokens/{tokenId}",
-    LEGACY_BASE + "/providers/{id}/tokens/{tokenId}"
-  })
+  @PutMapping("/api/ai-hub/providers/{id}/tokens/{tokenId}")
   @PreAuthorize("hasRole('portal-ai-hub-edit')")
-  public ResponseEntity<?> updateToken(
-      @PathVariable String id,
-      @PathVariable String tokenId,
-      @RequestBody Map<String, Object> body) {
-    String name = body.get("name") instanceof String s ? s : null;
-    // Presence matters: an explicit empty apiKey clears the stored key.
-    String apiKey = body.containsKey("apiKey") && body.get("apiKey") instanceof String s ? s : null;
-    Boolean enabled = body.get("enabled") instanceof Boolean b ? b : null;
-    List<Object> models = body.get("models") instanceof List<?> l ? List.copyOf(l) : null;
-    return ResponseEntity.ok(providersService.updateToken(tokenId, name, apiKey, enabled, models));
+  public TokenDto updateToken(
+      @PathVariable String id, @PathVariable String tokenId, @RequestBody UpdateTokenRequest body) {
+    return providersService.updateToken(
+        tokenId, body.name(), body.apiKey(), body.enabled(), body.models());
   }
 
-  @DeleteMapping({
-    "/api/ai-hub/providers/{id}/tokens/{tokenId}",
-    LEGACY_BASE + "/providers/{id}/tokens/{tokenId}"
-  })
+  @DeleteMapping("/api/ai-hub/providers/{id}/tokens/{tokenId}")
   @PreAuthorize("hasRole('portal-ai-hub-edit')")
   public ResponseEntity<?> removeToken(@PathVariable String id, @PathVariable String tokenId) {
     if (!providersService.removeToken(tokenId)) {
@@ -99,7 +84,8 @@ public class AiHubProvidersController {
     return ResponseEntity.ok(Map.of("ok", true));
   }
 
-  @GetMapping({"/api/ai-hub/providers/{id}/models", LEGACY_BASE + "/providers/{id}/models"})
+  @SuppressWarnings("unchecked")
+  @GetMapping("/api/ai-hub/providers/{id}/models")
   public ResponseEntity<?> models(@PathVariable String id) {
     AiHubProvidersService.ResolvedKey resolved = providersService.resolveApiKey(id, null);
     if (resolved == null) {
@@ -112,76 +98,57 @@ public class AiHubProvidersController {
       }
       resolved = new AiHubProvidersService.ResolvedKey(null, provider.getBaseUrl());
     }
+    final AiHubProvidersService.ResolvedKey finalResolved = resolved;
     String url = resolved.baseURL().replaceAll("/+$", "") + "/models";
     try {
-      HttpRequest.Builder requestBuilder =
-          HttpRequest.newBuilder()
-              .uri(java.net.URI.create(url))
-              .timeout(java.time.Duration.ofSeconds(10))
-              .header("Content-Type", "application/json")
-              .GET();
-      if (resolved.apiKey() != null) {
-        requestBuilder.header("Authorization", "Bearer " + resolved.apiKey());
-      }
-      HttpResponse<String> upstream =
-          httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
-      if (upstream.statusCode() < 200 || upstream.statusCode() >= 300) {
-        return ResponseEntity.status(502)
-            .body(Map.of("error", "provider API returned " + upstream.statusCode()));
-      }
-      Map<String, Object> data =
-          objectMapper.readValue(
-              upstream.body(),
-              new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
-      List<Map<String, Object>> models = new java.util.ArrayList<>();
-      if (data.get("data") instanceof List<?> upstreamModels) {
+      var request =
+          restClient
+              .get()
+              .uri(url)
+              .headers(
+                  h -> {
+                    h.set("Content-Type", "application/json");
+                    if (finalResolved.apiKey() != null) {
+                      h.setBearerAuth(finalResolved.apiKey());
+                    }
+                  });
+      Map<String, Object> data = request.retrieve().body(Map.class);
+      List<ModelDto> models = new ArrayList<>();
+      if (data != null && data.get("data") instanceof List<?> upstreamModels) {
         for (Object item : upstreamModels) {
           if (item instanceof Map<?, ?> m) {
-            // Mirrors providers.routes.ts:107-111: `id: m.id` drops the key when the upstream
-            // omits it; `name: m.name ?? m.id` falls back to the id.
-            Map<String, Object> model = new LinkedHashMap<>();
-            boolean hasId = m.containsKey("id");
             Object upstreamId = m.get("id");
             Object rawName = m.get("name");
-            Object name = rawName != null ? rawName : upstreamId;
-            if (hasId) {
-              model.put("id", upstreamId);
+            if (upstreamId != null) {
+              models.add(
+                  new ModelDto(
+                      String.valueOf(upstreamId),
+                      rawName != null ? String.valueOf(rawName) : String.valueOf(upstreamId),
+                      false));
             }
-            if (rawName != null || hasId) {
-              model.put("name", name);
-            }
-            model.put("enabled", false);
-            models.add(model);
           }
         }
       }
       return ResponseEntity.ok(Map.of("models", models));
-    } catch (org.springframework.web.client.HttpStatusCodeException e) {
-      return ResponseEntity.status(502)
-          .body(Map.of("error", "provider API returned " + e.getStatusCode().value()));
     } catch (Exception e) {
       return ResponseEntity.status(502)
           .body(Map.of("error", "failed to reach provider: " + e.getMessage()));
     }
   }
 
-  @PostMapping({"/api/ai-hub/providers", LEGACY_BASE + "/providers"})
+  @PostMapping({"/api/ai-hub/providers"})
   @PreAuthorize("hasRole('portal-ai-hub-edit')")
-  public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
-    Object idObj = body.get("id");
-    Object nameObj = body.get("name");
-    if (!(idObj instanceof String id) || !(nameObj instanceof String name)) {
-      return ResponseEntity.badRequest().body(Map.of("error", "id and name are required"));
+  public ProviderDto create(@RequestBody CreateProviderRequest body) {
+    if (body.id() == null
+        || body.name() == null
+        || !body.id().matches("^[a-z0-9][a-z0-9-]{0,63}$")) {
+      throw new EntityNotFoundException("id and name are required, id must be kebab-case");
     }
-    if (!id.matches("^[a-z0-9][a-z0-9-]{0,63}$")) {
-      return ResponseEntity.badRequest().body(Map.of("error", "id must be kebab-case"));
-    }
-    String baseURL = body.get("baseURL") instanceof String s ? s : "";
-    Map<String, Object> created = providersService.addProvider(id, name, baseURL);
-    return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    return providersService.addProvider(
+        body.id(), body.name(), body.baseURL() != null ? body.baseURL() : "");
   }
 
-  @DeleteMapping({"/api/ai-hub/providers/{id}", LEGACY_BASE + "/providers/{id}"})
+  @DeleteMapping("/api/ai-hub/providers/{id}")
   @PreAuthorize("hasRole('portal-ai-hub-edit')")
   public ResponseEntity<?> remove(@PathVariable String id) {
     if (!providersService.removeProvider(id)) {

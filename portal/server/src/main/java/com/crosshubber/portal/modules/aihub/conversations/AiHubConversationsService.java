@@ -1,22 +1,19 @@
 package com.crosshubber.portal.modules.aihub.conversations;
 
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.crosshubber.portal.common.NodeDates;
+import com.crosshubber.portal.modules.aihub.ChatMessage;
+import com.crosshubber.portal.modules.aihub.dto.ConversationDto;
+import com.crosshubber.portal.modules.aihub.dto.FullConversationDto;
+import com.crosshubber.portal.modules.aihub.dto.MessageDto;
 
-/**
- * Chat conversations (portal + channel origins) — mirrors {@code
- * portal/src/modules/ai-hub/conversations.repository.ts}.
- */
 @Service
 public class AiHubConversationsService {
 
@@ -29,65 +26,22 @@ public class AiHubConversationsService {
     this.messageRepo = messageRepo;
   }
 
-  // ── DTOs (snake_case keys, mirroring the Node row shapes) ────────────
-
-  public static Map<String, Object> conversationDto(AiHubConversationEntity c) {
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("id", c.getId());
-    out.put("user_id", c.getUserId());
-    out.put("title", c.getTitle());
-    out.put("created_at", NodeDates.format(c.getCreatedAt()));
-    out.put("updated_at", NodeDates.format(c.getUpdatedAt()));
-    return out;
-  }
-
-  /**
-   * Full-row shape (mirrors {@code RETURNING *} / {@code SELECT *} column order in
-   * conversations.repository.ts — used by POST /conversations).
-   */
-  public static Map<String, Object> fullConversationDto(AiHubConversationEntity c) {
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("id", c.getId());
-    out.put("user_id", c.getUserId());
-    out.put("channel_id", c.getChannelId());
-    out.put("external_chat_id", c.getExternalChatId());
-    out.put("origin", c.getOrigin());
-    out.put("title", c.getTitle());
-    out.put("created_at", NodeDates.format(c.getCreatedAt()));
-    out.put("updated_at", NodeDates.format(c.getUpdatedAt()));
-    return out;
-  }
-
-  public static Map<String, Object> messageDto(AiHubMessageEntity m) {
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("id", m.getId());
-    out.put("conversation_id", m.getConversationId());
-    out.put("role", m.getRole());
-    out.put("content", m.getContent());
-    out.put("provider_id", m.getProviderId());
-    out.put("model", m.getModel());
-    out.put("created_at", NodeDates.format(m.getCreatedAt()));
-    return out;
-  }
-
-  // ── Portal conversations ─────────────────────────────────────────────
-
   @Transactional(readOnly = true)
-  public List<Map<String, Object>> listConversations(String userId) {
+  public List<ConversationDto> listConversations(String userId) {
     return conversationRepo.findByUserIdAndOriginOrderByUpdatedAtDesc(userId, "portal").stream()
-        .map(AiHubConversationsService::conversationDto)
+        .map(this::toConversationDto)
         .toList();
   }
 
   @Transactional
-  public Map<String, Object> createConversation(String userId, String title) {
+  public FullConversationDto createConversation(String userId, String title) {
     AiHubConversationEntity conversation = new AiHubConversationEntity();
-    conversation.setId(newConversationId());
+    conversation.setId("conv_" + UUID.randomUUID());
     conversation.setUserId(userId);
     conversation.setOrigin("portal");
     conversation.setTitle(title);
     conversation = conversationRepo.saveAndFlush(conversation);
-    return fullConversationDto(conversation);
+    return toFullConversationDto(conversation);
   }
 
   @Transactional
@@ -108,19 +62,19 @@ public class AiHubConversationsService {
   }
 
   @Transactional(readOnly = true)
-  public List<Map<String, Object>> getMessages(String conversationId) {
+  public List<MessageDto> getMessages(String conversationId) {
     return messageRepo.findByConversationIdOrderByIdAsc(conversationId).stream()
-        .map(AiHubConversationsService::messageDto)
+        .map(this::toMessageDto)
         .toList();
   }
 
   @Transactional
-  public Map<String, Object> addMessage(String conversationId, String role, String content) {
+  public MessageDto addMessage(String conversationId, String role, String content) {
     return addMessage(conversationId, role, content, null, null);
   }
 
   @Transactional
-  public Map<String, Object> addMessage(
+  public MessageDto addMessage(
       String conversationId, String role, String content, String providerId, String model) {
     AiHubMessageEntity message = new AiHubMessageEntity();
     message.setConversationId(conversationId);
@@ -129,8 +83,6 @@ public class AiHubConversationsService {
     message.setProviderId(providerId);
     message.setModel(model);
     message = messageRepo.saveAndFlush(message);
-    // Explicit updated_at bump — an unmodified entity would never dirty-flush, so @PreUpdate
-    // would not fire and the conversation list (ORDER BY updated_at DESC) would stay frozen.
     conversationRepo
         .findById(conversationId)
         .ifPresent(
@@ -138,32 +90,9 @@ public class AiHubConversationsService {
               conversation.setUpdatedAt(Instant.now());
               conversationRepo.save(conversation);
             });
-    return messageDto(message);
+    return toMessageDto(message);
   }
 
-  // ── Channel conversations (origin 'channel') ─────────────────────────
-
-  /** Finds or creates the conversation bound to a (channel, external chat) pair. */
-  @Transactional
-  public String findOrCreateChannelConversation(
-      String channelId, String externalChatId, String title) {
-    AiHubConversationEntity existing =
-        conversationRepo.findByChannelIdAndExternalChatId(channelId, externalChatId).orElse(null);
-    if (existing != null) {
-      return existing.getId();
-    }
-    AiHubConversationEntity conversation = new AiHubConversationEntity();
-    conversation.setId(newConversationId());
-    conversation.setUserId(null);
-    conversation.setChannelId(channelId);
-    conversation.setExternalChatId(externalChatId);
-    conversation.setOrigin("channel");
-    conversation.setTitle(title);
-    conversationRepo.saveAndFlush(conversation);
-    return conversation.getId();
-  }
-
-  /** Last {@code limit} messages of a conversation, oldest first. */
   @Transactional(readOnly = true)
   public List<ChatMessage> getRecentMessages(String conversationId, int limit) {
     List<AiHubMessageEntity> latest =
@@ -173,17 +102,33 @@ public class AiHubConversationsService {
         .toList();
   }
 
-  public record ChatMessage(String role, String content) {}
-
-  private static String newConversationId() {
-    return "conv_"
-        + System.currentTimeMillis()
-        + "_"
-        + Long.toString(Double.doubleToLongBits(Math.random()), 36).substring(0, 6);
+  private ConversationDto toConversationDto(AiHubConversationEntity c) {
+    return new ConversationDto(
+        c.getId(),
+        c.getUserId(),
+        c.getTitle(),
+        NodeDates.format(c.getCreatedAt()),
+        NodeDates.format(c.getUpdatedAt()));
   }
 
-  /** 404 helper for controllers. */
-  public static ResponseStatusException notFound() {
-    return new ResponseStatusException(HttpStatus.NOT_FOUND, "not found");
+  private FullConversationDto toFullConversationDto(AiHubConversationEntity c) {
+    return new FullConversationDto(
+        c.getId(),
+        c.getUserId(),
+        c.getOrigin(),
+        c.getTitle(),
+        NodeDates.format(c.getCreatedAt()),
+        NodeDates.format(c.getUpdatedAt()));
+  }
+
+  private MessageDto toMessageDto(AiHubMessageEntity m) {
+    return new MessageDto(
+        m.getId(),
+        m.getConversationId(),
+        m.getRole(),
+        m.getContent(),
+        m.getProviderId(),
+        m.getModel(),
+        NodeDates.format(m.getCreatedAt()));
   }
 }

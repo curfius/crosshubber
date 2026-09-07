@@ -119,6 +119,7 @@ public class SecurityConfig {
             e ->
                 e.authenticationEntryPoint(
                         (req, res, ex) -> {
+                          if (res.isCommitted()) return;
                           log.debug("[auth] unauthorized: {}", req.getRequestURI());
                           res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                           res.setContentType("application/json");
@@ -126,6 +127,7 @@ public class SecurityConfig {
                         })
                     .accessDeniedHandler(
                         (req, res, ex) -> {
+                          if (res.isCommitted()) return;
                           log.warn("[auth] forbidden: {}", req.getRequestURI());
                           res.setStatus(HttpServletResponse.SC_FORBIDDEN);
                           res.setContentType("application/json");

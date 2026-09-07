@@ -4,15 +4,14 @@ import { AiHubService } from '../../../core/ai-hub/ai-hub.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { AiHubChat } from './chat/chat.component';
 import { AiHubProviders } from './providers/providers.component';
-import { AiHubChannels } from './channels/channels.component';
 
-type TabKey = 'chat' | 'providers' | 'channels';
+type TabKey = 'chat' | 'providers';
 
 const MODULE_KEY = 'ai-hub';
 
 @Component({
   selector: 'app-ai-hub',
-  imports: [AiHubChat, AiHubProviders, AiHubChannels],
+  imports: [AiHubChat, AiHubProviders],
   templateUrl: './ai-hub.component.html',
   styleUrl: './ai-hub.component.css',
 })
@@ -28,18 +27,10 @@ export class AiHub implements OnInit {
       { key: 'chat', labelKey: 'aihub.tab.chat' },
       { key: 'providers', labelKey: 'aihub.tab.providers' },
     ];
-    // Channels administration is gated by the AI Hub edit role; the API
-    // enforces the same role server-side.
-    if (this.aiHub.canManage()) {
-      tabs.push({ key: 'channels', labelKey: 'aihub.tab.channels' });
-    }
     return tabs;
   });
 
   constructor() {
-    // Restore requests arrive through the NavigationCoordinator (URL query
-    // params, popstate, deep links) — a pending path that arrived before this
-    // component mounted is replayed on registration.
     const off = this.coordinator.onRestore(MODULE_KEY, (path) => this.applyModulePath(path));
     inject(DestroyRef).onDestroy(off);
   }
@@ -51,14 +42,13 @@ export class AiHub implements OnInit {
   }
 
   protected selectTab(key: TabKey): void {
-    if (key === 'channels' && !this.aiHub.canManage()) return;
     this.activeTab.set(key);
     this.coordinator.navigateFromModule(MODULE_KEY, '/' + key);
   }
 
   private applyModulePath(path: string): void {
     const key = path.replace(/^\//, '').split('/')[0];
-    if (key === 'chat' || key === 'providers' || key === 'channels') {
+    if (key === 'chat' || key === 'providers') {
       this.activeTab.set(key);
     }
   }

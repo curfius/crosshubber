@@ -15,7 +15,6 @@ export const embeddedModules: Record<string, () => Promise<Type<unknown>>> = {
   'ai-hub': () => import('../modules/ai-hub/ai-hub.component').then((m) => m.AiHub),
   'ai-hub-settings': () => import('../modules/ai-hub/settings/settings.component').then((m) => m.AiHubSettings),
   'ai-hub-providers': () => import('../modules/ai-hub/providers/providers.component').then((m) => m.AiHubProviders),
-  'ai-hub-channels': () => import('../modules/ai-hub/channels/channels.component').then((m) => m.AiHubChannels),
   'ai-hub-quick-chat': () => import('../modules/ai-hub/quick-chat/quick-chat.component').then((m) => m.AiHubQuickChat),
   'portal-general-settings': () => import('../modules/settings/portal-general-settings.component').then((m) => m.PortalGeneralSettings),
   'i18n-general': () => import('../modules/i18n-settings/i18n-general-settings.component').then((m) => m.I18nGeneralSettings),

@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.PathResourceResolver;
@@ -20,6 +21,11 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
 public class WebConfig implements WebMvcConfigurer {
 
   private static final Logger log = LoggerFactory.getLogger(WebConfig.class);
+
+  @Override
+  public void configureAsyncSupport(AsyncSupportConfigurer configurer) {
+    configurer.setDefaultTimeout(300_000);
+  }
 
   @Override
   public void addResourceHandlers(ResourceHandlerRegistry registry) {
@@ -37,8 +43,9 @@ public class WebConfig implements WebMvcConfigurer {
                 if (requested.exists() && requested.isReadable()) {
                   return requested;
                 }
-                // For SPA routes (GET not /api/ and no file extension), serve index.html
-                if (!resourcePath.startsWith("api/") && !resourcePath.contains(".")) {
+                // For SPA routes (GET not /api/), serve index.html as fallback
+                // so unknown paths like .well-known probes don't throw errors
+                if (!resourcePath.startsWith("api/")) {
                   Resource index = new ClassPathResource("/static/index.html");
                   if (index.exists()) {
                     return index;

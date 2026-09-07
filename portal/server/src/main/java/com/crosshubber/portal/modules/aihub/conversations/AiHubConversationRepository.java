@@ -17,9 +17,4 @@ public interface AiHubConversationRepository
       String userId, String origin);
 
   Optional<AiHubConversationEntity> findByIdAndUserId(String id, String userId);
-
-  Optional<AiHubConversationEntity> findByChannelIdAndExternalChatId(
-      String channelId, String externalChatId);
-
-  List<AiHubConversationEntity> findByChannelId(String channelId);
 }

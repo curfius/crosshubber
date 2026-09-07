@@ -50,16 +50,20 @@
 
       @if (models().length > 0) {
       <div class="mt-4 rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-subtle)] p-3">
-        <p class="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--portal-text-muted)]">{{ i18n.t('aihub.settings.available-models', { count: models().length }) }}</p>
+        <p class="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--portal-text-muted)]">{{ i18n.t('aihub.settings.default-model', { count: models().length }) }}</p>
+        <p class="mb-2 text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.settings.default-model-hint') }}</p>
         <div class="space-y-1">
           @for (m of models(); track m.modelId + m.tokenId) {
-          <div class="flex items-center gap-2 text-xs text-[var(--portal-text-tertiary)]">
-            <span class="size-1.5 shrink-0 rounded-full bg-[var(--portal-status-success)]"></span>
+          <button type="button" (click)="selectDefaultModel(m)"
+            [class]="modelOptionKey(m) === defaultModelKey()
+              ? 'flex w-full items-center gap-2 rounded-lg border border-[var(--portal-accent-primary-glow)] bg-[var(--portal-accent-primary-subtle)] px-3 py-1.5 text-left text-xs text-[var(--portal-accent-primary)]'
+              : 'flex w-full items-center gap-2 rounded-lg border border-transparent px-3 py-1.5 text-left text-xs text-[var(--portal-text-secondary)] hover:bg-[var(--portal-bg-hover)]'">
+            <span class="size-1.5 shrink-0 rounded-full" [class]="modelOptionKey(m) === defaultModelKey() ? 'bg-[var(--portal-accent-primary)]' : 'bg-[var(--portal-status-success)]'"></span>
             <span class="text-[var(--portal-text-secondary)]">{{ m.providerName }}</span>
             <span class="text-[var(--portal-text-disabled)]">/</span>
             <span>{{ m.modelName }}</span>
             <span class="ml-auto text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.settings.via-token', { token: m.tokenName }) }}</span>
-          </div>
+          </button>
           }
         </div>
       </div>
