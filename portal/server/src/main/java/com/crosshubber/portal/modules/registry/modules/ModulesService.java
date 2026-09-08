@@ -12,8 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
+import com.crosshubber.portal.common.JsonUtils;
 
 /** Module registry CRUD — mirrors {@code portal/src/modules/modules/modules.service.ts}. */
 @Service
@@ -24,11 +23,11 @@ public class ModulesService {
   private static final String KEY_RE = "^[a-z0-9][a-z0-9-]{0,63}$";
 
   private final ModuleRepository repo;
-  private final ObjectMapper objectMapper;
+  private final JsonUtils jsonUtils;
 
-  public ModulesService(ModuleRepository repo, ObjectMapper objectMapper) {
+  public ModulesService(ModuleRepository repo, JsonUtils jsonUtils) {
     this.repo = repo;
-    this.objectMapper = objectMapper;
+    this.jsonUtils = jsonUtils;
   }
 
   /** All modules (optionally active only), ordered by name. */
@@ -180,32 +179,14 @@ public class ModulesService {
   }
 
   private List<String> parseSecurityRoles(String json) {
-    try {
-      if (json == null || json.isBlank()) {
-        return List.of();
-      }
-      return objectMapper
-          .readValue(json, new TypeReference<List<Map<String, Object>>>() {})
-          .stream()
-          .filter(r -> r.get("key") instanceof String)
-          .map(r -> (String) r.get("key"))
-          .toList();
-    } catch (Exception e) {
-      log.warn("[modules] security roles JSON parse failed: {}", e.getMessage());
-      return List.of();
-    }
+    return parseSecurityRolesObjects(json).stream()
+        .filter(r -> r.get("key") instanceof String)
+        .map(r -> (String) r.get("key"))
+        .toList();
   }
 
   private List<Map<String, Object>> parseSecurityRolesObjects(String json) {
-    try {
-      if (json == null || json.isBlank()) {
-        return List.of();
-      }
-      return objectMapper.readValue(json, new TypeReference<>() {});
-    } catch (Exception e) {
-      log.warn("[modules] security roles JSON parse failed: {}", e.getMessage());
-      return List.of();
-    }
+    return jsonUtils.parseList(json);
   }
 
   private static String string(Object value) {
@@ -213,11 +194,7 @@ public class ModulesService {
   }
 
   private String writeJson(Object value) {
-    try {
-      return objectMapper.writeValueAsString(value);
-    } catch (Exception e) {
-      throw new IllegalStateException("security roles serialization failed", e);
-    }
+    return jsonUtils.write(value);
   }
 
   private static boolean notBlank(String value) {

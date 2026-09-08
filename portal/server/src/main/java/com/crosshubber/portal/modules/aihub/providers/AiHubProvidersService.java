@@ -9,9 +9,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.crosshubber.portal.common.JsonUtils;
 import com.crosshubber.portal.modules.aihub.dto.ProviderDto;
 import com.crosshubber.portal.modules.aihub.dto.TokenDto;
-import com.crosshubber.portal.modules.aihub.util.JsonUtils;
 import com.crosshubber.portal.security.CryptoService;
 
 import tools.jackson.databind.ObjectMapper;
@@ -23,16 +23,19 @@ public class AiHubProvidersService {
   private final AiHubTokenRepository tokenRepo;
   private final CryptoService cryptoService;
   private final ObjectMapper objectMapper;
+  private final JsonUtils jsonUtils;
 
   public AiHubProvidersService(
       AiHubProviderRepository providerRepo,
       AiHubTokenRepository tokenRepo,
       CryptoService cryptoService,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      JsonUtils jsonUtils) {
     this.providerRepo = providerRepo;
     this.tokenRepo = tokenRepo;
     this.cryptoService = cryptoService;
     this.objectMapper = objectMapper;
+    this.jsonUtils = jsonUtils;
   }
 
   @Transactional(readOnly = true)
@@ -131,7 +134,7 @@ public class AiHubProvidersService {
       token.setEnabled(enabled);
     }
     if (models != null) {
-      token.setModels(JsonUtils.writeJson(objectMapper, models));
+      token.setModels(jsonUtils.write(models));
     }
     tokenRepo.save(token);
     return toTokenDto(token, null);
@@ -202,10 +205,6 @@ public class AiHubProvidersService {
       }
     }
     return new TokenDto(
-        t.getId(),
-        t.getName(),
-        masked,
-        t.getEnabled(),
-        JsonUtils.parseList(objectMapper, t.getModels()));
+        t.getId(), t.getName(), masked, t.getEnabled(), jsonUtils.parseList(t.getModels()));
   }
 }

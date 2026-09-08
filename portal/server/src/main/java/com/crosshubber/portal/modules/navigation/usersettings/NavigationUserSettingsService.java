@@ -8,11 +8,11 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.crosshubber.portal.common.JsonUtils;
 import com.crosshubber.portal.modules.navigation.NavigationValidationService;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
 
-import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -27,14 +27,17 @@ public class NavigationUserSettingsService {
   private final NavigationUserSettingsRepository repo;
   private final EntryPointRepository entryPointRepo;
   private final ObjectMapper objectMapper;
+  private final JsonUtils jsonUtils;
 
   public NavigationUserSettingsService(
       NavigationUserSettingsRepository repo,
       EntryPointRepository entryPointRepo,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      JsonUtils jsonUtils) {
     this.repo = repo;
     this.entryPointRepo = entryPointRepo;
     this.objectMapper = objectMapper;
+    this.jsonUtils = jsonUtils;
   }
 
   @Transactional(readOnly = true)
@@ -200,21 +203,10 @@ public class NavigationUserSettingsService {
   }
 
   private Map<String, Object> parseJson(String raw) {
-    try {
-      if (raw == null || raw.isBlank()) {
-        return new LinkedHashMap<>();
-      }
-      return objectMapper.readValue(raw, new TypeReference<LinkedHashMap<String, Object>>() {});
-    } catch (Exception e) {
-      return new LinkedHashMap<>();
-    }
+    return jsonUtils.parseMap(raw);
   }
 
   private String writeJson(Map<String, Object> value) {
-    try {
-      return objectMapper.writeValueAsString(value);
-    } catch (Exception e) {
-      throw new IllegalStateException("navigation user settings serialization failed", e);
-    }
+    return jsonUtils.write(value);
   }
 }

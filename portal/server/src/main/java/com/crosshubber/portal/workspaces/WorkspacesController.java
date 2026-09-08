@@ -19,12 +19,12 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.crosshubber.portal.common.JsonUtils;
 import com.crosshubber.portal.security.PortalUser;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.PersistenceException;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Workspace routes â€” mirrors {@code portal/src/modules/workspaces/workspaces.routes.ts} +
@@ -36,13 +36,13 @@ public class WorkspacesController {
   private static final int MAX_NAME_ATTEMPTS = 100;
 
   private final WorkspaceRepository repo;
-  private final ObjectMapper objectMapper;
+  private final JsonUtils jsonUtils;
 
   @PersistenceContext private EntityManager em;
 
-  public WorkspacesController(WorkspaceRepository repo, ObjectMapper objectMapper) {
+  public WorkspacesController(WorkspaceRepository repo, JsonUtils jsonUtils) {
     this.repo = repo;
-    this.objectMapper = objectMapper;
+    this.jsonUtils = jsonUtils;
   }
 
   @GetMapping("/api/workspaces")
@@ -240,21 +240,10 @@ public class WorkspacesController {
   }
 
   private Object parseJsonSafe(String raw) {
-    try {
-      if (raw == null || raw.isBlank()) {
-        return null;
-      }
-      return objectMapper.readTree(raw);
-    } catch (Exception e) {
-      return null;
-    }
+    return jsonUtils.parseTreeOrNull(raw);
   }
 
   private String writeJson(Object value) {
-    try {
-      return objectMapper.writeValueAsString(value);
-    } catch (Exception e) {
-      throw new IllegalStateException("workspace serialization failed", e);
-    }
+    return jsonUtils.write(value);
   }
 }

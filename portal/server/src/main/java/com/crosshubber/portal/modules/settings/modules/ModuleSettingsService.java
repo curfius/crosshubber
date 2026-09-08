@@ -8,8 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
+import com.crosshubber.portal.common.JsonUtils;
 
 /**
  * Per-module settings store — mirrors {@code
@@ -21,11 +20,11 @@ public class ModuleSettingsService {
   private static final Logger log = LoggerFactory.getLogger(ModuleSettingsService.class);
 
   private final ModuleSettingsRepository repo;
-  private final ObjectMapper objectMapper;
+  private final JsonUtils jsonUtils;
 
-  public ModuleSettingsService(ModuleSettingsRepository repo, ObjectMapper objectMapper) {
+  public ModuleSettingsService(ModuleSettingsRepository repo, JsonUtils jsonUtils) {
     this.repo = repo;
-    this.objectMapper = objectMapper;
+    this.jsonUtils = jsonUtils;
   }
 
   /** Stored settings for a module (empty map when absent). */
@@ -56,27 +55,10 @@ public class ModuleSettingsService {
   }
 
   private Map<String, Object> parseJson(String raw) {
-    try {
-      if (raw == null || raw.isBlank()) {
-        return new LinkedHashMap<>();
-      }
-      return objectMapper.readValue(raw, new TypeReference<LinkedHashMap<String, Object>>() {});
-    } catch (Exception e) {
-      log.warn(
-          "[module-settings] unparseable settings for {}: {}", moduleKeyOf(raw), e.getMessage());
-      return new LinkedHashMap<>();
-    }
-  }
-
-  private String moduleKeyOf(String raw) {
-    return raw != null && raw.length() > 24 ? raw.substring(0, 24) + "…" : String.valueOf(raw);
+    return jsonUtils.parseMap(raw);
   }
 
   private String writeJson(Map<String, Object> value) {
-    try {
-      return objectMapper.writeValueAsString(value);
-    } catch (Exception e) {
-      throw new IllegalStateException("module settings serialization failed", e);
-    }
+    return jsonUtils.write(value);
   }
 }

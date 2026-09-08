@@ -7,11 +7,11 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.crosshubber.portal.common.JsonUtils;
 import com.crosshubber.portal.modules.navigation.NavigationValidationService;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
 
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Portal Navigation layout (instance singleton) — mirrors the layout part of {@code
@@ -22,15 +22,13 @@ public class NavigationLayoutService {
 
   private final NavigationLayoutRepository repo;
   private final EntryPointRepository entryPointRepo;
-  private final ObjectMapper objectMapper;
+  private final JsonUtils jsonUtils;
 
   public NavigationLayoutService(
-      NavigationLayoutRepository repo,
-      EntryPointRepository entryPointRepo,
-      ObjectMapper objectMapper) {
+      NavigationLayoutRepository repo, EntryPointRepository entryPointRepo, JsonUtils jsonUtils) {
     this.repo = repo;
     this.entryPointRepo = entryPointRepo;
-    this.objectMapper = objectMapper;
+    this.jsonUtils = jsonUtils;
   }
 
   @Transactional
@@ -70,22 +68,10 @@ public class NavigationLayoutService {
   }
 
   private Map<String, Object> parseJson(String raw) {
-    try {
-      if (raw == null || raw.isBlank()) {
-        return null;
-      }
-      JsonNode node = objectMapper.readTree(raw);
-      return objectMapper.convertValue(node, Map.class);
-    } catch (Exception e) {
-      return null;
-    }
+    return jsonUtils.parseMapOrNull(raw);
   }
 
   private String writeJson(JsonNode value) {
-    try {
-      return objectMapper.writeValueAsString(value);
-    } catch (Exception e) {
-      throw new IllegalStateException("navigation layout serialization failed", e);
-    }
+    return jsonUtils.write(value);
   }
 }

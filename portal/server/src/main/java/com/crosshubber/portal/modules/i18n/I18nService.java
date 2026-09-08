@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.crosshubber.portal.bootstrap.I18nCatalog;
+import com.crosshubber.portal.common.JsonUtils;
 import com.crosshubber.portal.modules.i18n.labels.I18nLabelEntity;
 import com.crosshubber.portal.modules.i18n.labels.I18nLabelId;
 import com.crosshubber.portal.modules.i18n.labels.I18nLabelRepository;
@@ -18,9 +19,6 @@ import com.crosshubber.portal.modules.i18n.languages.I18nLanguageEntity;
 import com.crosshubber.portal.modules.i18n.languages.I18nLanguageRepository;
 import com.crosshubber.portal.modules.i18n.settings.I18nSettingsEntity;
 import com.crosshubber.portal.modules.i18n.settings.I18nSettingsRepository;
-
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * i18n domain service — mirrors {@code portal/src/modules/i18n/i18n.repository.ts}. Every write
@@ -34,17 +32,17 @@ public class I18nService {
   private final I18nLanguageRepository languageRepo;
   private final I18nLabelRepository labelRepo;
   private final I18nSettingsRepository settingsRepo;
-  private final ObjectMapper objectMapper;
+  private final JsonUtils jsonUtils;
 
   public I18nService(
       I18nLanguageRepository languageRepo,
       I18nLabelRepository labelRepo,
       I18nSettingsRepository settingsRepo,
-      ObjectMapper objectMapper) {
+      JsonUtils jsonUtils) {
     this.languageRepo = languageRepo;
     this.labelRepo = labelRepo;
     this.settingsRepo = settingsRepo;
-    this.objectMapper = objectMapper;
+    this.jsonUtils = jsonUtils;
   }
 
   // ── Reads ────────────────────────────────────────────────────────────
@@ -191,21 +189,10 @@ public class I18nService {
   }
 
   private Map<String, Object> parseJson(String raw) {
-    try {
-      if (raw == null || raw.isBlank()) {
-        return new LinkedHashMap<>();
-      }
-      return objectMapper.readValue(raw, new TypeReference<LinkedHashMap<String, Object>>() {});
-    } catch (Exception e) {
-      return new LinkedHashMap<>();
-    }
+    return jsonUtils.parseMap(raw);
   }
 
   private String writeJson(Map<String, Object> value) {
-    try {
-      return objectMapper.writeValueAsString(value);
-    } catch (Exception e) {
-      throw new IllegalStateException("i18n overrides serialization failed", e);
-    }
+    return jsonUtils.write(value);
   }
 }

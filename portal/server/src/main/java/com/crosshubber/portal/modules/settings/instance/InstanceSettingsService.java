@@ -8,8 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
+import com.crosshubber.portal.common.JsonUtils;
 
 /**
  * Instance settings (singleton row id=1) — mirrors {@code
@@ -32,11 +31,11 @@ public class InstanceSettingsService {
   }
 
   private final InstanceSettingsRepository repo;
-  private final ObjectMapper objectMapper;
+  private final JsonUtils jsonUtils;
 
-  public InstanceSettingsService(InstanceSettingsRepository repo, ObjectMapper objectMapper) {
+  public InstanceSettingsService(InstanceSettingsRepository repo, JsonUtils jsonUtils) {
     this.repo = repo;
-    this.objectMapper = objectMapper;
+    this.jsonUtils = jsonUtils;
   }
 
   /** Effective settings: stored JSONB merged over defaults. */
@@ -75,22 +74,10 @@ public class InstanceSettingsService {
   }
 
   private Map<String, Object> parseJson(String raw) {
-    try {
-      if (raw == null || raw.isBlank()) {
-        return new LinkedHashMap<>();
-      }
-      return objectMapper.readValue(raw, new TypeReference<LinkedHashMap<String, Object>>() {});
-    } catch (Exception e) {
-      log.warn("[settings] unparseable stored settings: {}", e.getMessage());
-      return new LinkedHashMap<>();
-    }
+    return jsonUtils.parseMap(raw);
   }
 
   private String writeJson(Map<String, Object> value) {
-    try {
-      return objectMapper.writeValueAsString(value);
-    } catch (Exception e) {
-      throw new IllegalStateException("settings serialization failed", e);
-    }
+    return jsonUtils.write(value);
   }
 }

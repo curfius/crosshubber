@@ -8,10 +8,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.crosshubber.portal.common.JsonUtils;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Per-user settings scopes — mirrors {@code
@@ -24,13 +24,13 @@ public class UserSettingsService {
   private static final Logger log = LoggerFactory.getLogger(UserSettingsService.class);
 
   private final UserSettingsRepository repo;
-  private final ObjectMapper objectMapper;
+  private final JsonUtils jsonUtils;
 
   @PersistenceContext private EntityManager em;
 
-  public UserSettingsService(UserSettingsRepository repo, ObjectMapper objectMapper) {
+  public UserSettingsService(UserSettingsRepository repo, JsonUtils jsonUtils) {
     this.repo = repo;
-    this.objectMapper = objectMapper;
+    this.jsonUtils = jsonUtils;
   }
 
   /** All scopes for the user: {@code {scope: settings}}. */
@@ -77,22 +77,10 @@ public class UserSettingsService {
   }
 
   private Map<String, Object> parseJson(String raw) {
-    try {
-      if (raw == null || raw.isBlank()) {
-        return new LinkedHashMap<>();
-      }
-      return objectMapper.readValue(raw, new TypeReference<LinkedHashMap<String, Object>>() {});
-    } catch (Exception e) {
-      log.warn("[user-settings] unparseable stored settings: {}", e.getMessage());
-      return new LinkedHashMap<>();
-    }
+    return jsonUtils.parseMap(raw);
   }
 
   private String writeJson(Map<String, Object> value) {
-    try {
-      return objectMapper.writeValueAsString(value);
-    } catch (Exception e) {
-      throw new IllegalStateException("user settings serialization failed", e);
-    }
+    return jsonUtils.write(value);
   }
 }
