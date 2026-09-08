@@ -1,12 +1,10 @@
 package com.crosshubber.portal.modules.aihub.conversations;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.messages.Message;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -91,32 +89,18 @@ public class AiHubConversationsService {
 
   /**
    * Returns the message history for a conversation from Spring AI's {@link ChatMemory}. Each message
-   * includes its role ({@code user} / {@code assistant} / {@code system}), text content, and ISO
-   * timestamp. Used by the REST layer to populate the chat UI when a user selects an existing
-   * conversation.
-   */
-  private static final String META_TIMESTAMP =
-      "JdbcChatMemoryRepository_message_timestamp";
-
-  /**
-   * Returns the message history for a conversation from Spring AI's {@link ChatMemory}. Each message
-   * includes its role ({@code user} / {@code assistant} / {@code system}), text content, and ISO
-   * timestamp. Used by the REST layer to populate the chat UI when a user selects an existing
-   * conversation.
+   * includes its role ({@code user} / {@code assistant} / {@code system}) and text content. Used by
+   * the REST layer to populate the chat UI when a user selects an existing conversation.
    */
   public List<Map<String, String>> getMessages(String conversationId) {
     return chatMemory.get(conversationId).stream()
         .map(
-            m -> {
-              Instant ts = (Instant) m.getMetadata().get(META_TIMESTAMP);
-              return Map.of(
-                  "role",
-                  m.getMessageType().name().toLowerCase(),
-                  "content",
-                  m.getText() != null ? m.getText() : "",
-                  "created_at",
-                  NodeDates.format(ts));
-            })
+            m ->
+                Map.of(
+                    "role",
+                    m.getMessageType().name().toLowerCase(),
+                    "content",
+                    m.getText() != null ? m.getText() : ""))
         .toList();
   }
 
