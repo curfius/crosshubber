@@ -3,6 +3,7 @@ package com.crosshubber.portal.shell;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,9 +22,10 @@ public class HealthController {
   public ResponseEntity<Map<String, Object>> healthz() {
     boolean up = healthService.dbStatus();
     Map<String, Object> response = new LinkedHashMap<>();
-    response.put("ok", true);
+    response.put("ok", up);
     response.put("app", "portal");
     response.put("db", up ? "up" : "down");
-    return ResponseEntity.ok(response);
+    return ResponseEntity.status(up ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
+        .body(response);
   }
 }

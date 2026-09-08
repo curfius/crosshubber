@@ -212,6 +212,7 @@ public class ShellConfigService {
               .getTypeFactory()
               .constructMapType(LinkedHashMap.class, String.class, Object.class));
     } catch (Exception e) {
+      log.warn("[shell-config] preferences JSON parse failed: {}", e.getMessage());
       return new LinkedHashMap<>();
     }
   }

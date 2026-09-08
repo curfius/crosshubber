@@ -1,5 +1,6 @@
 package com.crosshubber.portal.auth;
 
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -12,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import com.crosshubber.portal.config.PortalProperties;
 import com.crosshubber.portal.security.PortalUser;
@@ -85,16 +85,24 @@ public class KeycloakService {
   /**
    * Keycloak end-session URL — mirrors {@code logoutUrl(idTokenHint, postLogoutUri)}: public
    * issuer, {@code id_token_hint} set only when present, then {@code post_logout_redirect_uri}.
+   *
+   * <p>Parameters are percent-encoded explicitly — {@code UriComponentsBuilder.encode()} treats
+   * {@code &}/{@code =} as legal query characters and would not prevent parameter injection.
    */
   public String logoutUrl(String idTokenHint, String postLogoutUri) {
-    UriComponentsBuilder builder =
-        UriComponentsBuilder.fromUriString(
-            props.getEffectiveIssuer() + "/protocol/openid-connect/logout");
+    StringBuilder url =
+        new StringBuilder(props.getEffectiveIssuer())
+            .append("/protocol/openid-connect/logout")
+            .append("?post_logout_redirect_uri=")
+            .append(urlEncode(postLogoutUri));
     if (idTokenHint != null && !idTokenHint.isBlank()) {
-      builder.queryParam("id_token_hint", idTokenHint);
+      url.append("&id_token_hint=").append(urlEncode(idTokenHint));
     }
-    builder.queryParam("post_logout_redirect_uri", postLogoutUri);
-    return builder.build().encode().toUriString();
+    return url.toString();
+  }
+
+  private static String urlEncode(String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 
   private PortalUser parseUser(String jwt) {

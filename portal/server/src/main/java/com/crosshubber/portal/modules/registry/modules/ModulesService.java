@@ -4,6 +4,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Module registry CRUD — mirrors {@code portal/src/modules/modules/modules.service.ts}. */
 @Service
 public class ModulesService {
+
+  private static final Logger log = LoggerFactory.getLogger(ModulesService.class);
 
   private static final String KEY_RE = "^[a-z0-9][a-z0-9-]{0,63}$";
 
@@ -187,6 +191,7 @@ public class ModulesService {
           .map(r -> (String) r.get("key"))
           .toList();
     } catch (Exception e) {
+      log.warn("[modules] security roles JSON parse failed: {}", e.getMessage());
       return List.of();
     }
   }
@@ -198,6 +203,7 @@ public class ModulesService {
       }
       return objectMapper.readValue(json, new TypeReference<>() {});
     } catch (Exception e) {
+      log.warn("[modules] security roles JSON parse failed: {}", e.getMessage());
       return List.of();
     }
   }

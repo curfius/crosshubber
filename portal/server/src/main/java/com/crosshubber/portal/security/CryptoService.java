@@ -32,24 +32,30 @@ public class CryptoService {
 
   private final PortalProperties props;
   private final ObjectMapper objectMapper;
-  private byte[] keyBytes;
+  private volatile byte[] keyBytes;
 
   public CryptoService(PortalProperties props, ObjectMapper objectMapper) {
     this.props = props;
     this.objectMapper = objectMapper;
   }
 
+  /** Lazily decodes the hex key; double-checked locking keeps concurrent callers safe. */
   private byte[] getKey() {
-    if (keyBytes != null) {
+    byte[] local = keyBytes;
+    if (local != null) {
+      return local;
+    }
+    synchronized (this) {
+      if (keyBytes == null) {
+        String raw = props.getEncryptionKey();
+        if (raw == null || raw.length() != 64) {
+          throw new IllegalStateException("PORTAL_ENCRYPTION_KEY must be 64 hex chars (32 bytes)");
+        }
+        keyBytes = hexToBytes(raw);
+        log.info("[crypto] encryption key loaded ({} hex chars)", raw.length());
+      }
       return keyBytes;
     }
-    String raw = props.getEncryptionKey();
-    if (raw == null || raw.length() != 64) {
-      throw new IllegalStateException("PORTAL_ENCRYPTION_KEY must be 64 hex chars (32 bytes)");
-    }
-    keyBytes = hexToBytes(raw);
-    log.info("[crypto] encryption key loaded ({} hex chars)", raw.length());
-    return keyBytes;
   }
 
   /** Encrypts plaintext with random IV. */

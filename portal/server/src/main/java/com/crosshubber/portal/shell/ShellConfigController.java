@@ -3,7 +3,8 @@ package com.crosshubber.portal.shell;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,10 +21,8 @@ public class ShellConfigController {
   }
 
   @GetMapping("/api/config")
-  public ResponseEntity<Map<String, Object>> config(Authentication auth) {
-    if (auth == null || !(auth.getPrincipal() instanceof PortalUser user)) {
-      return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
-    }
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<Map<String, Object>> config(@AuthenticationPrincipal PortalUser user) {
     return ResponseEntity.ok(configService.buildConfig(user));
   }
 }
