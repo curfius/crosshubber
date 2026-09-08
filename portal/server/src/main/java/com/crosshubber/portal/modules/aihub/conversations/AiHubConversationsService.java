@@ -1,31 +1,40 @@
 package com.crosshubber.portal.modules.aihub.conversations;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.data.domain.PageRequest;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.crosshubber.portal.common.NodeDates;
-import com.crosshubber.portal.modules.aihub.ChatMessage;
 import com.crosshubber.portal.modules.aihub.dto.ConversationDto;
 import com.crosshubber.portal.modules.aihub.dto.FullConversationDto;
-import com.crosshubber.portal.modules.aihub.dto.MessageDto;
 
+/**
+ * Manages AI Hub conversation metadata — creation, listing, deletion, and ownership validation.
+ *
+ * <p>This service deliberately does NOT manage individual messages. Message history is handled
+ * entirely by Spring AI's {@link ChatMemory} system (backed by the {@code ai_hub_chat_memory}
+ * table via {@code JdbcChatMemoryRepository}). The {@code MessageChatMemoryAdvisor} in {@code
+ * AiHubChatService} reads and writes messages automatically around each LLM call.
+ *
+ * <p>On deletion, this service calls {@code chatMemory.clear(conversationId)} to remove the message
+   * history from the ai_hub_chat_memory table before deleting the conversation metadata.
+ */
 @Service
 public class AiHubConversationsService {
 
   private final AiHubConversationRepository conversationRepo;
-  private final AiHubMessageRepository messageRepo;
+  private final ChatMemory chatMemory;
 
   public AiHubConversationsService(
-      AiHubConversationRepository conversationRepo, AiHubMessageRepository messageRepo) {
+      AiHubConversationRepository conversationRepo, ChatMemory chatMemory) {
     this.conversationRepo = conversationRepo;
-    this.messageRepo = messageRepo;
+    this.chatMemory = chatMemory;
   }
 
+  /** Returns all portal-origin conversations for the given user, most recently updated first. */
   @Transactional(readOnly = true)
   public List<ConversationDto> listConversations(String userId) {
     return conversationRepo.findByUserIdAndOriginOrderByUpdatedAtDesc(userId, "portal").stream()
@@ -33,6 +42,10 @@ public class AiHubConversationsService {
         .toList();
   }
 
+  /**
+   * Creates a new conversation with a generated ID ({@code conv_} + UUID). The title is typically
+   * the first 60 characters of the user's initial message.
+   */
   @Transactional
   public FullConversationDto createConversation(String userId, String title) {
     AiHubConversationEntity conversation = new AiHubConversationEntity();
@@ -44,6 +57,13 @@ public class AiHubConversationsService {
     return toFullConversationDto(conversation);
   }
 
+  /**
+   * Deletes a conversation and its message history. Clears the {@link ChatMemory} entry for this
+   * conversation ID before deleting the metadata row, ensuring no orphaned messages remain in the
+   * SPRING_AI_CHAT_MEMORY table.
+   *
+   * @return {@code true} if the conversation was found and deleted, {@code false} if not found
+   */
   @Transactional
   public boolean deleteConversation(String id, String userId) {
     AiHubConversationEntity conversation =
@@ -51,67 +71,22 @@ public class AiHubConversationsService {
     if (conversation == null) {
       return false;
     }
-    messageRepo.deleteByConversationId(id);
+    chatMemory.clear(id);
     conversationRepo.delete(conversation);
     return true;
   }
 
+  /**
+   * Validates that a conversation exists and belongs to the given user. Returns the entity for
+   * further processing, or {@code null} if not found / not owned.
+   */
   @Transactional(readOnly = true)
   public AiHubConversationEntity getConversation(String id, String userId) {
     return conversationRepo.findByIdAndUserId(id, userId).orElse(null);
   }
 
-  @Transactional(readOnly = true)
-  public List<MessageDto> getMessages(String conversationId) {
-    return messageRepo.findByConversationIdOrderByIdAsc(conversationId).stream()
-        .map(this::toMessageDto)
-        .toList();
-  }
-
-  @Transactional
-  public MessageDto addMessage(String conversationId, String role, String content) {
-    return addMessage(conversationId, role, content, null, null);
-  }
-
-  @Transactional
-  public MessageDto addMessage(
-      String conversationId, String role, String content, String providerId, String model) {
-    AiHubMessageEntity message = new AiHubMessageEntity();
-    message.setConversationId(conversationId);
-    message.setRole(role);
-    message.setContent(content);
-    message.setProviderId(providerId);
-    message.setModel(model);
-    message = messageRepo.saveAndFlush(message);
-    conversationRepo
-        .findById(conversationId)
-        .ifPresent(
-            conversation -> {
-              conversation.setUpdatedAt(Instant.now());
-              conversationRepo.save(conversation);
-            });
-    return toMessageDto(message);
-  }
-
-  @Transactional(readOnly = true)
-  public List<ChatMessage> getRecentMessages(String conversationId, int limit) {
-    List<AiHubMessageEntity> latest =
-        messageRepo.findByConversationIdOrderByIdDesc(conversationId, PageRequest.of(0, limit));
-    return latest.reversed().stream()
-        .map(m -> new ChatMessage(m.getRole(), m.getContent()))
-        .toList();
-  }
-
-  private ConversationDto toConversationDto(AiHubConversationEntity c) {
-    return new ConversationDto(
-        c.getId(),
-        c.getUserId(),
-        c.getTitle(),
-        NodeDates.format(c.getCreatedAt()),
-        NodeDates.format(c.getUpdatedAt()));
-  }
-
-  private FullConversationDto toFullConversationDto(AiHubConversationEntity c) {
+  /** Converts an entity to the full DTO including origin (used by the GET endpoint). */
+  public FullConversationDto toFullConversationDto(AiHubConversationEntity c) {
     return new FullConversationDto(
         c.getId(),
         c.getUserId(),
@@ -121,14 +96,13 @@ public class AiHubConversationsService {
         NodeDates.format(c.getUpdatedAt()));
   }
 
-  private MessageDto toMessageDto(AiHubMessageEntity m) {
-    return new MessageDto(
-        m.getId(),
-        m.getConversationId(),
-        m.getRole(),
-        m.getContent(),
-        m.getProviderId(),
-        m.getModel(),
-        NodeDates.format(m.getCreatedAt()));
+  /** Converts an entity to the list DTO (no origin field, used by the list endpoint). */
+  private ConversationDto toConversationDto(AiHubConversationEntity c) {
+    return new ConversationDto(
+        c.getId(),
+        c.getUserId(),
+        c.getTitle(),
+        NodeDates.format(c.getCreatedAt()),
+        NodeDates.format(c.getUpdatedAt()));
   }
 }

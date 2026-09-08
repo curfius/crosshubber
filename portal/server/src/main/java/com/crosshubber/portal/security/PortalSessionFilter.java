@@ -62,8 +62,7 @@ public class PortalSessionFilter extends OncePerRequestFilter {
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
-    boolean isAsync =
-        jakarta.servlet.DispatcherType.ASYNC.equals(request.getDispatcherType());
+    boolean isAsync = jakarta.servlet.DispatcherType.ASYNC.equals(request.getDispatcherType());
     String token = parseCookie(request.getHeader("Cookie"), COOKIE_NAME);
     if (token != null) {
       SessionData session = decodeSession(token, props.getSessionSecret());

@@ -12,12 +12,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.portal.modules.aihub.common.EntityNotFoundException;
-import com.crosshubber.portal.modules.aihub.dto.AddMessageRequest;
 import com.crosshubber.portal.modules.aihub.dto.CreateConversationRequest;
 import com.crosshubber.portal.modules.aihub.dto.FullConversationDto;
-import com.crosshubber.portal.modules.aihub.dto.MessageDto;
 import com.crosshubber.portal.security.PortalUser;
 
+/**
+ * REST endpoints for AI Hub conversation management. These handle metadata only — message history
+ * is managed by Spring AI's {@code ChatMemory} system and streamed via {@code AiHubChatController}.
+ */
 @RestController
 public class AiHubConversationsController {
 
@@ -27,11 +29,13 @@ public class AiHubConversationsController {
     this.conversationsService = conversationsService;
   }
 
+  /** Lists all portal conversations for the authenticated user, most recently updated first. */
   @GetMapping("/api/ai-hub/conversations")
   public Map<String, Object> list(@AuthenticationPrincipal PortalUser user) {
     return Map.of("conversations", conversationsService.listConversations(user.sub()));
   }
 
+  /** Creates a new conversation. Title defaults to "New Chat" if not provided. */
   @PostMapping("/api/ai-hub/conversations")
   public FullConversationDto create(
       @AuthenticationPrincipal PortalUser user,
@@ -41,6 +45,10 @@ public class AiHubConversationsController {
     return conversationsService.createConversation(user.sub(), title);
   }
 
+  /**
+   * Deletes a conversation and its message history. Clears the SPRING_AI_CHAT_MEMORY entry via
+   * {@code ChatMemory.clear()} before removing the metadata.
+   */
   @DeleteMapping("/api/ai-hub/conversations/{id}")
   public ResponseEntity<?> delete(
       @AuthenticationPrincipal PortalUser user, @PathVariable String id) {
@@ -50,29 +58,14 @@ public class AiHubConversationsController {
     return ResponseEntity.ok(Map.of("ok", true));
   }
 
-  @GetMapping("/api/ai-hub/conversations/{id}/messages")
-  public Map<String, Object> messages(
+  /** Returns a single conversation's metadata. */
+  @GetMapping("/api/ai-hub/conversations/{id}")
+  public FullConversationDto get(
       @AuthenticationPrincipal PortalUser user, @PathVariable String id) {
-    if (conversationsService.getConversation(id, user.sub()) == null) {
+    var conversation = conversationsService.getConversation(id, user.sub());
+    if (conversation == null) {
       throw new EntityNotFoundException("conversation not found");
     }
-    return Map.of("messages", conversationsService.getMessages(id));
-  }
-
-  @PostMapping("/api/ai-hub/conversations/{id}/messages")
-  public MessageDto addMessage(
-      @AuthenticationPrincipal PortalUser user,
-      @PathVariable String id,
-      @RequestBody AddMessageRequest body) {
-    if (conversationsService.getConversation(id, user.sub()) == null) {
-      throw new EntityNotFoundException("conversation not found");
-    }
-    if (!"user".equals(body.role()) && !"assistant".equals(body.role())) {
-      throw new IllegalArgumentException("invalid role");
-    }
-    if (body.content() == null || body.content().isEmpty()) {
-      throw new IllegalArgumentException("content required");
-    }
-    return conversationsService.addMessage(id, body.role(), body.content());
+    return conversationsService.toFullConversationDto(conversation);
   }
 }
