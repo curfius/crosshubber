@@ -2,6 +2,7 @@ package com.crosshubber.portal.modules.aihub.chat;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,6 +23,7 @@ public class AiHubChatController {
   }
 
   @PostMapping(value = "/api/ai-hub/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<Flux<String>> chat(
       @AuthenticationPrincipal PortalUser user, @RequestBody ChatStreamRequest body) {
     String message = body.message() == null ? "" : body.message().trim();

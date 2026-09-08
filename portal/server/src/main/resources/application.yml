@@ -22,6 +22,9 @@ portal:
   keycloak-public-url: ${KEYCLOAK_PUBLIC_URL:}
 
 spring:
+  threads:
+    virtual:
+      enabled: true # blocking I/O (JPA, RestClient, proxy fetches) on virtual carriers
   autoconfigure:
     exclude:
       # Spring AI 2.0.1 autoconfigure FQNs — models are built at runtime from module

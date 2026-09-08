@@ -1,6 +1,5 @@
 package com.crosshubber.portal.modules.aihub.providers;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,16 +31,10 @@ public class AiHubProvidersController {
   private final AiHubProvidersService providersService;
   private final RestClient restClient;
 
-  public AiHubProvidersController(AiHubProvidersService providersService) {
+  public AiHubProvidersController(
+      AiHubProvidersService providersService, RestClient.Builder restClientBuilder) {
     this.providersService = providersService;
-    this.restClient =
-        RestClient.builder()
-            .requestFactory(
-                new org.springframework.http.client.JdkClientHttpRequestFactory(
-                    java.net.http.HttpClient.newBuilder()
-                        .connectTimeout(Duration.ofSeconds(10))
-                        .build()))
-            .build();
+    this.restClient = restClientBuilder.build();
   }
 
   @GetMapping({"/api/ai-hub/providers"})

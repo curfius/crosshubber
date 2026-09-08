@@ -37,10 +37,10 @@ public class KeycloakService {
   private final ObjectMapper mapper;
   private final RestClient restClient;
 
-  public KeycloakService(PortalProperties props, ObjectMapper mapper) {
+  public KeycloakService(PortalProperties props, ObjectMapper mapper, RestClient.Builder builder) {
     this.props = props;
     this.mapper = mapper;
-    this.restClient = RestClient.create();
+    this.restClient = builder.build();
   }
 
   public record RefreshResult(boolean ok, PortalUser user, String idToken, String refreshToken) {}

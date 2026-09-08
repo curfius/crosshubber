@@ -5,6 +5,7 @@ import org.hibernate.type.SqlTypes;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.crosshubber.portal.modules.aihub.common.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -27,6 +28,8 @@ public class AiHubTokenEntity extends BaseEntity {
   @Column(name = "name", nullable = false)
   private String name;
 
+  /** Defense-in-depth: never serialize the encrypted API key, even by accident. */
+  @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
   @Column(name = "encrypted_key")
   private String encryptedKey;
 

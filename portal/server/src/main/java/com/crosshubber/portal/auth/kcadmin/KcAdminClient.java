@@ -30,9 +30,9 @@ public class KcAdminClient {
   private String accessToken;
   private Instant expiresAt;
 
-  public KcAdminClient(PortalProperties props) {
+  public KcAdminClient(PortalProperties props, RestClient.Builder builder) {
     this.props = props;
-    this.restClient = RestClient.create();
+    this.restClient = builder.build();
   }
 
   public boolean isConfigured() {

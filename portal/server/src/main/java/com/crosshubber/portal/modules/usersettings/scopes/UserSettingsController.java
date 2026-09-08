@@ -3,6 +3,7 @@ package com.crosshubber.portal.modules.usersettings.scopes;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,6 +40,7 @@ public class UserSettingsController {
   }
 
   @GetMapping
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<Map<String, Object>> getAll(Authentication auth) {
     PortalUser user = user(auth);
     if (user == null) {
@@ -48,6 +50,7 @@ public class UserSettingsController {
   }
 
   @GetMapping("/{scope}")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<?> get(@PathVariable String scope, Authentication auth) {
     PortalUser user = user(auth);
     if (user == null) {
@@ -61,6 +64,7 @@ public class UserSettingsController {
   }
 
   @PutMapping("/{scope}")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<?> put(
       @PathVariable String scope, @RequestBody Map<String, Object> body, Authentication auth) {
     PortalUser user = user(auth);
