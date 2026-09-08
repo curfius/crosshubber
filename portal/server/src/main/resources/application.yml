@@ -47,8 +47,6 @@ spring:
     open-in-view: false
     properties:
       hibernate.default_schema: ${PGSCHEMA:${TENANT_SLUG:dev}}
-      hibernate.jdbc.lob.non_contextual_creation: true
-      hibernate.format_sql: false
   flyway:
     enabled: true
     schemas: ${PGSCHEMA:${TENANT_SLUG:dev}}

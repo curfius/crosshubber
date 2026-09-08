@@ -30,9 +30,10 @@ import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
 import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
 import com.crosshubber.portal.modules.settings.instance.InstanceSettingsEntity;
 import com.crosshubber.portal.modules.settings.instance.InstanceSettingsRepository;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Reconciles DB state with embedded catalog and tenant config at boot.

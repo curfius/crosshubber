@@ -19,7 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.portal.config.PortalProperties;
 import com.crosshubber.portal.security.PortalUser;
-import com.fasterxml.jackson.databind.JsonNode;
+
+import tools.jackson.databind.JsonNode;
 
 /**
  * Module manifest lifecycle routes — mirrors {@code
@@ -34,14 +35,14 @@ public class ManifestController {
   private final ManifestValidator validator;
   private final ManifestFetcher fetcher;
   private final PortalProperties props;
-  private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+  private final tools.jackson.databind.ObjectMapper objectMapper;
 
   public ManifestController(
       InstallService installService,
       ManifestValidator validator,
       ManifestFetcher fetcher,
       PortalProperties props,
-      com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+      tools.jackson.databind.ObjectMapper objectMapper) {
     this.installService = installService;
     this.validator = validator;
     this.fetcher = fetcher;

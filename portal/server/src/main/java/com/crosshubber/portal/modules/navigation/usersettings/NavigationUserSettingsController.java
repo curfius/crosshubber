@@ -10,7 +10,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.portal.security.PortalUser;
-import com.fasterxml.jackson.databind.JsonNode;
+
+import tools.jackson.databind.JsonNode;
 
 /** Navigation user-settings routes — mirrors navigation.routes.ts user-settings. */
 @RestController

@@ -7,12 +7,13 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.web.client.RestClient;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -51,9 +52,16 @@ class PortalSmokeTest {
     registry.add("spring.datasource.password", POSTGRES::getPassword);
   }
 
-  @Autowired TestRestTemplate http;
+  @LocalServerPort int port;
 
   @Autowired Flyway flyway;
+
+  private RestClient http;
+
+  @Autowired
+  void initClient(RestClient.Builder builder) {
+    this.http = builder.baseUrl("http://localhost:" + port).build();
+  }
 
   @Test
   void allFlywayMigrationsApplied() {
@@ -62,7 +70,7 @@ class PortalSmokeTest {
 
   @Test
   void healthzReturnsUpWithContractShape() {
-    ResponseEntity<String> response = http.getForEntity("/healthz", String.class);
+    ResponseEntity<String> response = http.get().uri("/healthz").retrieve().toEntity(String.class);
     assertEquals(HttpStatus.OK, response.getStatusCode());
     assertTrue(response.getBody().contains("\"ok\":true"));
     assertTrue(response.getBody().contains("\"app\":\"portal\""));
@@ -71,7 +79,12 @@ class PortalSmokeTest {
 
   @Test
   void unauthenticatedApiReturns401JsonContract() {
-    ResponseEntity<String> response = http.getForEntity("/api/modules", String.class);
+    ResponseEntity<String> response =
+        http.get()
+            .uri("/api/modules")
+            .retrieve()
+            .onStatus(s -> true, (r, res) -> {})
+            .toEntity(String.class);
     assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
     assertTrue(response.getBody().contains("\"error\":\"unauthorized\""));
   }

@@ -3,8 +3,8 @@ package com.crosshubber.portal.modules.aihub.util;
 import java.util.List;
 import java.util.Map;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 /** Shared JSON utilities for the AI Hub module. */
 public final class JsonUtils {

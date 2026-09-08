@@ -13,7 +13,8 @@ import com.crosshubber.portal.modules.aihub.dto.ProviderDto;
 import com.crosshubber.portal.modules.aihub.dto.TokenDto;
 import com.crosshubber.portal.modules.aihub.util.JsonUtils;
 import com.crosshubber.portal.security.CryptoService;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class AiHubProvidersService {

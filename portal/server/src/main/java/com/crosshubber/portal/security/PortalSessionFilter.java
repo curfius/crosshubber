@@ -18,12 +18,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.crosshubber.portal.auth.KeycloakService;
 import com.crosshubber.portal.config.PortalProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Validates the {@code portalSession} HMAC cookie and populates SecurityContext.

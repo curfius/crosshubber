@@ -18,8 +18,9 @@ import com.crosshubber.portal.modules.i18n.languages.I18nLanguageEntity;
 import com.crosshubber.portal.modules.i18n.languages.I18nLanguageRepository;
 import com.crosshubber.portal.modules.i18n.settings.I18nSettingsEntity;
 import com.crosshubber.portal.modules.i18n.settings.I18nSettingsRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * i18n domain service — mirrors {@code portal/src/modules/i18n/i18n.repository.ts}. Every write

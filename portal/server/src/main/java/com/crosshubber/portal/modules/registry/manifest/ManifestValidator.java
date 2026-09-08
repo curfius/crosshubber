@@ -2,7 +2,6 @@ package com.crosshubber.portal.modules.registry.manifest;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -12,10 +11,11 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 
 import com.crosshubber.portal.config.PortalProperties;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Manifest schema validation — mirrors {@code portal/src/modules/registry/manifest.schema.ts}
@@ -66,7 +66,7 @@ public class ManifestValidator {
       issues.add("(root): expected an object");
       return Result.fail(issues);
     }
-    ObjectNode manifest = raw.deepCopy();
+    ObjectNode manifest = (ObjectNode) raw.deepCopy();
 
     if (!manifest.has("manifestVersion") || manifest.get("manifestVersion").asInt(-1) != 1) {
       issues.add("manifestVersion: must be 1");
@@ -83,8 +83,7 @@ public class ManifestValidator {
     if (manifest.hasNonNull("health") && !manifest.path("health").asText().startsWith("/")) {
       issues.add("health: must start with \"/\"");
     }
-    for (Iterator<String> it = manifest.fieldNames(); it.hasNext(); ) {
-      String key = it.next();
+    for (String key : manifest.propertyNames()) {
       if (!TOP_LEVEL_KEYS.contains(key)) {
         issues.add(key + ": unknown field");
       }

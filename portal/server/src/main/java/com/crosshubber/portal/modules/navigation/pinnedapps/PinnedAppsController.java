@@ -13,7 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.portal.modules.navigation.NavigationValidationService;
-import com.fasterxml.jackson.databind.JsonNode;
+
+import tools.jackson.databind.JsonNode;
 
 /** Pinned apps routes — mirrors the pinned-apps section of navigation.routes.ts. */
 @RestController

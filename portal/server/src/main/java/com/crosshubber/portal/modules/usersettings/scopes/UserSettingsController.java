@@ -12,7 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.portal.security.PortalUser;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * User settings routes — mirrors {@code portal/src/modules/user-settings/user-settings.routes.ts}:

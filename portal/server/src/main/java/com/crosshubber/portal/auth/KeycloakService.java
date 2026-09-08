@@ -16,8 +16,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.crosshubber.portal.config.PortalProperties;
 import com.crosshubber.portal.security.PortalUser;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Keycloak identity provider — token refresh + logout URL building.
@@ -87,7 +88,7 @@ public class KeycloakService {
    */
   public String logoutUrl(String idTokenHint, String postLogoutUri) {
     UriComponentsBuilder builder =
-        UriComponentsBuilder.fromHttpUrl(
+        UriComponentsBuilder.fromUriString(
             props.getEffectiveIssuer() + "/protocol/openid-connect/logout");
     if (idTokenHint != null && !idTokenHint.isBlank()) {
       builder.queryParam("id_token_hint", idTokenHint);

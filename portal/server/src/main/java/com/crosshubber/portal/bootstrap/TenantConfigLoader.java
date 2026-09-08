@@ -12,9 +12,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.crosshubber.portal.config.PortalProperties;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Loads effective tenant config.
@@ -166,11 +167,11 @@ public class TenantConfigLoader {
     }
     if (base.isObject() && overlay.isObject()) {
       // Merge objects recursively, overlay wins
-      com.fasterxml.jackson.databind.node.ObjectNode out =
-          ((com.fasterxml.jackson.databind.node.ObjectNode) base).deepCopy();
+      tools.jackson.databind.node.ObjectNode out =
+          ((tools.jackson.databind.node.ObjectNode) base).deepCopy();
       overlay
-          .fields()
-          .forEachRemaining(
+          .properties()
+          .forEach(
               e -> {
                 String key = e.getKey();
                 JsonNode baseVal = out.get(key);

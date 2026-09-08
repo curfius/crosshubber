@@ -18,9 +18,10 @@ import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
 import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
 import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Manifest install/version/draft lifecycle — mirrors {@code
@@ -488,7 +489,7 @@ public class InstallService {
    */
   private String digest(JsonNode manifest) {
     List<String> allow = new java.util.ArrayList<>();
-    manifest.fieldNames().forEachRemaining(allow::add);
+    allow.addAll(manifest.propertyNames());
     java.util.Collections.sort(allow);
     try {
       Object filtered = filterKeys(manifest, allow);

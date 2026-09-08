@@ -11,9 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.crosshubber.portal.modules.navigation.NavigationValidationService;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Per-user navigation settings (sidebar) — mirrors the user-settings part of {@code

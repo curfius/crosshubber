@@ -13,8 +13,9 @@ import org.springframework.stereotype.Service;
 
 import com.crosshubber.portal.common.SsrfGuard;
 import com.crosshubber.portal.config.PortalProperties;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Manifest fetcher — mirrors {@code portal/src/modules/registry/manifest.fetcher.ts}: 5 s timeout,

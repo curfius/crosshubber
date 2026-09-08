@@ -21,8 +21,9 @@ import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
 import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
 import com.crosshubber.portal.modules.usersettings.scopes.UserSettingsRepository;
 import com.crosshubber.portal.security.PortalUser;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Aggregates the authenticated user's shell config for {@code GET /api/config} — mirrors {@code

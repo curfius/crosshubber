@@ -20,11 +20,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.portal.security.PortalUser;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.PersistenceException;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Workspace routes â€” mirrors {@code portal/src/modules/workspaces/workspaces.routes.ts} +

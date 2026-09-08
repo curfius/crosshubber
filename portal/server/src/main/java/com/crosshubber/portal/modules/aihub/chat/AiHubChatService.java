@@ -22,11 +22,11 @@ import org.springframework.web.server.ResponseStatusException;
 import com.crosshubber.portal.modules.aihub.conversations.AiHubConversationsService;
 import com.crosshubber.portal.modules.aihub.providers.AiHubProvidersService;
 import com.crosshubber.portal.modules.settings.modules.ModuleSettingsService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
 import reactor.core.publisher.Flux;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Chat orchestrator for the AI Hub module. On each user message this service:

@@ -9,10 +9,10 @@ import com.crosshubber.portal.config.PortalProperties;
 import com.crosshubber.portal.security.PortalSessionFilter;
 import com.crosshubber.portal.security.SessionData;
 import com.crosshubber.portal.security.SessionService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Auth routes — login start + logout.

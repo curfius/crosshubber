@@ -18,7 +18,8 @@ import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroups
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointsService;
-import com.fasterxml.jackson.databind.JsonNode;
+
+import tools.jackson.databind.JsonNode;
 
 /**
  * Settings-shell tree editor (groups + items) — mirrors the shell-tree endpoints in {@code

@@ -18,7 +18,8 @@ import com.crosshubber.portal.config.JacksonConfig;
 import com.crosshubber.portal.modules.aihub.conversations.AiHubConversationsService;
 import com.crosshubber.portal.modules.aihub.providers.AiHubProvidersService;
 import com.crosshubber.portal.modules.settings.modules.ModuleSettingsService;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
+import tools.jackson.databind.json.JsonMapper;
 
 class AiHubChatServiceTest {
 
@@ -71,7 +72,7 @@ class AiHubChatServiceTest {
   private AiHubChatService newService(Map<String, Object> settings) {
     ModuleSettingsService moduleSettings = mock(ModuleSettingsService.class);
     when(moduleSettings.get("ai-hub")).thenReturn(settings);
-    ObjectMapper mapper = new JacksonConfig().objectMapper();
+    JsonMapper mapper = new JacksonConfig().jsonMapper();
     return new AiHubChatService(
         moduleSettings,
         mock(AiHubProvidersService.class),

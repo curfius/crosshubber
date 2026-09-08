@@ -10,7 +10,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Locks the JSON serialization contract that API consumers depend on. Run before/after any Jackson
@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 class JacksonContractTest {
 
-  private final ObjectMapper mapper = new JacksonConfig().objectMapper();
+  private final JsonMapper mapper = new JacksonConfig().jsonMapper();
 
   @Test
   void instantsSerializeAsIso8601NotTimestamps() throws Exception {

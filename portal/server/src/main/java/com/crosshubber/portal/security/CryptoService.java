@@ -12,7 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.crosshubber.portal.config.PortalProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * AES-256-GCM encryption for LLM keys and channel credentials.
