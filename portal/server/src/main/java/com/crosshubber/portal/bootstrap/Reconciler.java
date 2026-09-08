@@ -209,12 +209,12 @@ public class Reconciler implements ApplicationRunner {
                 + "\" has an invalid manifest: "
                 + ManifestValidator.formatIssues(parsed.issues()));
       }
-      if (!ext.key().equals(parsed.manifest().path("key").asText())) {
+      if (!ext.key().equals(parsed.manifest().path("key").asString())) {
         throw new IllegalStateException(
             "external module \""
                 + ext.key()
                 + "\" manifest declares key \""
-                + parsed.manifest().path("key").asText()
+                + parsed.manifest().path("key").asString()
                 + "\"");
       }
       installService.applyInstall(parsed.manifest(), "tenant-bootstrap:" + tenant.slug());

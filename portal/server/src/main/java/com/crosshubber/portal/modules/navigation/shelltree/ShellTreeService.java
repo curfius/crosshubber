@@ -149,9 +149,9 @@ public class ShellTreeService {
       resolved.add(
           new ResolvedGroup(
               key,
-              g.path("name").asText(),
-              g.path("parentKey").isTextual() ? g.get("parentKey").asText() : null,
-              g.path("icon").isTextual() ? g.get("icon").asText() : null,
+              g.path("name").asString(),
+              g.path("parentKey").isTextual() ? g.get("parentKey").asString() : null,
+              g.path("icon").isTextual() ? g.get("icon").asString() : null,
               isNew ? "" : orEmpty(byExistingKey.get(key).getRoles())));
     }
 
@@ -163,9 +163,9 @@ public class ShellTreeService {
     for (JsonNode item : itemInputs) {
       itemsForValidation.add(
           new NavigationValidationService.ShellItem(
-              item.path("moduleKey").asText(),
-              item.path("entryKey").asText(),
-              isNullish(item.path("groupKey")) ? null : item.path("groupKey").asText()));
+              item.path("moduleKey").asString(),
+              item.path("entryKey").asString(),
+              isNullish(item.path("groupKey")) ? null : item.path("groupKey").asString()));
     }
     NavigationValidationService.Validation treeValidation =
         NavigationValidationService.validateShellTree(groupsForValidation, itemsForValidation);
@@ -181,7 +181,7 @@ public class ShellTreeService {
       categoryKeys.add(row.getModuleKey() + ":" + row.getEntryKey());
     }
     for (JsonNode item : itemInputs) {
-      String ref = item.path("moduleKey").asText() + ":" + item.path("entryKey").asText();
+      String ref = item.path("moduleKey").asString() + ":" + item.path("entryKey").asString();
       if (!categoryKeys.contains(ref)) {
         throw new IllegalArgumentException(
             "entry " + ref + " is not in category \"" + category + "\"");
@@ -222,17 +222,17 @@ public class ShellTreeService {
     // of the category are ungrouped and appended after the listed root ones.
     Set<String> listedRefs = new LinkedHashSet<>();
     for (JsonNode item : itemInputs) {
-      listedRefs.add(item.path("moduleKey").asText() + ":" + item.path("entryKey").asText());
+      listedRefs.add(item.path("moduleKey").asString() + ":" + item.path("entryKey").asString());
     }
     Map<String, Integer> itemBucket = new LinkedHashMap<>();
     for (JsonNode item : itemInputs) {
-      String groupKey = isNullish(item.path("groupKey")) ? null : item.path("groupKey").asText();
+      String groupKey = isNullish(item.path("groupKey")) ? null : item.path("groupKey").asString();
       String bucket = groupKey == null ? "" : groupKey;
       int order = itemBucket.getOrDefault(bucket, 0);
       itemBucket.put(bucket, order + 10);
       entryPointRepo
           .findByModuleKeyAndEntryKey(
-              item.path("moduleKey").asText(), item.path("entryKey").asText())
+              item.path("moduleKey").asString(), item.path("entryKey").asString())
           .ifPresent(
               ep -> {
                 ep.setGroupKey(groupKey);

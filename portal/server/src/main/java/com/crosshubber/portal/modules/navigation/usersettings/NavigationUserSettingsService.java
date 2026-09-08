@@ -125,7 +125,7 @@ public class NavigationUserSettingsService {
           return "sidebar.apps: must be an array of at most 500 strings";
         }
         for (JsonNode app : apps) {
-          if (!app.isTextual() || app.asText().length() > 255) {
+          if (!app.isTextual() || app.asString().length() > 255) {
             return "sidebar.apps: must be an array of at most 500 strings";
           }
         }
@@ -140,7 +140,7 @@ public class NavigationUserSettingsService {
         return "sidebarExpanded: must be an array of at most 500 strings";
       }
       for (JsonNode item : expanded) {
-        if (!item.isTextual() || item.asText().length() > 255) {
+        if (!item.isTextual() || item.asString().length() > 255) {
           return "sidebarExpanded: must be an array of at most 500 strings";
         }
       }
@@ -167,7 +167,7 @@ public class NavigationUserSettingsService {
       }
       if (sidebar.hasNonNull("apps")) {
         List<String> apps = new ArrayList<>();
-        sidebar.get("apps").forEach(a -> apps.add(a.asText()));
+        sidebar.get("apps").forEach(a -> apps.add(a.asString()));
         nextSidebar.put("apps", apps);
       }
     }

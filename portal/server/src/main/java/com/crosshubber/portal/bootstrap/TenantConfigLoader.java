@@ -79,9 +79,10 @@ public class TenantConfigLoader {
       }
       JsonNode merged = deepMerge(baseline, tenant);
       // Extract minimal fields
-      String name = merged.has("name") ? merged.get("name").asText() : slug;
-      String lifecycle = merged.has("lifecycle") ? merged.get("lifecycle").asText() : "persistent";
-      String revision = merged.has("revision") ? merged.get("revision").asText() : "";
+      String name = merged.has("name") ? merged.get("name").asString() : slug;
+      String lifecycle =
+          merged.has("lifecycle") ? merged.get("lifecycle").asString() : "persistent";
+      String revision = merged.has("revision") ? merged.get("revision").asString() : "";
       String digest = Integer.toHexString(merged.toString().hashCode());
       List<DesiredExternalModule> external = new ArrayList<>();
       Map<String, Object> settings = new HashMap<>();
@@ -122,11 +123,13 @@ public class TenantConfigLoader {
       if (keyNode == null || !keyNode.isTextual()) {
         continue;
       }
-      String key = keyNode.asText();
+      String key = keyNode.asString();
       JsonNode manifestUrlNode = e.get("manifestUrl");
       JsonNode manifestNode = e.get("manifest");
       String manifestUrl =
-          manifestUrlNode != null && manifestUrlNode.isTextual() ? manifestUrlNode.asText() : null;
+          manifestUrlNode != null && manifestUrlNode.isTextual()
+              ? manifestUrlNode.asString()
+              : null;
       JsonNode manifest = manifestNode != null && manifestNode.isObject() ? manifestNode : null;
       if ((manifestUrl == null || manifestUrl.isBlank()) && manifest == null) {
         log.warn(
@@ -135,7 +138,7 @@ public class TenantConfigLoader {
       }
       JsonNode serviceKeyNode = e.get("serviceKey");
       String serviceKey =
-          serviceKeyNode != null && serviceKeyNode.isTextual() ? serviceKeyNode.asText() : null;
+          serviceKeyNode != null && serviceKeyNode.isTextual() ? serviceKeyNode.asString() : null;
       boolean active =
           !e.has("active") || !e.get("active").isBoolean() || e.get("active").asBoolean();
       external.add(new DesiredExternalModule(key, serviceKey, manifestUrl, manifest, active));

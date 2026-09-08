@@ -67,10 +67,10 @@ public class InstallService {
     if (!errors.isEmpty()) {
       throw new IllegalArgumentException(ManifestValidator.formatIssues(errors));
     }
-    String moduleKey = manifest.path("key").asText();
+    String moduleKey = manifest.path("key").asString();
     String version = nextMajorVersion(moduleKey);
     String digest = digest(manifest);
-    String baseUrl = manifest.path("baseUrl").asText();
+    String baseUrl = manifest.path("baseUrl").asString();
 
     // 1. Upsert module (new modules start disabled; active preserved on update)
     ModuleEntity module =
@@ -84,7 +84,7 @@ public class InstallService {
                   created.setBuiltin(false);
                   return created;
                 });
-    module.setName(manifest.path("name").asText());
+    module.setName(manifest.path("name").asString());
     module.setRoles("");
     module.setVersion(version);
     module.setManifestDigest(digest);
@@ -92,14 +92,14 @@ public class InstallService {
     module.setSourceUrl(baseUrl);
     module.setSecurityRoles(writeJson(validator.declaredRoles(manifest)));
     module.setBaseUrl(baseUrl);
-    module.setHealth(manifest.hasNonNull("health") ? manifest.get("health").asText() : null);
+    module.setHealth(manifest.hasNonNull("health") ? manifest.get("health").asString() : null);
     moduleRepo.save(module);
 
     // 2. Upsert entry points — runtime-managed fields (groupKey, sortOrder,
     // parentEntryKey, active, icon, color) are preserved on conflict (D4).
     for (ManifestValidator.FlatEntry flat : validator.flattenEntries(manifest)) {
       JsonNode entry = flat.entry();
-      String entryKey = entry.path("key").asText();
+      String entryKey = entry.path("key").asString();
       EntryPointEntity ep =
           entryPointRepo
               .findByModuleKeyAndEntryKey(moduleKey, entryKey)
@@ -114,20 +114,21 @@ public class InstallService {
                     return created;
                   });
       ep.setCategory(flat.category());
-      ep.setName(entry.path("name").asText());
-      ep.setDescription(entry.hasNonNull("description") ? entry.get("description").asText() : null);
-      ep.setType(entry.path("type").asText());
+      ep.setName(entry.path("name").asString());
+      ep.setDescription(
+          entry.hasNonNull("description") ? entry.get("description").asString() : null);
+      ep.setType(entry.path("type").asString());
       ep.setUrl(validator.resolveUrl(entry, baseUrl));
       ep.setSandbox(entry.hasNonNull("sandbox") ? entry.get("sandbox").toString() : null);
-      ep.setAllow(entry.hasNonNull("allow") ? entry.get("allow").asText() : null);
+      ep.setAllow(entry.hasNonNull("allow") ? entry.get("allow").asString() : null);
       ep.setLoadPath(
-          "embedded".equals(entry.path("type").asText()) && entry.hasNonNull("loadPath")
-              ? entry.get("loadPath").asText()
+          "embedded".equals(entry.path("type").asString()) && entry.hasNonNull("loadPath")
+              ? entry.get("loadPath").asString()
               : null);
       ep.setEntryUrl(validator.resolveEntryUrl(entry, baseUrl));
       ep.setElement(
-          "mfe".equals(entry.path("type").asText()) && entry.hasNonNull("element")
-              ? entry.get("element").asText()
+          "mfe".equals(entry.path("type").asString()) && entry.hasNonNull("element")
+              ? entry.get("element").asString()
               : null);
       ep.setRoles(rolesOrEmpty(entry.get("requiredRoles")));
       entryPointRepo.save(ep);
@@ -523,7 +524,7 @@ public class InstallService {
       return out;
     }
     if (node.isTextual()) {
-      return node.asText();
+      return node.asString();
     }
     if (node.isBoolean()) {
       return node.asBoolean();
@@ -568,7 +569,7 @@ public class InstallService {
       return null;
     }
     List<String> parts = new java.util.ArrayList<>();
-    roles.forEach(r -> parts.add(r.asText()));
+    roles.forEach(r -> parts.add(r.asString()));
     return String.join(",", parts);
   }
 

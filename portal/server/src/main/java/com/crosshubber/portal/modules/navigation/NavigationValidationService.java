@@ -80,7 +80,7 @@ public final class NavigationValidationService {
         if (!id.isTextual()) {
           return Validation.fail("id: Invalid input: expected string, received " + jsonType(id));
         }
-        if (id.asText().length() > 64) {
+        if (id.asString().length() > 64) {
           return Validation.fail("id: Too big: expected string to have <=64 characters");
         }
       }
@@ -92,7 +92,7 @@ public final class NavigationValidationService {
         if (!nonBlank(node.path("name"))) {
           return Validation.fail("folders require a name");
         }
-        if (node.path("name").asText().length() > 256) {
+        if (node.path("name").asString().length() > 256) {
           return Validation.fail("name: Too big: expected string to have <=256 characters");
         }
         if (node.has("ref")) {
@@ -262,7 +262,7 @@ public final class NavigationValidationService {
         if (!nonBlank(node.path("name"))) {
           return Validation.fail("sections require a name");
         }
-        if (node.path("name").asText().length() > 256) {
+        if (node.path("name").asString().length() > 256) {
           return Validation.fail("name: Too big: expected string to have <=256 characters");
         }
         JsonNode children = node.path("children");
@@ -398,6 +398,6 @@ public final class NavigationValidationService {
   }
 
   private static boolean nonBlank(JsonNode node) {
-    return node.isTextual() && !node.asText().isBlank();
+    return node.isTextual() && !node.asString().isBlank();
   }
 }

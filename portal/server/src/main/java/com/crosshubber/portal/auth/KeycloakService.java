@@ -65,10 +65,10 @@ public class KeycloakService {
               .body(String.class);
 
       JsonNode root = mapper.readTree(body);
-      String accessToken = root.has("access_token") ? root.get("access_token").asText() : null;
-      String idToken = root.has("id_token") ? root.get("id_token").asText() : accessToken;
+      String accessToken = root.has("access_token") ? root.get("access_token").asString() : null;
+      String idToken = root.has("id_token") ? root.get("id_token").asString() : accessToken;
       String newRefresh =
-          root.has("refresh_token") ? root.get("refresh_token").asText() : refreshToken;
+          root.has("refresh_token") ? root.get("refresh_token").asString() : refreshToken;
 
       if (idToken == null) {
         return new RefreshResult(false, null, null, null);
@@ -105,16 +105,16 @@ public class KeycloakService {
       }
       String payload = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
       JsonNode node = mapper.readTree(payload);
-      String sub = node.has("sub") ? node.get("sub").asText() : "unknown";
+      String sub = node.has("sub") ? node.get("sub").asString() : "unknown";
       String name =
           node.has("name")
-              ? node.get("name").asText()
-              : node.has("preferred_username") ? node.get("preferred_username").asText() : sub;
-      String email = node.has("email") ? node.get("email").asText() : null;
+              ? node.get("name").asString()
+              : node.has("preferred_username") ? node.get("preferred_username").asString() : sub;
+      String email = node.has("email") ? node.get("email").asString() : null;
       List<String> roles = new ArrayList<>();
       if (node.has("realm_access") && node.get("realm_access").has("roles")) {
         for (JsonNode r : node.get("realm_access").get("roles")) {
-          roles.add(r.asText());
+          roles.add(r.asString());
         }
       }
       return new PortalUser(sub, name, email, roles);

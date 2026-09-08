@@ -80,7 +80,7 @@ public class ManifestValidator {
     if (!isUrl(manifest.path("baseUrl"))) {
       issues.add("baseUrl: must be a valid url");
     }
-    if (manifest.hasNonNull("health") && !manifest.path("health").asText().startsWith("/")) {
+    if (manifest.hasNonNull("health") && !manifest.path("health").asString().startsWith("/")) {
       issues.add("health: must start with \"/\"");
     }
     for (String key : manifest.propertyNames()) {
@@ -195,7 +195,7 @@ public class ManifestValidator {
       return;
     }
     boolean hasUrl = nonEmptyString(entry.path("url"));
-    boolean hasPath = entry.has("path") && entry.path("path").asText().startsWith("/");
+    boolean hasPath = entry.has("path") && entry.path("path").asString().startsWith("/");
     boolean hasEntryUrl = nonEmptyString(entry.path("entryUrl"));
     switch (type) {
       case "iframe", "link" -> {
@@ -254,13 +254,13 @@ public class ManifestValidator {
       JsonNode entry = flat.entry();
       String url = resolveUrl(entry, baseUrl);
       String entryUrl = resolveEntryUrl(entry, baseUrl);
-      String candidate = "mfe".equals(entry.path("type").asText()) ? entryUrl : url;
+      String candidate = "mfe".equals(entry.path("type").asString()) ? entryUrl : url;
       if (candidate != null && isPortalOrigin(candidate)) {
         errors.add(
             "content."
-                + entry.path("key").asText()
+                + entry.path("key").asString()
                 + ": Entry \""
-                + entry.path("key").asText()
+                + entry.path("key").asString()
                 + "\" resolves to portal origin ("
                 + candidate
                 + ")"
@@ -291,20 +291,20 @@ public class ManifestValidator {
 
   public String resolveUrl(JsonNode entry, String baseUrl) {
     if (nonEmptyString(entry.path("url"))) {
-      return entry.path("url").asText();
+      return entry.path("url").asString();
     }
     if (nonEmptyString(entry.path("path"))) {
-      return stripTrailingSlash(baseUrl) + entry.path("path").asText();
+      return stripTrailingSlash(baseUrl) + entry.path("path").asString();
     }
     return null;
   }
 
   public String resolveEntryUrl(JsonNode entry, String baseUrl) {
     if (nonEmptyString(entry.path("entryUrl"))) {
-      return entry.path("entryUrl").asText();
+      return entry.path("entryUrl").asString();
     }
     if (nonEmptyString(entry.path("path"))) {
-      return stripTrailingSlash(baseUrl) + entry.path("path").asText();
+      return stripTrailingSlash(baseUrl) + entry.path("path").asString();
     }
     return null;
   }
@@ -333,11 +333,11 @@ public class ManifestValidator {
   // ── Shared helpers ───────────────────────────────────────────────────
 
   private static boolean matches(JsonNode node, String regex) {
-    return node.isTextual() && node.asText().matches(regex);
+    return node.isTextual() && node.asString().matches(regex);
   }
 
   private static boolean nonEmptyString(JsonNode node) {
-    return node.isTextual() && !node.asText().isBlank();
+    return node.isTextual() && !node.asString().isBlank();
   }
 
   private static boolean isUrl(JsonNode node) {
@@ -345,7 +345,7 @@ public class ManifestValidator {
       return false;
     }
     try {
-      URI uri = URI.create(node.asText());
+      URI uri = URI.create(node.asString());
       return uri.getScheme() != null && uri.getHost() != null;
     } catch (IllegalArgumentException e) {
       return false;
@@ -379,10 +379,10 @@ public class ManifestValidator {
     if (array.isArray()) {
       for (JsonNode role : array) {
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put("key", role.path("key").asText());
-        map.put("name", role.path("name").asText());
+        map.put("key", role.path("key").asString());
+        map.put("name", role.path("name").asString());
         if (role.hasNonNull("description")) {
-          map.put("description", role.path("description").asText());
+          map.put("description", role.path("description").asString());
         }
         roles.add(map);
       }

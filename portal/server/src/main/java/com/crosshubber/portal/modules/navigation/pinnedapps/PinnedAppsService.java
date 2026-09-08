@@ -97,7 +97,7 @@ public class PinnedAppsService {
   private void insertNodes(String userId, JsonNode list, UUID parentId) {
     int order = 0;
     for (JsonNode node : list) {
-      boolean isFolder = "folder".equals(node.path("nodeType").asText());
+      boolean isFolder = "folder".equals(node.path("nodeType").asString());
       String clientId = node.path("id").asText(null);
       NavigationPinnedAppEntity entity = new NavigationPinnedAppEntity();
       entity.setId(
