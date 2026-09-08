@@ -2,6 +2,7 @@ package com.crosshubber.portal.modules.aihub.conversations;
 
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -10,15 +11,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
-import com.crosshubber.portal.modules.aihub.common.EntityNotFoundException;
+import com.crosshubber.portal.modules.aihub.dto.ConversationDto;
 import com.crosshubber.portal.modules.aihub.dto.CreateConversationRequest;
-import com.crosshubber.portal.modules.aihub.dto.FullConversationDto;
 import com.crosshubber.portal.security.PortalUser;
 
 /**
- * REST endpoints for AI Hub conversation management. These handle metadata only — message history
- * is managed by Spring AI's {@code ChatMemory} system and streamed via {@code AiHubChatController}.
+ * REST endpoints for AI Hub conversation management. Handles metadata and message history
+ * retrieval — message persistence is managed by Spring AI's {@code ChatMemory} system.
  */
 @RestController
 public class AiHubConversationsController {
@@ -37,7 +38,7 @@ public class AiHubConversationsController {
 
   /** Creates a new conversation. Title defaults to "New Chat" if not provided. */
   @PostMapping("/api/ai-hub/conversations")
-  public FullConversationDto create(
+  public ConversationDto create(
       @AuthenticationPrincipal PortalUser user,
       @RequestBody(required = false) CreateConversationRequest body) {
     String title =
@@ -45,10 +46,7 @@ public class AiHubConversationsController {
     return conversationsService.createConversation(user.sub(), title);
   }
 
-  /**
-   * Deletes a conversation and its message history. Clears the SPRING_AI_CHAT_MEMORY entry via
-   * {@code ChatMemory.clear()} before removing the metadata.
-   */
+  /** Deletes a conversation and its message history. */
   @DeleteMapping("/api/ai-hub/conversations/{id}")
   public ResponseEntity<?> delete(
       @AuthenticationPrincipal PortalUser user, @PathVariable String id) {
@@ -60,12 +58,26 @@ public class AiHubConversationsController {
 
   /** Returns a single conversation's metadata. */
   @GetMapping("/api/ai-hub/conversations/{id}")
-  public FullConversationDto get(
+  public ConversationDto get(
       @AuthenticationPrincipal PortalUser user, @PathVariable String id) {
     var conversation = conversationsService.getConversation(id, user.sub());
     if (conversation == null) {
-      throw new EntityNotFoundException("conversation not found");
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "conversation not found");
     }
-    return conversationsService.toFullConversationDto(conversation);
+    return conversationsService.toConversationDto(conversation);
+  }
+
+  /**
+   * Returns the message history for a conversation. The frontend calls this when a user selects an
+   * existing conversation to populate the chat UI with previous messages.
+   */
+  @GetMapping("/api/ai-hub/conversations/{id}/messages")
+  public Map<String, Object> messages(
+      @AuthenticationPrincipal PortalUser user, @PathVariable String id) {
+    var conversation = conversationsService.getConversation(id, user.sub());
+    if (conversation == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "conversation not found");
+    }
+    return Map.of("messages", conversationsService.getMessages(id));
   }
 }

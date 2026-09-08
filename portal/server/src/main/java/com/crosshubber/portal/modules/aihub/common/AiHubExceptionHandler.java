@@ -2,10 +2,10 @@ package com.crosshubber.portal.modules.aihub.common;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.crosshubber.portal.modules.aihub.dto.ErrorResponse;
 
@@ -16,10 +16,10 @@ public class AiHubExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(AiHubExceptionHandler.class);
 
-  @ExceptionHandler(EntityNotFoundException.class)
-  public ResponseEntity<ErrorResponse> handleNotFound(EntityNotFoundException ex) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(new ErrorResponse(ex.getReason(), 404, null));
+  @ExceptionHandler(ResponseStatusException.class)
+  public ResponseEntity<ErrorResponse> handleNotFound(ResponseStatusException ex) {
+    return ResponseEntity.status(ex.getStatusCode())
+        .body(new ErrorResponse(ex.getReason(), ex.getStatusCode().value()));
   }
 
   @ExceptionHandler(Exception.class)
@@ -29,7 +29,7 @@ public class AiHubExceptionHandler {
       return null;
     }
     log.error("[ai-hub] unhandled error", ex);
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body(new ErrorResponse("internal server error", 500, null));
+    return ResponseEntity.internalServerError()
+        .body(new ErrorResponse("internal server error", 500));
   }
 }

@@ -1,26 +1,30 @@
 package com.crosshubber.portal.modules.aihub.conversations;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.crosshubber.portal.common.NodeDates;
 import com.crosshubber.portal.modules.aihub.dto.ConversationDto;
-import com.crosshubber.portal.modules.aihub.dto.FullConversationDto;
 
 /**
- * Manages AI Hub conversation metadata — creation, listing, deletion, and ownership validation.
+ * Manages AI Hub conversation metadata — creation, listing, deletion, ownership validation, and
+ * message history retrieval.
  *
- * <p>This service deliberately does NOT manage individual messages. Message history is handled
- * entirely by Spring AI's {@link ChatMemory} system (backed by the {@code ai_hub_chat_memory}
- * table via {@code JdbcChatMemoryRepository}). The {@code MessageChatMemoryAdvisor} in {@code
- * AiHubChatService} reads and writes messages automatically around each LLM call.
+ * <p>Message persistence is handled by Spring AI's {@link ChatMemory} system (backed by the {@code
+ * ai_hub_chat_memory} table via {@code JdbcChatMemoryRepository}). The {@code
+ * MessageChatMemoryAdvisor} in {@code AiHubChatService} reads and writes messages automatically
+ * around each LLM call. This service exposes a {@link #getMessages} method for the REST layer to
+ * retrieve history for display in the UI.
  *
  * <p>On deletion, this service calls {@code chatMemory.clear(conversationId)} to remove the message
-   * history from the ai_hub_chat_memory table before deleting the conversation metadata.
+ * history from the ai_hub_chat_memory table before deleting the conversation metadata.
  */
 @Service
 public class AiHubConversationsService {
@@ -47,20 +51,20 @@ public class AiHubConversationsService {
    * the first 60 characters of the user's initial message.
    */
   @Transactional
-  public FullConversationDto createConversation(String userId, String title) {
+  public ConversationDto createConversation(String userId, String title) {
     AiHubConversationEntity conversation = new AiHubConversationEntity();
     conversation.setId("conv_" + UUID.randomUUID());
     conversation.setUserId(userId);
     conversation.setOrigin("portal");
     conversation.setTitle(title);
     conversation = conversationRepo.saveAndFlush(conversation);
-    return toFullConversationDto(conversation);
+    return toConversationDto(conversation);
   }
 
   /**
    * Deletes a conversation and its message history. Clears the {@link ChatMemory} entry for this
    * conversation ID before deleting the metadata row, ensuring no orphaned messages remain in the
-   * SPRING_AI_CHAT_MEMORY table.
+   * ai_hub_chat_memory table.
    *
    * @return {@code true} if the conversation was found and deleted, {@code false} if not found
    */
@@ -85,22 +89,43 @@ public class AiHubConversationsService {
     return conversationRepo.findByIdAndUserId(id, userId).orElse(null);
   }
 
-  /** Converts an entity to the full DTO including origin (used by the GET endpoint). */
-  public FullConversationDto toFullConversationDto(AiHubConversationEntity c) {
-    return new FullConversationDto(
-        c.getId(),
-        c.getUserId(),
-        c.getOrigin(),
-        c.getTitle(),
-        NodeDates.format(c.getCreatedAt()),
-        NodeDates.format(c.getUpdatedAt()));
+  /**
+   * Returns the message history for a conversation from Spring AI's {@link ChatMemory}. Each message
+   * includes its role ({@code user} / {@code assistant} / {@code system}), text content, and ISO
+   * timestamp. Used by the REST layer to populate the chat UI when a user selects an existing
+   * conversation.
+   */
+  private static final String META_TIMESTAMP =
+      "JdbcChatMemoryRepository_message_timestamp";
+
+  /**
+   * Returns the message history for a conversation from Spring AI's {@link ChatMemory}. Each message
+   * includes its role ({@code user} / {@code assistant} / {@code system}), text content, and ISO
+   * timestamp. Used by the REST layer to populate the chat UI when a user selects an existing
+   * conversation.
+   */
+  public List<Map<String, String>> getMessages(String conversationId) {
+    return chatMemory.get(conversationId).stream()
+        .map(
+            m -> {
+              Instant ts = (Instant) m.getMetadata().get(META_TIMESTAMP);
+              return Map.of(
+                  "role",
+                  m.getMessageType().name().toLowerCase(),
+                  "content",
+                  m.getText() != null ? m.getText() : "",
+                  "created_at",
+                  NodeDates.format(ts));
+            })
+        .toList();
   }
 
-  /** Converts an entity to the list DTO (no origin field, used by the list endpoint). */
-  private ConversationDto toConversationDto(AiHubConversationEntity c) {
+  /** Converts an entity to a conversation DTO. */
+  public ConversationDto toConversationDto(AiHubConversationEntity c) {
     return new ConversationDto(
         c.getId(),
         c.getUserId(),
+        c.getOrigin(),
         c.getTitle(),
         NodeDates.format(c.getCreatedAt()),
         NodeDates.format(c.getUpdatedAt()));
