@@ -7,10 +7,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -23,48 +27,55 @@ import tools.jackson.databind.json.JsonMapper;
 
 class AiHubChatServiceTest {
 
+  // --- createChatModel() â€” Spring AI 2.0 provider branching (client construction is offline) ---
+
   @Test
-  void stripVersionSuffixRemovesTrailingV1() {
-    assertEquals(
-        "https://api.openai.com", AiHubChatService.stripVersionSuffix("https://api.openai.com/v1"));
-    assertEquals(
-        "https://openrouter.ai/api",
-        AiHubChatService.stripVersionSuffix("https://openrouter.ai/api/v1"));
-    assertEquals(
-        "http://localhost:11434", AiHubChatService.stripVersionSuffix("http://localhost:11434/v1"));
-    assertEquals("https://api.x.ai", AiHubChatService.stripVersionSuffix("https://api.x.ai/v1"));
+  void createChatModelBuildsAnthropicModelForAnthropicProvider() {
+    AiHubProvidersService providers = mock(AiHubProvidersService.class);
+    JsonMapper mapper = new JacksonConfig().jsonMapper();
+    AiHubChatService svc =
+        new AiHubChatService(
+            mock(ModuleSettingsService.class),
+            providers,
+            mock(AiHubConversationsService.class),
+            mock(ChatMemory.class),
+            mapper);
+
+    AiHubChatService.EffectiveConfig cfg =
+        new AiHubChatService.EffectiveConfig("anthropic", "claude-sonnet-4", "t1", null, 0.7, 4096);
+    ChatModel model =
+        svc.createChatModel(
+            cfg, new AiHubProvidersService.ResolvedKey("sk-test", "https://api.anthropic.com"));
+
+    assertEquals(AnthropicChatModel.class, model.getClass());
   }
 
   @Test
-  void stripVersionSuffixRemovesTrailingV1beta() {
-    assertEquals(
-        "https://generativelanguage.googleapis.com",
-        AiHubChatService.stripVersionSuffix("https://generativelanguage.googleapis.com/v1beta"));
-  }
+  void createChatModelBuildsOpenAiModelForOpenAiCompatibleProviders() {
+    AiHubProvidersService providers = mock(AiHubProvidersService.class);
+    JsonMapper mapper = new JacksonConfig().jsonMapper();
+    AiHubChatService svc =
+        new AiHubChatService(
+            mock(ModuleSettingsService.class),
+            providers,
+            mock(AiHubConversationsService.class),
+            mock(ChatMemory.class),
+            mapper);
 
-  @Test
-  void stripVersionSuffixHandlesTrailingSlash() {
-    assertEquals(
-        "https://api.openai.com",
-        AiHubChatService.stripVersionSuffix("https://api.openai.com/v1/"));
-    assertEquals(
-        "http://localhost:11434",
-        AiHubChatService.stripVersionSuffix("http://localhost:11434/v1/"));
-  }
-
-  @Test
-  void stripVersionSuffixNoVersionSuffix() {
-    assertEquals(
-        "https://api.deepseek.com",
-        AiHubChatService.stripVersionSuffix("https://api.deepseek.com"));
-    assertEquals(
-        "https://api.anthropic.com",
-        AiHubChatService.stripVersionSuffix("https://api.anthropic.com"));
-  }
-
-  @Test
-  void stripVersionSuffixNullInput() {
-    assertNull(AiHubChatService.stripVersionSuffix(null));
+    // OpenAI-compatible base URLs keep their version segment: the openai-java SDK
+    // appends /chat/completions to the version-scoped root itself.
+    for (String base :
+        List.of(
+            "https://api.openai.com/v1",
+            "https://openrouter.ai/api/v1",
+            "https://api.x.ai/v1",
+            "https://api.deepseek.com")) {
+      AiHubChatService.EffectiveConfig cfg =
+          new AiHubChatService.EffectiveConfig("openai", "gpt-4o", "t1", null, 0.7, 4096);
+      ChatModel model =
+          svc.createChatModel(cfg, new AiHubProvidersService.ResolvedKey("sk-test", base));
+      assertEquals(OpenAiChatModel.class, model.getClass(), "base URL: " + base);
+    }
   }
 
   // --- resolveConfig() ---

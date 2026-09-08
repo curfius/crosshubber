@@ -7,14 +7,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
-import org.springframework.ai.anthropic.api.AnthropicApi;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -281,51 +279,37 @@ public class AiHubChatService {
    * AnthropicChatModel}; all other providers (OpenAI, OpenRouter, DeepSeek, xAI, etc.) use {@link
    * OpenAiChatModel} since they expose an OpenAI-compatible API.
    *
-   * <p>The base URL is stripped of trailing version segments ({@code /v1}, {@code /v1beta}) because
-   * Spring AI appends its own path suffix — without stripping, URLs like {@code
-   * https://api.openai.com/v1} would produce double-versioned paths.
+   * <p>Spring AI 2.0 delegates to the official vendor SDKs ({@code openai-java}, {@code
+   * anthropic-java}) and the SDK client is derived from the connection details embedded in the
+   * options ({@code apiKey}, {@code baseUrl}). Unlike Spring AI 1.x — which appended {@code
+   * /v1/chat/completions} to a bare host — the SDKs treat {@code baseUrl} as the full
+   * version-scoped OpenAI-compatible root ({@code https://api.openai.com/v1}) and append only
+   * {@code /chat/completions} themselves. Provider base URLs are therefore used as stored; the
+   * 1.x-era {@code stripVersionSuffix} workaround was removed.
    */
-  private ChatModel createChatModel(EffectiveConfig cfg, AiHubProvidersService.ResolvedKey key) {
+  ChatModel createChatModel(EffectiveConfig cfg, AiHubProvidersService.ResolvedKey key) {
     if ("anthropic".equals(cfg.providerId())) {
       return AnthropicChatModel.builder()
-          .anthropicApi(
-              AnthropicApi.builder()
-                  .apiKey(key.apiKey())
-                  .baseUrl(stripVersionSuffix(key.baseURL()))
-                  .build())
-          .defaultOptions(
+          .options(
               AnthropicChatOptions.builder()
-                  .model(cfg.model())
+                  .apiKey(key.apiKey())
+                  .baseUrl(key.baseURL())
+                  .model(com.anthropic.models.messages.Model.of(cfg.model()))
                   .temperature(cfg.temperature())
                   .maxTokens(cfg.maxTokens())
                   .build())
           .build();
     }
     return OpenAiChatModel.builder()
-        .openAiApi(
-            OpenAiApi.builder()
-                .apiKey(key.apiKey())
-                .baseUrl(stripVersionSuffix(key.baseURL()))
-                .build())
-        .defaultOptions(
+        .options(
             OpenAiChatOptions.builder()
+                .apiKey(key.apiKey())
+                .baseUrl(key.baseURL())
                 .model(cfg.model())
                 .temperature(cfg.temperature())
                 .maxTokens(cfg.maxTokens())
                 .build())
         .build();
-  }
-
-  /**
-   * Strips trailing version segments like {@code /v1}, {@code /v1beta} etc. from a base URL. Spring
-   * AI already appends {@code /v1/chat/completions} by default, so providers that store {@code
-   * https://api.openai.com/v1} would otherwise produce a double {@code /v1/v1/}.
-   */
-  static String stripVersionSuffix(String url) {
-    if (url == null) {
-      return null;
-    }
-    return url.replaceAll("/+v\\d[\\w.-]*/?$", "");
   }
 
   private static String stringSetting(Object value) {

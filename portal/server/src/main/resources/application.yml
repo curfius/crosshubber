@@ -24,9 +24,9 @@ portal:
 spring:
   autoconfigure:
     exclude:
-      - org.springframework.ai.model.anthropic.autoconfigure.AnthropicAutoConfiguration
+      # Spring AI 2.0.1 autoconfigure FQNs — models are built at runtime from module
+      # settings (provider/token/model chosen per request), never from properties.
       - org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration
-      - org.springframework.ai.model.openai.autoconfigure.OpenAiAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
@@ -52,13 +52,7 @@ spring:
     schemas: ${PGSCHEMA:${TENANT_SLUG:dev}}
     locations: classpath:db/migration
     baseline-on-migrate: true
-  ai:
-    chat:
-      memory:
-        repository:
-          jdbc:
-            initialize-schema: never
-  # Jackson config: see JacksonConfig.java (custom ObjectMapper per-DTO null/empty control)
+  # Jackson config: see JacksonConfig.java (custom JsonMapper per-DTO null/empty control)
 
 # Keycloak Admin (optional — all 4 must be present)
 portal.kc-admin:

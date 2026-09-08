@@ -8,7 +8,8 @@ import org.springframework.ai.chat.memory.repository.jdbc.PostgresChatMemoryRepo
  *
  * <p>Spring AI's built-in dialect hardcodes the table name in SQL strings with no configuration
  * property to override it. This dialect extends {@link PostgresChatMemoryRepositoryDialect} and
- * rewrites all 4 SQL methods to reference our preferred table name.
+ * rewrites all 4 SQL methods to reference our preferred table name. SQL mirrors the Spring AI 2.0
+ * dialect, which orders messages by the {@code sequence_id} column (see Flyway V20).
  *
  * <p>Used by {@link ChatMemoryConfig} when building the {@link
  * org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository}.
@@ -21,14 +22,15 @@ public class AiHubChatMemoryDialect extends PostgresChatMemoryRepositoryDialect 
   public String getSelectMessagesSql() {
     return "SELECT content, type, \"timestamp\" FROM "
         + TABLE
-        + " WHERE conversation_id = ? ORDER BY \"timestamp\"";
+        + " WHERE conversation_id = ? ORDER BY sequence_id";
   }
 
   @Override
   public String getInsertMessageSql() {
     return "INSERT INTO "
         + TABLE
-        + " (conversation_id, content, type, \"timestamp\") VALUES (?, ?, ?, ?)";
+        + " (conversation_id, content, type, \"timestamp\", sequence_id)"
+        + " VALUES (?, ?, ?, ?, ?)";
   }
 
   @Override
