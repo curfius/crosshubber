@@ -2,8 +2,23 @@ package com.crosshubber.portal.modules.aihub.chat;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+import com.crosshubber.portal.config.JacksonConfig;
+import com.crosshubber.portal.modules.aihub.conversations.AiHubConversationsService;
+import com.crosshubber.portal.modules.aihub.providers.AiHubProvidersService;
+import com.crosshubber.portal.modules.settings.modules.ModuleSettingsService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 class AiHubChatServiceTest {
 
@@ -49,5 +64,77 @@ class AiHubChatServiceTest {
   @Test
   void stripVersionSuffixNullInput() {
     assertNull(AiHubChatService.stripVersionSuffix(null));
+  }
+
+  // --- resolveConfig() ---
+
+  private AiHubChatService newService(Map<String, Object> settings) {
+    ModuleSettingsService moduleSettings = mock(ModuleSettingsService.class);
+    when(moduleSettings.get("ai-hub")).thenReturn(settings);
+    ObjectMapper mapper = new JacksonConfig().objectMapper();
+    return new AiHubChatService(
+        moduleSettings,
+        mock(AiHubProvidersService.class),
+        mock(AiHubConversationsService.class),
+        mock(ChatMemory.class),
+        mapper);
+  }
+
+  @Test
+  void resolveConfigReadsDefaultModelMap() {
+    Map<String, Object> settings = new HashMap<>();
+    settings.put(
+        "defaultModel", Map.of("providerId", "openai", "modelId", "gpt-4o", "tokenId", "tok1"));
+    settings.put("systemPrompt", "be helpful");
+    settings.put("temperature", 0.3);
+    settings.put("maxTokens", 1024);
+
+    AiHubChatService.EffectiveConfig cfg = newService(settings).resolveConfig();
+
+    assertEquals("openai", cfg.providerId());
+    assertEquals("gpt-4o", cfg.model());
+    assertEquals("tok1", cfg.tokenId());
+    assertEquals("be helpful", cfg.systemPrompt());
+    assertEquals(0.3, cfg.temperature());
+    assertEquals(1024, cfg.maxTokens());
+  }
+
+  @Test
+  void resolveConfigFallsBackToLegacySelectedModelKey() {
+    Map<String, Object> settings = Map.of("selectedModelKey", "anthropic:claude-3:tok9");
+
+    AiHubChatService.EffectiveConfig cfg = newService(settings).resolveConfig();
+
+    assertEquals("anthropic", cfg.providerId());
+    assertEquals("claude-3", cfg.model());
+    assertEquals("tok9", cfg.tokenId());
+    assertNull(cfg.systemPrompt());
+  }
+
+  @Test
+  void resolveConfigAppliesDefaultsForGenerationParams() {
+    Map<String, Object> settings =
+        Map.of("defaultModel", Map.of("providerId", "openai", "modelId", "gpt-4o", "tokenId", "t"));
+
+    AiHubChatService.EffectiveConfig cfg = newService(settings).resolveConfig();
+
+    assertEquals(0.7, cfg.temperature());
+    assertEquals(4096, cfg.maxTokens());
+  }
+
+  @Test
+  void resolveConfigRejectsMissingModelSelection() {
+    ResponseStatusException ex =
+        assertThrows(ResponseStatusException.class, () -> newService(Map.of()).resolveConfig());
+    assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+  }
+
+  @Test
+  void resolveConfigRejectsMalformedLegacyKey() {
+    Map<String, Object> settings = Map.of("selectedModelKey", "only-two:parts");
+
+    ResponseStatusException ex =
+        assertThrows(ResponseStatusException.class, () -> newService(settings).resolveConfig());
+    assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
   }
 }

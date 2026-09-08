@@ -18,8 +18,8 @@ import com.crosshubber.portal.modules.aihub.dto.CreateConversationRequest;
 import com.crosshubber.portal.security.PortalUser;
 
 /**
- * REST endpoints for AI Hub conversation management. Handles metadata and message history
- * retrieval — message persistence is managed by Spring AI's {@code ChatMemory} system.
+ * REST endpoints for AI Hub conversation management. Handles metadata and message history retrieval
+ * — message persistence is managed by Spring AI's {@code ChatMemory} system.
  */
 @RestController
 public class AiHubConversationsController {
@@ -58,8 +58,7 @@ public class AiHubConversationsController {
 
   /** Returns a single conversation's metadata. */
   @GetMapping("/api/ai-hub/conversations/{id}")
-  public ConversationDto get(
-      @AuthenticationPrincipal PortalUser user, @PathVariable String id) {
+  public ConversationDto get(@AuthenticationPrincipal PortalUser user, @PathVariable String id) {
     var conversation = conversationsService.getConversation(id, user.sub());
     if (conversation == null) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "conversation not found");

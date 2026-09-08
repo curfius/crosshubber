@@ -88,9 +88,9 @@ public class AiHubConversationsService {
   }
 
   /**
-   * Returns the message history for a conversation from Spring AI's {@link ChatMemory}. Each message
-   * includes its role ({@code user} / {@code assistant} / {@code system}) and text content. Used by
-   * the REST layer to populate the chat UI when a user selects an existing conversation.
+   * Returns the message history for a conversation from Spring AI's {@link ChatMemory}. Each
+   * message includes its role ({@code user} / {@code assistant} / {@code system}) and text content.
+   * Used by the REST layer to populate the chat UI when a user selects an existing conversation.
    */
   public List<Map<String, String>> getMessages(String conversationId) {
     return chatMemory.get(conversationId).stream()
