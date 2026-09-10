@@ -12,19 +12,13 @@ public interface EntryPointRepository extends JpaRepository<EntryPointEntity, Lo
 
   List<EntryPointEntity> findByModuleKey(String moduleKey);
 
-  List<EntryPointEntity> findByCategory(String category);
-
   List<EntryPointEntity> findByCategoryOrderBySortOrderAscNameAsc(String category);
 
   List<EntryPointEntity> findByModuleKeyOrderBySortOrderAscNameAsc(String moduleKey);
 
-  List<EntryPointEntity> findByModuleKeyAndCategory(String moduleKey, String category);
-
   Optional<EntryPointEntity> findByModuleKeyAndEntryKey(String moduleKey, String entryKey);
 
   List<EntryPointEntity> findByGroupKey(String groupKey);
-
-  List<EntryPointEntity> findByActiveTrue();
 
   default List<EntryPointEntity> findByCategory(String category, boolean activeOnly) {
     List<EntryPointEntity> rows = findByCategoryOrderBySortOrderAscNameAsc(category);

@@ -2,7 +2,9 @@
 
 ## Executive Summary
 
-The codebase is a well-structured **Spring Boot 3.4.5 / Java 21 modular monolith** ported from Node.js/TypeScript. While architecturally sound, it carries legacy patterns from the TypeScript port and misses many Spring abstractions. This document outlines all identified optimizations organized by priority and category.
+The codebase is a well-structured **Spring Boot 4.1.1 / Java 21 modular monolith** ported from Node.js/TypeScript. While architecturally sound, it carries legacy patterns from the TypeScript port and misses many Spring abstractions. This document outlines all identified optimizations organized by priority and category.
+
+**Completed in Steps 1–8:** #2, #4, #5, #6, #7, #13, #14, #15, #17, #19, #20, #21, #22, #23, #24, #25
 
 ---
 
@@ -149,11 +151,9 @@ public class JsonUtils {
 
 ---
 
-### 4. Call `validate()` in `EntryPointsService.upsert()`
+### 4. ~~Call `validate()` in `EntryPointsService.upsert()`~~
 
-**Impact:** Bug — validation exists but is never invoked
-
-**Issue:** `EntryPointsService.validate()` (lines 119-177) contains 60 lines of validation logic, but `upsert()` (line 188) never calls it. Invalid data can be persisted.
+**Status:** ✅ RESOLVED — `EntryPointsController` already calls `validate()` before both `upsert()` paths (lines 40 and 65). Original claim was incorrect.
 
 **Approach:**
 1. Call `validate(body)` at the start of `upsert()`
@@ -162,11 +162,9 @@ public class JsonUtils {
 
 ---
 
-### 5. URL-encode Parameters in `KeycloakService.logoutUrl()`
+### 5. ~~URL-encode Parameters in `KeycloakService.logoutUrl()`~~
 
-**Impact:** Security — parameter injection vulnerability
-
-**Issue:** `KeycloakService.logoutUrl()` (lines 133-138) does not URL-encode the `post_logout_redirect_uri` parameter. An attacker could inject additional query parameters.
+**Status:** ✅ DONE (Step 6) — `URLEncoder.encode()` applied + `KeycloakServiceTest` with injection-attempt assertions.
 
 **Approach:**
 ```java
@@ -180,11 +178,9 @@ String logoutUrl() {
 
 ---
 
-### 6. Add Missing Database Indexes
+### 6. ~~Add Missing Database Indexes~~
 
-**Impact:** Performance — full table scans on high-traffic queries
-
-**Missing indexes identified:**
+**Status:** ✅ DONE (Step 7) — V21 migration created with composite `(user_id, origin, updated_at DESC)`, `entry_points(category)`, `entry_points(group_key)`, `module_versions(module_key, installed_at DESC)`.
 
 | Table | Column(s) | Query Pattern | Priority |
 |---|---|---|---|
@@ -216,11 +212,9 @@ CREATE INDEX IF NOT EXISTS idx_module_versions_module_installed
 
 ---
 
-### 7. Enable Spring Data JPA Auditing
+### 7. ~~Enable Spring Data JPA Auditing~~
 
-**Impact:** Code quality + audit trail — all 15 entities lack auditing annotations
-
-**Issue:** No entity uses `@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, or `@LastModifiedBy`. All use manual `@PrePersist`/`@PreUpdate` callbacks instead.
+**Status:** ❌ CANCELLED (Step 7) — `BaseEntity` callbacks correct + centralized; NOT NULL constraints + `ddl-auto=validate` smoke test cover regressions. Migrating to `@CreatedDate`/`AuditorAware` is stylistic churn with regression risk.
 
 **Approach:**
 1. Add `@EnableJpaAuditing` to a configuration class
@@ -355,16 +349,9 @@ CREATE INDEX IF NOT EXISTS idx_module_versions_module_installed
 
 ---
 
-### 14. Standardize HTTP Status Codes
+### 14. ~~Standardize HTTP Status Codes~~
 
-**Impact:** API consistency
-
-| Issue | Location | Current | Should Be |
-|---|---|---|---|
-| DELETE returns body | `ModulesController.java:57` | `200 {"ok": true}` | `204 No Content` |
-| POST create returns 200 | `WorkspacesController.java:94` | `200 {"ok": true, "id": ...}` | `201 Created` |
-| Login failure returns 200 | `AuthController.java:77` | `200 {"ok": false}` | `401 Unauthorized` |
-| DELETE inconsistent | `WorkspacesController.java:150` | `200 {"ok": deleted}` | `204 No Content` |
+**Status:** ✅ DONE (Step 8) — DELETE endpoints returning trivial `{"ok": true}` → 204 No Content (AiHub conversations, providers tokens, providers). POST resource creation → 201 Created (workspaces, modules, entry points, entry point groups, providers, conversations, manifest install). Auth failure handling was already correct.
 
 **Approach:** Standardize across all controllers:
 - `POST` create → `201 Created` with `Location` header
@@ -374,17 +361,9 @@ CREATE INDEX IF NOT EXISTS idx_module_versions_module_installed
 
 ---
 
-### 15. Fix Silent Exception Swallowing
+### 15. ~~Fix Silent Exception Swallowing~~
 
-**Impact:** Observability — errors are silently lost
-
-| Location | Issue |
-|---|---|
-| `ModulesService.parseSecurityRoles()` lines 147-149 | Returns empty list on any parse error |
-| `ChatCompletionService.pumpStream()` lines 191-197 | No logging at all — data silently lost |
-| `ShellConfigService.parseJson()` lines 171-173 | Returns empty map, no logging |
-| `KeycloakService.parseUser()` lines 162-164 | Returns fallback user, no logging |
-| `KcAdminClient.getClientRoles()` lines 106-127 | Returns empty list, only warns |
+**Status:** ✅ DONE (Step 6) — `ShellConfigService.parseJson` + `ModulesService.parseSecurityRoles` now log. `ChatCompletionService.pumpStream` deleted during Spring AI 2.0 migration (fixed by `doOnError`). `KeycloakService.parseUser` / `KcAdminClient.getClientRoles` already had logging.
 
 **Approach:**
 1. Add `log.warn(...)` or `log.error(...)` to all catch blocks
@@ -442,9 +421,9 @@ While other controllers correctly use `@PreAuthorize`.
 
 ---
 
-### 19. Fix `GlobalExceptionHandler` — Return All Validation Errors
+### 19. ~~Fix `GlobalExceptionHandler` — Return All Validation Errors~~
 
-**Issue:** Lines 34-41 only return first field error:
+**Status:** ✅ DONE (Step 8) — Changed from `.findFirst()` to `.reduce((a, b) -> a + "; " + b)` to return all field errors joined.
 ```java
 .map(f -> f.getField() + " " + f.getDefaultMessage())
 .findFirst()
@@ -460,9 +439,9 @@ return ResponseEntity.badRequest().body(Map.of("errors", errors));
 
 ---
 
-### 20. Fix DNS Rebinding in `SsrfGuard`
+### 20. ~~Fix DNS Rebinding in `SsrfGuard`~~
 
-**Issue:** Lines 56-66 have TOCTOU race between DNS check and actual HTTP fetch.
+**Status:** ✅ DONE (Step 8) — Restructured to expose `resolveAndValidate(rawUrl, allowPrivate)` returning validated `InetAddress[]`. Private-domain early-return paths now also resolve and validate. `assertSafeUrl` delegates to `resolveAndValidate`.
 
 **Approach:** Resolve DNS once, pass resolved `InetAddress` to caller for connection:
 ```java
@@ -477,9 +456,9 @@ public InetAddress resolveAndValidate(String host) {
 
 ---
 
-### 21. Thread-Safety in `CryptoService`
+### 21. ~~Thread-Safety in `CryptoService`~~
 
-**Issue:** Lines 41-52 — `keyBytes` not `volatile`; lazy init has data race.
+**Status:** ✅ DONE (Step 6) — `volatile` + double-checked locking applied.
 
 **Approach:**
 1. Make `keyBytes` volatile
@@ -488,9 +467,9 @@ public InetAddress resolveAndValidate(String host) {
 
 ---
 
-### 22. Health Endpoint Should Return 503 When DB Is Down
+### 22. ~~Health Endpoint Should Return 503 When DB Is Down~~
 
-**Issue:** `HealthController` always returns 200 even with `"db": "down"`.
+**Status:** ✅ DONE (Step 6) — Returns 503 + `ok:false` when DB is down.
 
 **Approach:**
 ```java
@@ -500,9 +479,9 @@ return ResponseEntity.status(status).body(Map.of("ok", up, ...));
 
 ---
 
-### 23. Add `@JsonIgnore` on Sensitive Entity Fields
+### 23. ~~Add `@JsonIgnore` on Sensitive Entity Fields~~
 
-**Issue:** `AiHubChannelEntity.credentialsEncrypted` (line 37) — defense-in-depth against accidental serialization.
+**Status:** ✅ RESOLVED — `AiHubTokenEntity.encryptedKey` → `WRITE_ONLY` (Step 4). `AiHubChannelEntity` doesn't exist in Java port (channels feature not ported).
 
 **Approach:**
 ```java
@@ -512,17 +491,17 @@ private String credentialsEncrypted;
 
 ---
 
-### 24. Standardize JSON Key Casing
+### 24. ~~Standardize JSON Key Casing~~
 
-**Issue:** `AiHubConversationsService` uses `snake_case` (`user_id`, `created_at`) while everything else uses `camelCase`.
+**Status:** ✅ STALE — `ConversationDto` already uses camelCase (`userId`, `createdAt`, `updatedAt`).
 
 **Approach:** Normalize to camelCase across the codebase. Use `@JsonProperty("user_id")` only for backward-compatible external APIs.
 
 ---
 
-### 25. Remove Redundant Repository Methods
+### 25. ~~Remove Redundant Repository Methods~~
 
-**Issue:** 4 pairs of sorted/unsorted variants where unsorted appears unused:
+**Status:** ✅ DONE (Step 8) — Removed unused methods: `EntryPointRepository.findByCategory(String)`, `findByActiveTrue()`, `findByModuleKeyAndCategory(String, String)`. `EntryPointGroupRepository.findByCategory(String)`, `findByParentKey(String)`. `AiHubTokenRepository` methods are all used (different callers need sorted vs unsorted).
 - `EntryPointRepository.findByCategory` vs `findByCategoryOrderBySortOrderAscNameAsc`
 - `AiHubMessageRepository.findByConversationId` vs `findByConversationIdOrderByIdAsc`
 - `AiHubTokenRepository.findByProviderId` vs `findByProviderIdOrderByNameAsc`

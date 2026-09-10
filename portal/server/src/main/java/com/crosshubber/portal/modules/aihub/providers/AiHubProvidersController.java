@@ -75,7 +75,7 @@ public class AiHubProvidersController {
     if (!providersService.removeToken(tokenId)) {
       return ResponseEntity.status(404).body(Map.of("error", "token not found"));
     }
-    return ResponseEntity.ok(Map.of("ok", true));
+    return ResponseEntity.noContent().build();
   }
 
   @SuppressWarnings("unchecked")
@@ -132,15 +132,17 @@ public class AiHubProvidersController {
 
   @PostMapping({"/api/ai-hub/providers"})
   @PreAuthorize("hasRole('portal-ai-hub-edit')")
-  public ProviderDto create(@RequestBody CreateProviderRequest body) {
+  public ResponseEntity<?> create(@RequestBody CreateProviderRequest body) {
     if (body.id() == null
         || body.name() == null
         || !body.id().matches("^[a-z0-9][a-z0-9-]{0,63}$")) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "id and name are required, id must be kebab-case");
     }
-    return providersService.addProvider(
-        body.id(), body.name(), body.baseURL() != null ? body.baseURL() : "");
+    return ResponseEntity.status(201)
+        .body(
+            providersService.addProvider(
+                body.id(), body.name(), body.baseURL() != null ? body.baseURL() : ""));
   }
 
   @DeleteMapping("/api/ai-hub/providers/{id}")
@@ -149,6 +151,6 @@ public class AiHubProvidersController {
     if (!providersService.removeProvider(id)) {
       return ResponseEntity.status(404).body(Map.of("error", "provider not found"));
     }
-    return ResponseEntity.ok(Map.of("ok", true));
+    return ResponseEntity.noContent().build();
   }
 }

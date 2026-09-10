@@ -38,12 +38,13 @@ public class AiHubConversationsController {
 
   /** Creates a new conversation. Title defaults to "New Chat" if not provided. */
   @PostMapping("/api/ai-hub/conversations")
-  public ConversationDto create(
+  public ResponseEntity<?> create(
       @AuthenticationPrincipal PortalUser user,
       @RequestBody(required = false) CreateConversationRequest body) {
     String title =
         body != null && body.title() != null && !body.title().isBlank() ? body.title() : "New Chat";
-    return conversationsService.createConversation(user.sub(), title);
+    return ResponseEntity.status(201)
+        .body(conversationsService.createConversation(user.sub(), title));
   }
 
   /** Deletes a conversation and its message history. */
@@ -53,7 +54,7 @@ public class AiHubConversationsController {
     if (!conversationsService.deleteConversation(id, user.sub())) {
       return ResponseEntity.status(404).body(Map.of("error", "not found"));
     }
-    return ResponseEntity.ok(Map.of("ok", true));
+    return ResponseEntity.noContent().build();
   }
 
   /** Returns a single conversation's metadata. */

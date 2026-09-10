@@ -12,19 +12,39 @@ import org.springframework.web.server.ResponseStatusException;
  *
  * <p>Mirrors {@code portal/src/modules/registry/manifest.fetcher.ts} assertNotPrivate: blocks
  * loopback, RFC1918, link-local, ULA and 0.0.0.0 unless private access is explicitly allowed.
+ *
+ * <p>For full TOCTOU safety, prefer {@link #resolveAndValidate} and connect to the returned
+ * addresses directly (e.g. via {@code InetAddress}-based socket). {@link #assertSafeUrl} is a
+ * convenience wrapper that discards the resolved addresses.
  */
 public final class SsrfGuard {
 
   private SsrfGuard() {}
 
   /**
-   * Asserts the URL is safe to fetch server-side.
+   * Asserts the URL is safe to fetch server-side. Resolves DNS and validates all returned
+   * addresses, but discards them — callers who need TOCTOU safety should use {@link
+   * #resolveAndValidate} instead.
    *
    * @param rawUrl absolute http(s) URL
    * @param allowPrivate when true, private addresses are permitted (dev mode)
    * @throws ResponseStatusException 400 for malformed URLs, 403 for blocked hosts
    */
   public static void assertSafeUrl(String rawUrl, boolean allowPrivate) {
+    resolveAndValidate(rawUrl, allowPrivate);
+  }
+
+  /**
+   * Resolves the URL's host and validates all returned addresses in a single step, returning
+   * the validated set. Callers should connect to these addresses directly to avoid TOCTOU races
+   * between validation and connection.
+   *
+   * @param rawUrl absolute http(s) URL
+   * @param allowPrivate when true, private addresses are permitted (dev mode)
+   * @return validated, non-empty address array
+   * @throws ResponseStatusException 400 for malformed URLs, 403 for blocked hosts
+   */
+  public static InetAddress[] resolveAndValidate(String rawUrl, boolean allowPrivate) {
     URI uri;
     try {
       uri = URI.create(rawUrl);
@@ -48,10 +68,10 @@ public final class SsrfGuard {
       if (!allowPrivate) {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "host is not allowed");
       }
-      return;
+      return resolve(host);
     }
     if (allowPrivate) {
-      return;
+      return resolve(host);
     }
     InetAddress[] addresses;
     try {
@@ -63,6 +83,15 @@ public final class SsrfGuard {
       if (isPrivate(address)) {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "host is not allowed");
       }
+    }
+    return addresses;
+  }
+
+  private static InetAddress[] resolve(String host) {
+    try {
+      return InetAddress.getAllByName(host);
+    } catch (UnknownHostException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "cannot resolve host");
     }
   }
 

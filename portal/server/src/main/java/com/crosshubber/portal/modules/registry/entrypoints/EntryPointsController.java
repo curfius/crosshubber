@@ -55,8 +55,8 @@ public class EntryPointsController {
                       + " Add it to portal.known_load_paths first."));
     }
     EntryPointEntity entryPoint = entryPointsService.upsert(body);
-    return ResponseEntity.ok(
-        Map.of("ok", true, "entryPoint", EntryPointsService.toOutput(entryPoint)));
+    return ResponseEntity.status(201)
+        .body(Map.of("ok", true, "entryPoint", EntryPointsService.toOutput(entryPoint)));
   }
 
   @PutMapping("/{id}")

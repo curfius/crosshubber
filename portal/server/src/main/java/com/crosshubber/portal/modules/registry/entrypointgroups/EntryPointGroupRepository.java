@@ -13,8 +13,4 @@ public interface EntryPointGroupRepository extends JpaRepository<EntryPointGroup
   Optional<EntryPointGroupEntity> findByGroupKey(String groupKey);
 
   List<EntryPointGroupEntity> findByCategoryOrderBySortOrderAscNameAsc(String category);
-
-  List<EntryPointGroupEntity> findByCategory(String category);
-
-  List<EntryPointGroupEntity> findByParentKey(String parentKey);
 }

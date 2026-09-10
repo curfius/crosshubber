@@ -99,8 +99,8 @@ public class WorkspacesController {
         entity.setStatus(status);
         entity.setId(UUID.randomUUID());
         repo.save(entity);
-        return ResponseEntity.ok(
-            Map.of("ok", true, "id", entity.getId().toString(), "name", finalName));
+        return ResponseEntity.status(201)
+            .body(Map.of("ok", true, "id", entity.getId().toString(), "name", finalName));
       } catch (DataIntegrityViolationException e) {
         finalName = name + " (" + (attempt + 2) + ")";
       }

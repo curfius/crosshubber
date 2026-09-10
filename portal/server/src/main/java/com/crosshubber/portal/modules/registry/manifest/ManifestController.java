@@ -106,7 +106,8 @@ public class ManifestController {
       return unprocessable(result.issues());
     }
     try {
-      return ResponseEntity.ok(installService.applyInstall(result.manifest(), actor(auth)));
+      return ResponseEntity.status(201)
+          .body(installService.applyInstall(result.manifest(), actor(auth)));
     } catch (IllegalArgumentException e) {
       return ResponseEntity.internalServerError()
           .body(Map.of("error", "install failed: " + e.getMessage()));

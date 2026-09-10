@@ -35,7 +35,8 @@ public class ModulesController {
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> upsert(@RequestBody Map<String, Object> body) {
     ModuleEntity module = modulesService.upsert(body);
-    return ResponseEntity.ok(Map.of("ok", true, "module", modulesService.toOutput(module)));
+    return ResponseEntity.status(201)
+        .body(Map.of("ok", true, "module", modulesService.toOutput(module)));
   }
 
   @PatchMapping("/{key}/active")

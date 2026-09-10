@@ -37,7 +37,7 @@ public class GlobalExceptionHandler {
     String msg =
         ex.getBindingResult().getFieldErrors().stream()
             .map(f -> f.getField() + " " + f.getDefaultMessage())
-            .findFirst()
+            .reduce((a, b) -> a + "; " + b)
             .orElse("validation failed");
     log.warn("[portal] 400 {}", msg);
     return ResponseEntity.badRequest().body(Map.of("error", msg));

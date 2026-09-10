@@ -44,7 +44,8 @@ public class EntryPointGroupsController {
       return ResponseEntity.badRequest().body(Map.of("error", error));
     }
     EntryPointGroupEntity group = groupsService.upsert(body);
-    return ResponseEntity.ok(Map.of("ok", true, "group", EntryPointGroupsService.toOutput(group)));
+    return ResponseEntity.status(201)
+        .body(Map.of("ok", true, "group", EntryPointGroupsService.toOutput(group)));
   }
 
   @PutMapping("/{key}")

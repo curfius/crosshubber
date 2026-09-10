@@ -1,7 +1,8 @@
 package com.crosshubber.portal.modules.aihub.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
-@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonInclude(Include.NON_NULL)
 public record ConversationDto(
     String id, String userId, String origin, String title, String createdAt, String updatedAt) {}
