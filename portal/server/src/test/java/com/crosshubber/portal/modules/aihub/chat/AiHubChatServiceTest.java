@@ -27,7 +27,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 class AiHubChatServiceTest {
 
-  // --- createChatModel() â€” Spring AI 2.0 provider branching (client construction is offline) ---
+  // --- createChatModel() — Spring AI 2.0 provider branching (client construction is offline) ---
 
   @Test
   void createChatModelBuildsAnthropicModelForAnthropicProvider() {

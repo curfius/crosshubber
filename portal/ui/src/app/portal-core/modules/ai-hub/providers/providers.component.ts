@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit } from '@angular/core';
 import { DsTree, DsTreeNode } from '../../../../shared/components/ds-tree/ds-tree.component';
 import { FormsModule } from '@angular/forms';
 import { Switch } from '../../../../shared/components/switch/switch.component';
@@ -11,6 +11,7 @@ type DotColor = 'green' | 'gray' | 'red' | 'amber';
 @Component({
   selector: 'app-ai-hub-providers',
   imports: [FormsModule, Switch, ConfirmDialog, DsTree],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './providers.component.html',
   styleUrl: './providers.component.css',
 })

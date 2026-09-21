@@ -1,6 +1,5 @@
 package com.crosshubber.portal.modules.registry.manifest;
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,7 +58,8 @@ public class InstallService {
   /**
    * Applies a manifest install: upserts module (new ones disabled, managed by manifest), upserts
    * entry points (preserving navigation-managed fields), and records the version snapshot. KC role
-   * sync is best-effort, outside the transaction.
+   * sync is deliberately NOT done here — call {@link #syncRealmRoles(JsonNode)} from outside the
+   * transaction so blocking HTTP never holds a pooled connection.
    */
   @Transactional
   public Map<String, Object> applyInstall(JsonNode manifest, String installedBy) {
@@ -97,22 +97,23 @@ public class InstallService {
 
     // 2. Upsert entry points — runtime-managed fields (groupKey, sortOrder,
     // parentEntryKey, active, icon, color) are preserved on conflict (D4).
+    // Existing rows are loaded once (not per key) to avoid N+1 selects.
+    Map<String, EntryPointEntity> existing = new LinkedHashMap<>();
+    for (EntryPointEntity row : entryPointRepo.findByModuleKey(moduleKey)) {
+      existing.put(row.getEntryKey(), row);
+    }
     for (ManifestValidator.FlatEntry flat : validator.flattenEntries(manifest)) {
       JsonNode entry = flat.entry();
       String entryKey = entry.path("key").asString();
-      EntryPointEntity ep =
-          entryPointRepo
-              .findByModuleKeyAndEntryKey(moduleKey, entryKey)
-              .orElseGet(
-                  () -> {
-                    EntryPointEntity created = new EntryPointEntity();
-                    created.setModuleKey(moduleKey);
-                    created.setEntryKey(entryKey);
-                    created.setSortOrder(0);
-                    created.setActive(true);
-                    created.setMulti(entry.has("multi") && entry.get("multi").asBoolean());
-                    return created;
-                  });
+      EntryPointEntity ep = existing.get(entryKey);
+      if (ep == null) {
+        ep = new EntryPointEntity();
+        ep.setModuleKey(moduleKey);
+        ep.setEntryKey(entryKey);
+        ep.setSortOrder(0);
+        ep.setActive(true);
+        ep.setMulti(entry.has("multi") && entry.get("multi").asBoolean());
+      }
       ep.setCategory(flat.category());
       ep.setName(entry.path("name").asString());
       ep.setDescription(
@@ -157,21 +158,28 @@ public class InstallService {
         version,
         digest.substring(0, Math.min(8, digest.length())));
 
-    // 4. Sync roles to KC (best effort — never blocks the install)
-    List<Map<String, Object>> roles = validator.declaredRoles(manifest);
-    if (!roles.isEmpty() && kcAdminClient.isConfigured()) {
-      try {
-        kcAdminClient.ensureRealmRoles(roles);
-      } catch (Exception e) {
-        log.error("[install] KC role sync failed (non-blocking): {}", e.getMessage());
-      }
-    }
-
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("ok", true);
     result.put("moduleKey", moduleKey);
     result.put("version", version);
     return result;
+  }
+
+  /**
+   * Best-effort Keycloak realm-role sync for the roles declared in a manifest. Non-transactional by
+   * design — call it AFTER the install transaction commits so the HTTP round-trip never runs inside
+   * a DB transaction. Failures are logged, never propagated.
+   */
+  public void syncRealmRoles(JsonNode manifest) {
+    List<Map<String, Object>> roles = validator.declaredRoles(manifest);
+    if (roles.isEmpty() || !kcAdminClient.isConfigured()) {
+      return;
+    }
+    try {
+      kcAdminClient.ensureRealmRoles(roles);
+    } catch (Exception e) {
+      log.error("[install] KC role sync failed (non-blocking): {}", e.getMessage());
+    }
   }
 
   // ── Versions ─────────────────────────────────────────────────────────
@@ -356,7 +364,8 @@ public class InstallService {
     return ApplyOutcome.ok(
         String.valueOf(result.get("moduleKey")),
         String.valueOf(result.get("version")),
-        shouldActivate);
+        shouldActivate,
+        manifest);
   }
 
   /** Deletes only the most recent draft (history preserved). */
@@ -427,14 +436,20 @@ public class InstallService {
   }
 
   public record ApplyOutcome(
-      boolean ok, String moduleKey, String version, boolean shouldActivate, String error) {
+      boolean ok,
+      String moduleKey,
+      String version,
+      boolean shouldActivate,
+      JsonNode manifest,
+      String error) {
 
-    static ApplyOutcome ok(String moduleKey, String version, boolean shouldActivate) {
-      return new ApplyOutcome(true, moduleKey, version, shouldActivate, null);
+    static ApplyOutcome ok(
+        String moduleKey, String version, boolean shouldActivate, JsonNode manifest) {
+      return new ApplyOutcome(true, moduleKey, version, shouldActivate, manifest, null);
     }
 
     static ApplyOutcome fail(String error) {
-      return new ApplyOutcome(false, null, null, false, error);
+      return new ApplyOutcome(false, null, null, false, null, error);
     }
   }
 
@@ -543,14 +558,6 @@ public class InstallService {
     }
   }
 
-  private String writeJson(JsonNode node) {
-    try {
-      return objectMapper.writeValueAsString(node);
-    } catch (Exception e) {
-      throw new IllegalStateException("manifest serialization failed", e);
-    }
-  }
-
   private String writeJson(Object node) {
     try {
       return objectMapper.writeValueAsString(node);
@@ -571,9 +578,5 @@ public class InstallService {
     List<String> parts = new java.util.ArrayList<>();
     roles.forEach(r -> parts.add(r.asString()));
     return String.join(",", parts);
-  }
-
-  static byte[] utf8(String value) {
-    return value.getBytes(StandardCharsets.UTF_8);
   }
 }

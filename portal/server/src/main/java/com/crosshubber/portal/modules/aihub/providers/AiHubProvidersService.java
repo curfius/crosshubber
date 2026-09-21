@@ -1,6 +1,7 @@
 package com.crosshubber.portal.modules.aihub.providers;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.data.domain.Sort;
@@ -40,8 +41,23 @@ public class AiHubProvidersService {
 
   @Transactional(readOnly = true)
   public List<ProviderDto> getAll() {
-    return providerRepo.findAll(Sort.by(Sort.Order.asc("name"))).stream()
-        .map(this::toProviderDto)
+    List<AiHubProviderEntity> providers = providerRepo.findAll(Sort.by(Sort.Order.asc("name")));
+    // Tokens loaded once and grouped — no per-provider SELECT (N+1).
+    Map<String, List<AiHubTokenEntity>> tokensByProvider = new java.util.LinkedHashMap<>();
+    for (AiHubTokenEntity t : tokenRepo.findAll()) {
+      tokensByProvider.computeIfAbsent(t.getProviderId(), k -> new java.util.ArrayList<>()).add(t);
+    }
+    return providers.stream()
+        .map(
+            p -> {
+              List<TokenDto> tokens =
+                  tokensByProvider.getOrDefault(p.getId(), List.of()).stream()
+                      .sorted(java.util.Comparator.comparing(AiHubTokenEntity::getName))
+                      .map(this::toTokenDto)
+                      .toList();
+              return new ProviderDto(
+                  p.getId(), p.getName(), p.getEnabled(), p.getBaseUrl(), tokens);
+            })
         .toList();
   }
 
@@ -198,6 +214,9 @@ public class AiHubProvidersService {
     if (plainApiKey != null) {
       masked = cryptoService.maskApiKey(plainApiKey);
     } else if (t.getEncryptedKey() != null) {
+      // Deliberate: the mask derives from the plaintext key, so listing requires a decrypt
+      // per token. AES over these short payloads is cheap; avoiding it needs a schema change
+      // (stored mask column + backfill) — tracked in OPTIMIZATIONS.md.
       try {
         masked = cryptoService.maskApiKey(cryptoService.decryptApiKey(t.getEncryptedKey()));
       } catch (Exception e) {

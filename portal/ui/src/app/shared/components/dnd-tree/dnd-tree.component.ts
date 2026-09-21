@@ -1,4 +1,4 @@
-import { Component, computed, Directive, ElementRef, inject, input, output, signal, AfterViewInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, Directive, ElementRef, inject, input, output, signal, AfterViewInit } from '@angular/core';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
 import { NgTemplateOutlet } from '@angular/common';
@@ -42,6 +42,7 @@ export interface DropListData {
 @Component({
   selector: 'app-dnd-tree',
   imports: [DragDropModule, FormsModule, NgTemplateOutlet, Autofocus],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dnd-tree.component.html',
   styleUrl: './dnd-tree.component.css',
 })

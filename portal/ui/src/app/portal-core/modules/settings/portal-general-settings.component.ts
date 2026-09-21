@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from '../../../core/settings/settings.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -13,6 +13,7 @@ import { entryPointId } from '../../../core/models';
 @Component({
   selector: 'app-portal-general-settings',
   imports: [FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './portal-general-settings.component.html',
   styleUrl: './portal-general-settings.component.css',
 })

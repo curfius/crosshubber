@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { I18nService } from '../i18n/i18n.service';
 
 /**
@@ -8,6 +8,7 @@ import { I18nService } from '../i18n/i18n.service';
 @Component({
   selector: 'app-login',
   imports: [],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
 })

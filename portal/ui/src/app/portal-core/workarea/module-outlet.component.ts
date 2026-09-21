@@ -1,5 +1,4 @@
-import {
-  Component,
+import { ChangeDetectionStrategy, Component,
   computed,
   effect,
   ElementRef,
@@ -10,8 +9,7 @@ import {
   viewChild,
   ViewContainerRef,
   type AfterViewInit,
-  type OnDestroy,
-} from '@angular/core';
+  type OnDestroy, } from '@angular/core';
 import { Bridge } from '../../core/bridge/bridge.service';
 import { buildIframeAgentScript } from '../../core/bridge/iframe-agent';
 import { I18nService } from '../../core/i18n/i18n.service';
@@ -53,6 +51,7 @@ function isSelfFraming(rawUrl: string): boolean {
 @Component({
   selector: 'app-outlet',
   imports: [],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './module-outlet.component.html',
   styleUrl: './module-outlet.component.css',
 })

@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, Output, EventEmitter, OnInit, AfterViewChecked, ElementRef, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, computed, Output, EventEmitter, OnInit, AfterViewChecked, ElementRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ModuleSettingsService } from '../../../../core/settings/module-settings.service';
 import { AiHubService } from '../../../../core/ai-hub/ai-hub.service';
@@ -17,6 +17,7 @@ const MODULE_KEY = 'ai-hub';
 @Component({
   selector: 'app-ai-hub-quick-chat',
   imports: [FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './quick-chat.component.html',
   styleUrl: './quick-chat.component.css',
 })

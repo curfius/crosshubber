@@ -147,11 +147,11 @@ public class TenantConfigLoader {
   }
 
   private String resolveDefaultTenantsDir() {
-    // Try common locations
+    // Try common relative locations (works for repo root, portal/server, and Docker mounts)
     String[] candidates = {
       "config-management/tenants-config",
       "../config-management/tenants-config",
-      "C:/playground/projects/crosshubber/config-management/tenants-config"
+      "../../config-management/tenants-config"
     };
     for (String c : candidates) {
       if (Files.exists(Path.of(c, "_default", "tenant.json"))) {

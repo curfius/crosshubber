@@ -927,11 +927,7 @@
               </label>
             } @else {
               <div>
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.wizard.manifestJson') }}</span>
-                  <button type="button" (click)="fillDummyManifest()"
-                    class="cursor-pointer text-[10px] text-[var(--portal-text-disabled)] transition hover:text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.wizard.fillDummy') }}</button>
-                </div>
+                <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.wizard.manifestJson') }}</span>
                 <textarea rows="12" [value]="installInput()" (input)="installInput.set($any($event.target).value)"
                   placeholder='{"manifestVersion":1,"key":"my-module",...}'
                   class="ds-textarea mt-1 font-mono text-xs"></textarea>

@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DndTree } from '../../../shared/components/dnd-tree/dnd-tree.component';
 import type { EditableTreeNode } from '../../../core/navigation/navigation.models';
@@ -58,6 +58,7 @@ function treeToLayout(nodes: EditableTreeNode[], pinnedSectionEnabled: boolean):
 @Component({
   selector: 'app-portal-nav-settings',
   imports: [DndTree, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './portal-nav-settings.component.html',
   styleUrl: './portal-nav-settings.component.css',
 })

@@ -1,21 +1,23 @@
 # Config Management — Minimal (Deferred)
 
 This folder is intentionally thin for the initial Java clone. Full Java port of
-`backoffice-tools` (CLI + provision/deploy/plan) is deferred — see work-in-progress
-plan. Only the essentials to boot a Docker tenant are kept.
+`backoffice-tools` (CLI + provision/deploy/plan) is deferred. Only the essentials to
+boot a Docker tenant are kept.
 
 ## What's here
 
 - `tenants-config/_default/` — baseline profile (never deployed) + `init.sql` / `seed.sql`
   (both minimal, real DDL is via Flyway in `portal/server`).
-- `tenants-config/dev/` — persistent local dev tenant (`slug=dev`, no external modules).
-- `tenants-config/demo|qa|acme/` — examples (copy of originals, `secrets.env` excluded).
-- `tenants-config/*/realm.json` — Keycloak realm templates with `${VAR}` placeholders
-  resolved inside Keycloak container via compose env.
-- `tenants-config/*/secrets.env` — **GITIGNORED**, operator-owned. A `secrets.env.example`
-  is committed if present; real file is scaffolded on first `generateDeployment`.
+- `tenants-config/dev/` — persistent local dev tenant (`slug=dev`, blanks out the
+  `_default` demo external modules).
+- `tenants-config/dev/realm.json` — Keycloak realm template; `${VAR}` placeholders are
+  resolved inside the Keycloak container via compose env.
+- `tenants-config/dev/secrets.env` — **GITIGNORED**, operator-owned. A committed
+  `secrets.env.example` documents the expected variables; the real file is created by
+  the operator on first setup.
 
-Original source: `C:/playground/projects/genportal/backoffice-tools/tenants-config/`
+Additional tenants (`demo`, `qa`, ...) are created by copying `_default` + adding a
+tenant-specific folder as needed — no examples are committed.
 
 ## How it connects to portal/server
 
@@ -23,32 +25,17 @@ At boot, `portal/server` reads:
 
 ```
 TENANT_SLUG=dev
-TENANT_CONFIG_DIR=/app/tenants  (mounted)
-PGSCHEMA=dev  (defaults to TENANT_SLUG — see portal/src/config.ts:37)
+TENANT_CONFIG_DIR=/app/tenants  (mounted, see docker-compose.yml)
+PGSCHEMA=dev  (defaults to TENANT_SLUG)
 ```
 
-- `bootstrap/TenantConfigLoader.java` loads `_default/tenant.json` + `dev/tenant.json`
-  and deep-merges (raw JSON before defaults) — same semantics as
-  `backoffice-tools/src/tenant-store.ts` / `portal/src/bootstrap/tenant-config.ts`.
-- `Reconciler.java` then upserts builtin catalog + settings (non-destructive).
-- Env `TENANT_CONFIG_DIR` can override path for testing.
-
-## Deployments (generated)
-
-`config-management/deployments/<slug>/` is **generated** (`pure function of inputs`) and
-gitignored. Minimal `dev` deployment is pre-baked under `portal/server` docker flow
-(see `portal/server/docker-compose.dev.yml` placeholder). To re-generate with original
-Node tooling:
-
-```bash
-# from genportal/backoffice-tools
-npm run tenants -- compose dev
-```
-
-Future Java `config-management/` will add `java -jar config-management.jar list|plan|up|...`
-mirroring that CLI — tracked separately.
+- `bootstrap/TenantConfigLoader.java` loads `_default/tenant.json` + `<slug>/tenant.json`
+  and deep-merges (overlay wins; arrays are replaced, not merged).
+- `Reconciler.java` then upserts builtin catalog + settings (non-destructive, fail-fast).
+- Env `TENANT_CONFIG_DIR` can override the path for local `mvn` runs; compose always sets
+  it to the mount point.
 
 ## Secrets
 
-Do NOT commit `secrets.env`. Changing `POSTGRES_PASSWORD` after `pgdata` init has no effect
-(the password lives inside the Docker volume). See `backoffice-tools/src/provision/inputs.ts`.
+Do NOT commit `secrets.env`. Changing `POSTGRES_PASSWORD` after `pgdata` init has no
+effect (the password lives inside the Docker volume) — wipe the volume to re-seed.

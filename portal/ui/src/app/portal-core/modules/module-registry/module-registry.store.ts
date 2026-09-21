@@ -6,9 +6,7 @@ import type {
   PortalEntryPoint,
   EntryPointGroup,
   EntryCategory,
-  EntryPointFormValue,
   PortalModuleManifest,
-  InstallDiff,
   VersionOutput,
 } from '../../../core/models';
 import { EMBEDDED_LOAD_PATHS } from '../../workarea/embedded-modules';
@@ -49,76 +47,77 @@ export interface EntryPointOutput {
   multi: boolean;
 }
 
+/** Envelope every registry endpoint answers with: the resource payload plus an optional `{"error"}`. */
+type Envelope = Record<string, unknown> & { error?: string };
+
 @Injectable({ providedIn: 'root' })
 export class RegistryService {
   readonly changed = new Subject<void>();
 
+  /**
+   * Shared request path: fetch, parse JSON, throw the server `{"error":"..."}` message
+   * (or `fallback`) on non-2xx, and emit `changed` so the shell refreshes registry data.
+   */
+  private async request(
+    url: string,
+    init: RequestInit | undefined,
+    fallback: string,
+  ): Promise<Envelope> {
+    const res = await fetch(url, init);
+    const body = (await res.json().catch(() => ({}))) as Envelope;
+    if (!res.ok) throw new Error(body.error ?? fallback);
+    return body;
+  }
+
+  private moduleUrl(key: string): string {
+    return `/api/registry/modules/${encodeURIComponent(key)}`;
+  }
+
+  private groupUrl(key: string): string {
+    return `/api/registry/entry-point-groups/${encodeURIComponent(key)}`;
+  }
+
   // ── Modules ────────────────────────────────────────────────────────
 
   async listModules(): Promise<ModuleOutput[]> {
-    const res = await fetch('/api/registry/modules');
-    if (!res.ok) throw new Error('unauthorized');
-    const data = (await res.json()) as { modules: ModuleOutput[] };
-    return data.modules;
+    const body = await this.request('/api/registry/modules', undefined, 'unauthorized');
+    return (body as { modules: ModuleOutput[] }).modules;
   }
 
   async saveModule(input: ModulePayload): Promise<ModuleOutput> {
-    const res = await fetch('/api/registry/modules', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    const data = (await res.json()) as { ok?: boolean; module?: ModuleOutput; error?: string };
-    if (!res.ok) throw new Error(data.error || 'save failed');
+    const body = await this.request('/api/registry/modules', this.jsonInit(input), 'save failed');
     this.changed.next();
-    return data.module!;
+    return (body as { module: ModuleOutput }).module;
   }
 
   async removeModule(key: string): Promise<void> {
-    const res = await fetch(`/api/registry/modules/${encodeURIComponent(key)}`, { method: 'DELETE' });
-    const data = (await res.json()) as { ok?: boolean; error?: string };
-    if (!res.ok) throw new Error(data.error || 'delete failed');
+    await this.request(this.moduleUrl(key), { method: 'DELETE' }, 'delete failed');
     this.changed.next();
   }
 
   async setModuleActive(key: string, active: boolean): Promise<void> {
-    const res = await fetch(`/api/registry/modules/${encodeURIComponent(key)}/active`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ active }),
-    });
-    const data = (await res.json()) as { ok?: boolean; error?: string };
-    if (!res.ok) throw new Error(data.error || 'update failed');
+    await this.request(`${this.moduleUrl(key)}/active`, this.jsonInit({ active }), 'update failed');
     this.changed.next();
   }
 
   async reorderModules(keys: string[]): Promise<void> {
-    const res = await fetch('/api/registry/modules/reorder', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keys }),
-    });
-    if (!res.ok) throw new Error('reorder failed');
+    await this.request('/api/registry/modules/reorder', this.jsonInit({ keys }), 'reorder failed');
     this.changed.next();
   }
 
   // ── Entry Points ───────────────────────────────────────────────────
 
   async listAllEntryPoints(): Promise<EntryPointOutput[]> {
-    const res = await fetch('/api/registry/entry-points');
-    if (!res.ok) throw new Error('unauthorized');
-    const data = (await res.json()) as { entryPoints: EntryPointOutput[] };
-    return data.entryPoints;
+    const body = await this.request('/api/registry/entry-points', undefined, 'unauthorized');
+    return (body as { entryPoints: EntryPointOutput[] }).entryPoints;
   }
 
   async listEntryPoints(moduleKey?: string): Promise<EntryPointOutput[]> {
     const url = moduleKey
       ? `/api/registry/entry-points?moduleKey=${encodeURIComponent(moduleKey)}`
       : '/api/registry/entry-points';
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('unauthorized');
-    const data = (await res.json()) as { entryPoints: EntryPointOutput[] };
-    return data.entryPoints;
+    const body = await this.request(url, undefined, 'unauthorized');
+    return (body as { entryPoints: EntryPointOutput[] }).entryPoints;
   }
 
   async saveEntryPoint(input: {
@@ -141,31 +140,18 @@ export class RegistryService {
     color?: string;
     multi?: boolean;
   }): Promise<EntryPointOutput> {
-    const res = await fetch('/api/registry/entry-points', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    const data = (await res.json()) as { ok?: boolean; entryPoint?: EntryPointOutput; error?: string };
-    if (!res.ok) throw new Error(data.error || 'save failed');
+    const body = await this.request('/api/registry/entry-points', this.jsonInit(input), 'save failed');
     this.changed.next();
-    return data.entryPoint!;
+    return (body as { entryPoint: EntryPointOutput }).entryPoint;
   }
 
   async removeEntryPoint(id: number): Promise<void> {
-    const res = await fetch(`/api/registry/entry-points/${id}`, { method: 'DELETE' });
-    const data = (await res.json()) as { ok?: boolean; error?: string };
-    if (!res.ok) throw new Error(data.error || 'delete failed');
+    await this.request(`/api/registry/entry-points/${id}`, { method: 'DELETE' }, 'delete failed');
     this.changed.next();
   }
 
   async reorderEntryPoints(ids: number[]): Promise<void> {
-    const res = await fetch('/api/registry/entry-points/reorder', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids }),
-    });
-    if (!res.ok) throw new Error('reorder failed');
+    await this.request('/api/registry/entry-points/reorder', this.jsonInit({ ids }), 'reorder failed');
     this.changed.next();
   }
 
@@ -175,10 +161,8 @@ export class RegistryService {
     const url = category
       ? `/api/registry/entry-point-groups?category=${encodeURIComponent(category)}`
       : '/api/registry/entry-point-groups';
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('unauthorized');
-    const data = (await res.json()) as { groups: EntryPointGroup[] };
-    return data.groups;
+    const body = await this.request(url, undefined, 'unauthorized');
+    return (body as { groups: EntryPointGroup[] }).groups;
   }
 
   async saveGroup(input: {
@@ -189,45 +173,26 @@ export class RegistryService {
     sortOrder?: number;
     icon?: string;
   }): Promise<EntryPointGroup> {
-    const res = await fetch('/api/registry/entry-point-groups', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    const data = (await res.json()) as { ok?: boolean; group?: EntryPointGroup; error?: string };
-    if (!res.ok) throw new Error(data.error || 'save failed');
+    const body = await this.request('/api/registry/entry-point-groups', this.jsonInit(input), 'save failed');
     this.changed.next();
-    return data.group!;
+    return (body as { group: EntryPointGroup[] } & { group: EntryPointGroup }).group;
   }
 
   async removeGroup(groupKey: string): Promise<void> {
-    const res = await fetch(`/api/registry/entry-point-groups/${encodeURIComponent(groupKey)}`, { method: 'DELETE' });
-    const data = (await res.json()) as { ok?: boolean; error?: string };
-    if (!res.ok) throw new Error(data.error || 'delete failed');
+    await this.request(this.groupUrl(groupKey), { method: 'DELETE' }, 'delete failed');
     this.changed.next();
   }
 
   async reorderGroups(keys: string[]): Promise<void> {
-    const res = await fetch('/api/registry/entry-point-groups/reorder', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keys }),
-    });
-    if (!res.ok) throw new Error('reorder failed');
+    await this.request('/api/registry/entry-point-groups/reorder', this.jsonInit({ keys }), 'reorder failed');
     this.changed.next();
   }
 
   // ── Install Wizard ──────────────────────────────────────────────────
 
   async fetchManifestFromUrl(url: string): Promise<{ manifest: PortalModuleManifest }> {
-    const res = await fetch('/api/registry/fetch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
-    });
-    const data = await res.json() as { manifest?: PortalModuleManifest; error?: string; issues?: string[] };
-    if (!res.ok) throw new Error(data.error || 'fetch failed' + (data.issues ? ': ' + data.issues.join(', ') : ''));
-    return { manifest: data.manifest! };
+    const body = await this.request('/api/registry/fetch', this.jsonInit({ url }), 'fetch failed');
+    return { manifest: (body as { manifest: PortalModuleManifest }).manifest };
   }
 
   async fetchManifestFromJson(json: string): Promise<{ manifest: PortalModuleManifest }> {
@@ -251,99 +216,84 @@ export class RegistryService {
   }
 
   async installManifest(manifest: PortalModuleManifest): Promise<{ ok: boolean; moduleKey: string; version: string }> {
-    const res = await fetch('/api/registry/install', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ manifest }),
-    });
-    const data = await res.json() as { ok?: boolean; moduleKey?: string; version?: string; error?: string };
-    if (!res.ok) throw new Error(data.error || 'install failed');
+    const body = await this.request('/api/registry/install', this.jsonInit({ manifest }), 'install failed');
     this.changed.next();
-    return { ok: true, moduleKey: data.moduleKey!, version: data.version! };
+    const payload = body as { moduleKey?: string; version?: string };
+    return { ok: true, moduleKey: payload.moduleKey!, version: payload.version! };
   }
 
   async listVersions(moduleKey: string): Promise<VersionOutput[]> {
-    const res = await fetch(`/api/registry/versions/${encodeURIComponent(moduleKey)}`);
-    if (!res.ok) throw new Error('failed to load versions');
-    const data = await res.json() as { versions: VersionOutput[] };
-    return data.versions;
+    const body = await this.request(
+      `/api/registry/versions/${encodeURIComponent(moduleKey)}`, undefined, 'failed to load versions');
+    return (body as { versions: VersionOutput[] }).versions;
   }
 
   async rollback(moduleKey: string, versionId: number): Promise<{ draftId: number; version: string }> {
-    const res = await fetch(`/api/registry/rollback/${encodeURIComponent(moduleKey)}/${versionId}`, {
-      method: 'POST',
-    });
-    const data = await res.json() as { ok?: boolean; draftId?: number; version?: string; error?: string };
-    if (!res.ok) throw new Error(data.error || 'rollback failed');
+    const body = await this.request(
+      `/api/registry/rollback/${encodeURIComponent(moduleKey)}/${versionId}`,
+      { method: 'POST' }, 'rollback failed');
     this.changed.next();
-    return { draftId: data.draftId!, version: data.version! };
+    return { draftId: (body as { draftId: number }).draftId, version: (body as { version: string }).version };
   }
 
   async getActiveManifest(moduleKey: string): Promise<PortalModuleManifest | null> {
     const res = await fetch(`/api/registry/active-manifest/${encodeURIComponent(moduleKey)}`);
     if (!res.ok) return null;
-    const data = await res.json() as { manifest: PortalModuleManifest | null };
+    const data = (await res.json()) as { manifest: PortalModuleManifest | null };
     return data.manifest;
   }
 
   async getVersionManifest(moduleKey: string, versionId: number): Promise<PortalModuleManifest | null> {
     const res = await fetch(`/api/registry/version-manifest/${encodeURIComponent(moduleKey)}/${versionId}`);
     if (!res.ok) return null;
-    const data = await res.json() as { manifest: PortalModuleManifest | null };
+    const data = (await res.json()) as { manifest: PortalModuleManifest | null };
     return data.manifest;
   }
 
   // ── Draft Lifecycle ────────────────────────────────────────────────
 
   async createDraft(moduleKey: string): Promise<{ draftId: number; manifest: PortalModuleManifest }> {
-    const res = await fetch(`/api/registry/draft/${encodeURIComponent(moduleKey)}`, { method: 'POST' });
-    const data = await res.json() as { draftId?: number; manifest?: PortalModuleManifest; error?: string };
-    if (!res.ok) throw new Error(data.error || 'create draft failed');
-    return { draftId: data.draftId!, manifest: data.manifest! };
+    const body = await this.request(
+      `/api/registry/draft/${encodeURIComponent(moduleKey)}`, { method: 'POST' }, 'create draft failed');
+    const payload = body as { draftId?: number; manifest?: PortalModuleManifest };
+    return { draftId: payload.draftId!, manifest: payload.manifest! };
   }
 
   async saveDraft(moduleKey: string, manifest: PortalModuleManifest): Promise<{ version: string }> {
-    const res = await fetch(`/api/registry/draft/${encodeURIComponent(moduleKey)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ manifest }),
-    });
-    const data = await res.json() as { ok?: boolean; version?: string; error?: string };
-    if (!res.ok) throw new Error(data.error || 'save draft failed');
-    return { version: data.version! };
+    const body = await this.request(
+      `/api/registry/draft/${encodeURIComponent(moduleKey)}`, this.jsonInit({ manifest }), 'save draft failed');
+    return { version: (body as { version: string }).version };
   }
 
   async applyDraft(moduleKey: string, manifest?: PortalModuleManifest): Promise<{ ok: boolean; moduleKey: string; version: string; shouldActivate: boolean; errors?: string[] }> {
-    const res = await fetch(`/api/registry/draft/${encodeURIComponent(moduleKey)}/apply`, {
-      method: 'POST',
-      headers: manifest ? { 'Content-Type': 'application/json' } : undefined,
-      body: manifest ? JSON.stringify({ manifest }) : undefined,
-    });
-    const data = await res.json() as { ok?: boolean; moduleKey?: string; version?: string; shouldActivate?: boolean; errors?: string[]; error?: string };
-    if (!res.ok) throw new Error(data.error || 'apply draft failed');
+    const body = await this.request(
+      `/api/registry/draft/${encodeURIComponent(moduleKey)}/apply`,
+      manifest ? this.jsonInit({ manifest }) : { method: 'POST' },
+      'apply draft failed');
     this.changed.next();
-    return { ok: true, moduleKey: data.moduleKey!, version: data.version!, shouldActivate: data.shouldActivate!, errors: data.errors };
+    const payload = body as { moduleKey?: string; version?: string; shouldActivate?: boolean; errors?: string[] };
+    return { ok: true, moduleKey: payload.moduleKey!, version: payload.version!, shouldActivate: payload.shouldActivate!, errors: payload.errors };
   }
 
   async discardDraft(moduleKey: string): Promise<void> {
-    const res = await fetch(`/api/registry/draft/${encodeURIComponent(moduleKey)}`, { method: 'DELETE' });
-    const data = await res.json() as { ok?: boolean; error?: string };
-    if (!res.ok) throw new Error(data.error || 'discard draft failed');
+    await this.request(
+      `/api/registry/draft/${encodeURIComponent(moduleKey)}`, { method: 'DELETE' }, 'discard draft failed');
     this.changed.next();
   }
 
   async getDraft(moduleKey: string): Promise<PortalModuleManifest | null> {
     const res = await fetch(`/api/registry/draft/${encodeURIComponent(moduleKey)}`);
     if (!res.ok) return null;
-    const data = await res.json() as { manifest: PortalModuleManifest | null };
+    const data = (await res.json()) as { manifest: PortalModuleManifest | null };
     return data.manifest;
   }
 
   async loadVersion(moduleKey: string, versionId: number): Promise<{ draftId: number; manifest: PortalModuleManifest }> {
-    const res = await fetch(`/api/registry/load-version/${encodeURIComponent(moduleKey)}/${versionId}`, { method: 'POST' });
-    const data = await res.json() as { draftId?: number; manifest?: PortalModuleManifest; error?: string };
-    if (!res.ok) throw new Error(data.error || 'load version failed');
-    return { draftId: data.draftId!, manifest: data.manifest! };
+    const body = await this.request(
+      `/api/registry/load-version/${encodeURIComponent(moduleKey)}/${versionId}`,
+      { method: 'POST' }, 'load version failed');
+    const payload = body as { draftId?: number; manifest?: PortalModuleManifest };
+    return { draftId: payload.draftId!, manifest: payload.manifest! };
   }
 
   async downloadVersion(moduleKey: string, versionId: number): Promise<void> {
@@ -367,6 +317,13 @@ export class RegistryService {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────
+
+  private jsonInit(body: unknown): RequestInit {
+    return {
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    };
+  }
 
   loadPaths(): string[] {
     return [...EMBEDDED_LOAD_PATHS];

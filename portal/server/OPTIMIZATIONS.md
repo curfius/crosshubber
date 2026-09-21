@@ -6,6 +6,18 @@ The codebase is a well-structured **Spring Boot 4.1.1 / Java 21 modular monolith
 
 **Completed in Steps 1–8:** #2, #4, #5, #6, #7, #13, #14, #15, #17, #19, #20, #21, #22, #23, #24, #25
 
+**Completed in Step 9 (2026-09-21):** #27 (Reconciler half — network I/O and KC sync moved out of the boot transaction; DB phase is atomic via `TransactionTemplate`), plus the following perf/cleanup pass not tracked as numbered items:
+
+- **Reconciler N+1 at boot** — `reconcileI18n` did a per-label `findById` (hundreds of SELECTs on every boot against the 227 KB seed catalog). Now one `findAll` + in-memory set + `saveAll` batch.
+- **InstallService** — KC `ensureRealmRoles` HTTP call removed from inside the install transaction; callers (`ManifestController`, `Reconciler`) invoke `syncRealmRoles(...)` post-commit. Entry-point upsert loads existing rows once per module (was one SELECT per entry).
+- **ShellTreeService.saveShellTree** — per-group `findByGroupKey` and per-item `findByModuleKeyAndEntryKey` in the save loops replaced with preloaded maps (was up to 700 SELECTs per save).
+- **EntryPointsService.reorder** — `findAllById` batch instead of a SELECT per id.
+- **PinnedAppsService.savePinnedTree** — delete+reinsert now collects rows and batch-saves (client UUIDs make per-row flush unnecessary).
+- **AiHubProvidersService.getAll** — tokens loaded once and grouped by provider (was one SELECT per provider). NOTE: token masking still decrypts per token by design (mask derives from plaintext; avoiding it needs a stored-mask column + backfill migration).
+- **WorkspacesController** — list uses `findByUserIdOrderBySavedAtDesc` (was Java-side sort), update uses `findByUserIdAndId` (was load-all-then-filter); malformed UUID path ids still 404.
+- **V22__add_remaining_indexes.sql** — `entry_point_groups(category)`, `entry_point_groups(parent_key)`, `navigation_pinned_apps(parent_id)`.
+- **Dead code/deps removed** — `awaitility` + `h2` from pom, H2 datasource block from `application-test.yml`, dead repo methods (`WorkspaceRepository.findByUserId/deleteByUserIdAndName/existsByUserIdAndName`, `AiHubConversationRepository.findByUserId`, `NavigationPinnedAppRepository.findByUserIdOrderBySortOrderAsc`, `I18nLabelRepository.findByKey`), dead `InstallService.utf8` + duplicate `writeJson` overload.
+
 ---
 
 ## 🔴 HIGH PRIORITY
@@ -533,7 +545,19 @@ public interface ModuleSummary {
 - `ShellTreeService.saveShellTree()` — 153-line method in single `@Transactional`
 - `Reconciler.run()` — entire bootstrap in one transaction
 
+**Status:** 🔶 HALF-DONE (Step 9) — `Reconciler.run()` is no longer transactional: manifest fetches (with retry/sleeps) run before the DB phase, the DB phase is one atomic `TransactionTemplate` block, and KC role sync runs post-commit. `ShellTreeService.saveShellTree` remains a single transaction (acceptable: it is all-DB, client-triggered, and its validation now runs before any write). Still open if the tree save ever grows remote I/O.
+
 **Approach:** Move read-heavy validation outside transaction boundary; split write operations into smaller transactional methods.
+
+---
+
+## Newly identified (Step 9 audit, 2026-09-21)
+
+- **`ManifestController.download`** — calls `installService.listVersions(moduleKey)` which hydrates every stored manifest JSONB just to find one version. Add a `findByModuleKeyAndId` repository lookup.
+- **`ProxyService`** — buffers the whole upstream asset in memory (no size cap, own raw `HttpClient`); consider streaming with a size cap and reusing the shared `RestClient` customization.
+- **`InstallService` (579 lines)** — split install/versions/drafts into focused collaborators.
+- **Token masking** (see Step 9 note) — stored-mask column + backfill would remove the per-token decrypt on list.
+- **Legacy tables** — `favorites`, `chat_conversations`, `chat_messages` (V1) have no Java entities; drop in a future cleanup migration after confirming no external consumers.
 
 ---
 

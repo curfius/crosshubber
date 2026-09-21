@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AiHubService, type LlmProviderConfig, type LlmTokenResponse } from '../../../../core/ai-hub/ai-hub.service';
 import {
@@ -26,6 +26,7 @@ interface ActiveTokenRow {
 @Component({
   selector: 'app-ai-hub-settings',
   imports: [FormsModule, MarkdownEditorComponent, Switch],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.css',
 })

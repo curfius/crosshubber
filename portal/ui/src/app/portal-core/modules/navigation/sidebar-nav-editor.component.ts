@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { NavigationStore } from '../../../core/navigation/navigation.store';
@@ -14,6 +14,7 @@ import { I18nService } from '../../../core/i18n/i18n.service';
 @Component({
   selector: 'app-sidebar-nav-editor',
   imports: [DragDropModule, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './sidebar-nav-editor.component.html',
   styleUrl: './sidebar-nav-editor.component.css',
 })

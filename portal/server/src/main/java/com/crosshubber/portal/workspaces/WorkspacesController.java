@@ -27,7 +27,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.PersistenceException;
 
 /**
- * Workspace routes â€” mirrors {@code portal/src/modules/workspaces/workspaces.routes.ts} +
+ * Workspace routes — mirrors {@code portal/src/modules/workspaces/workspaces.routes.ts} +
  * service.ts: per-user CRUD with name-conflict retry ("name (n)").
  */
 @RestController
@@ -48,8 +48,7 @@ public class WorkspacesController {
   @GetMapping("/api/workspaces")
   public Map<String, Object> list(@AuthenticationPrincipal PortalUser user) {
     List<Map<String, Object>> workspaces =
-        repo.findByUserId(user.sub()).stream()
-            .sorted((a, b) -> b.getSavedAt().compareTo(a.getSavedAt()))
+        repo.findByUserIdOrderBySavedAtDesc(user.sub()).stream()
             .map(WorkspacesController::listItem)
             .toList();
     return Map.of("workspaces", workspaces);
@@ -118,11 +117,14 @@ public class WorkspacesController {
     if (name == null) {
       return ResponseEntity.badRequest().body(Map.of("error", "name is required"));
     }
+    UUID workspaceId;
+    try {
+      workspaceId = UUID.fromString(id);
+    } catch (IllegalArgumentException e) {
+      workspaceId = null;
+    }
     WorkspaceEntity entity =
-        repo.findByUserId(user.sub()).stream()
-            .filter(w -> w.getId().toString().equals(id))
-            .findFirst()
-            .orElse(null);
+        workspaceId == null ? null : repo.findByUserIdAndId(user.sub(), workspaceId).orElse(null);
     if (entity == null) {
       return ResponseEntity.status(404).body(Map.of("error", "not found"));
     }

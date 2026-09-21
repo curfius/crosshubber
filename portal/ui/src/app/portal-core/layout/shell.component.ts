@@ -1,5 +1,5 @@
-﻿import { DragDropModule } from '@angular/cdk/drag-drop';
-import { Component, computed, inject, signal, type OnDestroy } from '@angular/core';
+import { DragDropModule } from '@angular/cdk/drag-drop';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, type OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import type { Subscription } from 'rxjs';
 import { AppLayout } from '../workarea/split-layout.component';
@@ -23,6 +23,8 @@ import { ThemeService } from '../../core/theme/theme.service';
 
 @Component({
   selector: 'app-shell',
+  // AiHubQuickChat stays listed in imports for selector resolution — the template
+  // @defer block moves its code into a lazy chunk (no eager bundle duplication).
   imports: [Sidebar, AppLayout, WorkspaceToolbar, DragDropModule, AiHubQuickChat],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.css',
@@ -90,12 +92,12 @@ export class Shell implements OnDestroy {
       this.wb.setWorkspacesEnabled(this.nav.features().workspacesEnabled);
       await i18n;
       // Boot-time preference correction (DB > localStorage > browser > default).
-      // Deliberately NOT re-applied in refresh() â€” boot-time only.
+      // Deliberately NOT re-applied in refresh() — boot-time only.
       const prefs = config.preferences ?? {};
       this.theme.initFromPreferences(prefs);
       this.i18n.applyServerPreference(prefs);
       // Legacy hash links (`#<epId>[:n][/path]`) get a one-time redirect to
-      // the query-param scheme (D9) â€” cold load only.
+      // the query-param scheme (D9) — cold load only.
       const legacy = this.urlSync.readLegacyHash();
       if (legacy) {
         this.urlSync.replace(legacy, {});

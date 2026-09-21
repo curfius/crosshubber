@@ -35,9 +35,9 @@ public final class SsrfGuard {
   }
 
   /**
-   * Resolves the URL's host and validates all returned addresses in a single step, returning
-   * the validated set. Callers should connect to these addresses directly to avoid TOCTOU races
-   * between validation and connection.
+   * Resolves the URL's host and validates all returned addresses in a single step, returning the
+   * validated set. Callers should connect to these addresses directly to avoid TOCTOU races between
+   * validation and connection.
    *
    * @param rawUrl absolute http(s) URL
    * @param allowPrivate when true, private addresses are permitted (dev mode)

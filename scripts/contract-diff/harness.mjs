@@ -1,15 +1,15 @@
-﻿// Contract-diff harness â€” GAP_CLOSURE_IMPLEMENTATION_PLAN.md P9.2.
+// Contract-diff harness — contract-parity regression checker (originally plan P9.2).
 // One-off runtime verification: replays identical API calls against the Node reference stack
 // (genportal) and the Java portal and reports identical | byte-diff | semantic-diff per endpoint.
 //
 // Usage:  node scripts/contract-diff/harness.mjs [--report <path>]
 // Needs:  Node stack on :18084 and Java stack on :28084 (dev tenants, users dev/dev + devuser/dev).
 //
-// Auth mechanism (documented per plan Â§P9.2 step 2):
-//   - Node stack: GET /api/login/start â†’ {flowId}; POST /api/login {flowId, username, password}
-//     â†’ Set-Cookie portalSession.
-//   - Java stack: browser-less OIDC dance â€” GET /api/login/start â†’ Spring oauth2-login â†’ Keycloak
-//     login form (parsed + POSTed) â†’ /login/oauth2/code/portal â†’ real portalSession cookie with a
+// Auth mechanism (documented per plan §P9.2 step 2):
+//   - Node stack: GET /api/login/start → {flowId}; POST /api/login {flowId, username, password}
+//     → Set-Cookie portalSession.
+//   - Java stack: browser-less OIDC dance — GET /api/login/start → Spring oauth2-login → Keycloak
+//     login form (parsed + POSTed) → /login/oauth2/code/portal → real portalSession cookie with a
 //     registered SessionService entry (minting directly would fail the SessionService.isValid check).
 //   - Both stacks share SESSION_SECRET in the dev tenants (cookies are byte-compatible), but we
 //     still log in properly on each so user-scoped data is owned by the same Keycloak user.
@@ -27,7 +27,7 @@ const REPORT_PATH = (() => {
   return i > -1 ? process.argv[i + 1] : 'scripts/contract-diff/contract-diff-report.md';
 })();
 
-// â”€â”€ HTTP plumbing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── HTTP plumbing ──────────────────────────────────────────────────────────────
 
 class CookieJar {
   constructor() {
@@ -142,7 +142,7 @@ async function call(base, token, method, path, body) {
   return { status: res.status, json, text };
 }
 
-// â”€â”€ Normalization (plan Â§P9.2 step 5) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Normalization (plan §P9.2 step 5) ─────────────────────────────────────────
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -152,7 +152,7 @@ const PREFIXED_RE = /^(tok|ch|dra)_[0-9a-z]+$/;
 function normalize(value, key) {
   if (Array.isArray(value)) {
     const out = value.map((v) => normalize(v, key));
-    // roles are a set â€” token/realm order is environment-dependent, sort for comparison
+    // roles are a set — token/realm order is environment-dependent, sort for comparison
     return key === 'roles' ? out.sort() : out;
   }
   if (value !== null && typeof value === 'object') {
@@ -165,7 +165,7 @@ function normalize(value, key) {
     if (ISO_RE.test(value)) return '<iso-ts>';
     if (CONV_RE.test(value)) return '<conv-id>';
     if (PREFIXED_RE.test(value)) return `<${value.slice(0, value.indexOf('_'))}-id>`;
-    if (/^whseâ€¢â€¢â€¢/.test(value) || key === 'webhookSecretMasked') return '<masked-secret>';
+    if (/^whse•••/.test(value) || key === 'webhookSecretMasked') return '<masked-secret>';
     if (key === 'webhookUrl') return '<webhook-url>';
     if (value.includes('psql -U')) return '<psql-hint>';
     // UUIDs embedded in prose (e.g. installedBy "dev/Dev User (<sub>)") are stack-local
@@ -196,7 +196,7 @@ function sortDeep(value) {
   return value;
 }
 
-// List endpoints accumulate unrelated historical data per stack â€” restrict the comparison to
+// List endpoints accumulate unrelated historical data per stack — restrict the comparison to
 // the items this run seeded (diff-* / captured ids), so pre-existing rows do not pollute verdicts.
 function filterForPath(json, path, ids) {
   const startsWithDiff = (v, keys) =>
@@ -215,7 +215,7 @@ function filterForPath(json, path, ids) {
       entryPoints,
       groups: (json.groups ?? []).filter((g) => usedGroupKeys.has(g.key) || startsWithDiff(g, ['key', 'name'])),
       // services[] is env-dependent (NATS_HTTP_URL / KEYCLOAK_PUBLIC_URL presence differs
-      // between the two dev compose files) â€” compare the deterministic postgres entry only
+      // between the two dev compose files) — compare the deterministic postgres entry only
       services: (json.services ?? []).filter((s) => s.key === 'postgres'),
     };
   }
@@ -225,7 +225,7 @@ function filterForPath(json, path, ids) {
         .filter((p) => startsWithDiff(p, ['id']))
         .map((p) => ({
           ...p,
-          // tokens accumulate one per run (random ids) â€” compare only the one from this run
+          // tokens accumulate one per run (random ids) — compare only the one from this run
           tokens: ids.tokenId ? p.tokens.filter((t) => t.id === ids.tokenId) : p.tokens,
         })),
     };
@@ -255,7 +255,7 @@ function filterForPath(json, path, ids) {
   return json;
 }
 
-// â”€â”€ Verdicts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Verdicts ──────────────────────────────────────────────────────────────────
 
 function compare(node, java, path, nodeIds, javaIds) {
   if (node.status !== java.status) return 'semantic-diff';
@@ -272,7 +272,7 @@ function compare(node, java, path, nodeIds, javaIds) {
   return 'semantic-diff';
 }
 
-// â”€â”€ Seed payloads (identical on both stacks) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Seed payloads (identical on both stacks) ──────────────────────────────────
 
 const MANIFEST = {
   manifestVersion: 1,
@@ -357,7 +357,7 @@ async function seedStack(base, token) {
   return out;
 }
 
-// â”€â”€ Endpoint replay list (plan Â§P9.2 step 6; <convId>/<chId> = stack-local ids) â”€â”€
+// ── Endpoint replay list (plan §P9.2 step 6; <convId>/<chId> = stack-local ids) ──
 
 function replayEndpoints() {
   return [
@@ -411,10 +411,10 @@ const ROLE_PROBES = [
   ['PUT', '/api/i18n/labels/en', { entries: [{ key: 'a.b', value: 'c' }] }],
 ];
 
-// Documented accepted divergences (plan Â§6) â€” excluded from the pass/fail totals.
+// Documented accepted divergences (plan §6) — excluded from the pass/fail totals.
 const ACCEPTED = new Set(['GET /api/mfe/diff-mod']);
 
-// â”€â”€ Runner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Runner ────────────────────────────────────────────────────────────────────
 
 const results = [];
 async function probe(label, fn) {
@@ -429,14 +429,14 @@ async function probe(label, fn) {
 const resolvePath = (path, ids) => path.replace('<convId>', ids.conversationId ?? 'missing-conv').replace('<chId>', ids.channelId ?? 'missing-ch');
 const displayPath = (path) => path.replace('<convId>', ':convId').replace('<chId>', ':chId');
 
-console.log('[harness] logging in to both stacksâ€¦');
+console.log('[harness] logging in to both stacks…');
 const nodeAdmin = await nodeLogin(NODE_BASE, USERS.admin);
 const javaAdmin = await javaLogin(JAVA_BASE, USERS.admin);
 const nodeLimited = await nodeLogin(NODE_BASE, USERS.limited);
 const javaLimited = await javaLogin(JAVA_BASE, USERS.limited);
 console.log('[harness] auth ok');
 
-console.log('[harness] seedingâ€¦');
+console.log('[harness] seeding…');
 const nodeIds = await seedStack(NODE_BASE, nodeAdmin);
 const javaIds = await seedStack(JAVA_BASE, javaAdmin);
 console.log('[harness] seeded', { nodeIds, javaIds });
@@ -459,14 +459,14 @@ await probe('GET /api/registry/version-manifest/diff-manifest-mod/:versionId', a
 });
 
 for (const [method, path, body] of ROLE_PROBES) {
-  await probe(`${method} ${path} (devuser â†’ expect 403)`, async () => {
+  await probe(`${method} ${path} (devuser → expect 403)`, async () => {
     const node = await call(NODE_BASE, nodeLimited, method, path, body);
     const java = await call(JAVA_BASE, javaLimited, method, path, body);
     return { node, java, verdict: compare(node, java) };
   });
 }
 
-// â”€â”€ Report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Report ────────────────────────────────────────────────────────────────────
 
 const verdictIcon = { identical: 'OK', 'byte-diff': 'BYTE', 'semantic-diff': 'SEMANTIC' };
 for (const r of results) {
@@ -485,7 +485,7 @@ const report = [
   '# Contract-diff report',
   '',
   `Generated: ${new Date().toISOString()}`,
-  `Node stack: ${NODE_BASE} Â· Java stack: ${JAVA_BASE}`,
+  `Node stack: ${NODE_BASE} · Java stack: ${JAVA_BASE}`,
   '',
   '| Endpoint | Node | Java | Verdict |',
   '|---|---|---|---|',

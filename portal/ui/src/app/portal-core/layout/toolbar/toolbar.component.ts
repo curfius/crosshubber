@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { WorkbenchService } from '../../features/workspaces/workspaces.store';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -7,6 +7,7 @@ import type { PortalEntryPoint } from '../../../core/models';
 @Component({
   selector: 'app-workspace-toolbar',
   imports: [FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './toolbar.component.html',
   styleUrl: './toolbar.component.css',
 })

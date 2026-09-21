@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal, DestroyRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, DestroyRef } from '@angular/core';
 import { entryPointId, type PortalEntryPoint, PortalUser, type EntryPointGroup } from '../../../core/models';
 import { TreeNode, buildUserSettingsTree } from '../../layout/sidebar/tree.model';
 import { AppOutlet } from '../../workarea/module-outlet.component';
@@ -17,6 +17,7 @@ const MODULE_KEY = 'user-settings';
 @Component({
   selector: 'app-user-settings',
   imports: [AppOutlet, DsTree],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './user-settings.component.html',
   styleUrl: './user-settings.component.css',
 })

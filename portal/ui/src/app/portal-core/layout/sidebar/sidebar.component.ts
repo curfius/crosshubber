@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import type { PortalEntryPoint, WorkspaceMeta } from '../../../core/models';
@@ -11,6 +11,7 @@ import { WorkbenchService } from '../../features/workspaces/workspaces.store';
 @Component({
   selector: 'app-sidebar',
   imports: [FormsModule, NgTemplateOutlet],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.css',
 })

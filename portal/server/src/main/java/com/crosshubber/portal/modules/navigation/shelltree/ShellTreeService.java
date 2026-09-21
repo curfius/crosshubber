@@ -125,7 +125,14 @@ public class ShellTreeService {
     List<EntryPointGroupEntity> existingGroups =
         groupRepo.findByCategoryOrderBySortOrderAscNameAsc(category);
     Set<String> allGroupKeys = new LinkedHashSet<>();
-    groupRepo.findAll().forEach(g -> allGroupKeys.add(g.getGroupKey()));
+    Map<String, EntryPointGroupEntity> byGlobalKey = new LinkedHashMap<>();
+    groupRepo
+        .findAll()
+        .forEach(
+            g -> {
+              allGroupKeys.add(g.getGroupKey());
+              byGlobalKey.put(g.getGroupKey(), g);
+            });
     Map<String, EntryPointGroupEntity> byExistingKey = new LinkedHashMap<>();
     for (EntryPointGroupEntity g : existingGroups) {
       byExistingKey.put(g.getGroupKey(), g);
@@ -190,21 +197,18 @@ public class ShellTreeService {
 
     // Groups: upsert in payload order, renumbering per parent bucket.
     // Roles are never touched (preserved on conflict, empty on insert).
+    // Lookups use the preloaded global map — no per-key SELECT in the loop.
     Map<String, Integer> bucketCounter = new LinkedHashMap<>();
     for (ResolvedGroup g : resolved) {
       String bucket = g.parentKey() == null ? "" : g.parentKey();
       int order = bucketCounter.getOrDefault(bucket, 0);
       bucketCounter.put(bucket, order + 10);
       EntryPointGroupEntity entity =
-          groupRepo
-              .findByGroupKey(g.key())
-              .orElseGet(
-                  () -> {
-                    EntryPointGroupEntity created = new EntryPointGroupEntity();
-                    created.setGroupKey(g.key());
-                    created.setRoles("");
-                    return created;
-                  });
+          byGlobalKey.containsKey(g.key()) ? byGlobalKey.get(g.key()) : new EntryPointGroupEntity();
+      if (entity.getGroupKey() == null) {
+        entity.setGroupKey(g.key());
+        entity.setRoles("");
+      }
       if (entity.getCategory() == null) {
         entity.setCategory(category);
       }
@@ -220,6 +224,11 @@ public class ShellTreeService {
 
     // Items: listed items get group_key + per-bucket renumber; unlisted items
     // of the category are ungrouped and appended after the listed root ones.
+    // Lookup map is built from the already-loaded category rows (no per-item SELECT).
+    Map<String, EntryPointEntity> itemsByRef = new LinkedHashMap<>();
+    for (EntryPointEntity row : categoryRows) {
+      itemsByRef.put(row.getModuleKey() + ":" + row.getEntryKey(), row);
+    }
     Set<String> listedRefs = new LinkedHashSet<>();
     for (JsonNode item : itemInputs) {
       listedRefs.add(item.path("moduleKey").asString() + ":" + item.path("entryKey").asString());
@@ -230,15 +239,14 @@ public class ShellTreeService {
       String bucket = groupKey == null ? "" : groupKey;
       int order = itemBucket.getOrDefault(bucket, 0);
       itemBucket.put(bucket, order + 10);
-      entryPointRepo
-          .findByModuleKeyAndEntryKey(
-              item.path("moduleKey").asString(), item.path("entryKey").asString())
-          .ifPresent(
-              ep -> {
-                ep.setGroupKey(groupKey);
-                ep.setSortOrder(order);
-                entryPointRepo.save(ep);
-              });
+      EntryPointEntity ep =
+          itemsByRef.get(
+              item.path("moduleKey").asString() + ":" + item.path("entryKey").asString());
+      if (ep != null) {
+        ep.setGroupKey(groupKey);
+        ep.setSortOrder(order);
+        entryPointRepo.save(ep);
+      }
     }
     List<EntryPointEntity> unlisted =
         categoryRows.stream()

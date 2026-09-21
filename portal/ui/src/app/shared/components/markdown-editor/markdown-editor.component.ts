@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ElementRef, ViewChild, OnChanges, SimpleChanges, signal, inject, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, Output, EventEmitter, ElementRef, ViewChild, OnChanges, SimpleChanges, signal, inject, ViewEncapsulation } from '@angular/core';
 import { marked } from 'marked';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
@@ -7,6 +7,7 @@ marked.setOptions({ breaks: true, gfm: true });
 @Component({
   selector: 'app-markdown-editor',
   templateUrl: './markdown-editor.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './markdown-editor.component.css',
   // None: the build's scoping pipeline emits unsubstituted %COMP% placeholders
   // for this component's styles, killing every rule (see git history). All CSS

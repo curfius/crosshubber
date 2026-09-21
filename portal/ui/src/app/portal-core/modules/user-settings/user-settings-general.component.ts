@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { PORTAL_THEMES, ThemeService } from '../../../core/theme/theme.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
@@ -10,6 +10,7 @@ import { I18nService } from '../../../core/i18n/i18n.service';
 @Component({
   selector: 'app-user-settings-general',
   imports: [],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './user-settings-general.component.html',
   styleUrl: './user-settings-general.component.css',
 })

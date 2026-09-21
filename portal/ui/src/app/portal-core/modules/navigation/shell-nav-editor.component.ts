@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, OnInit, signal } from '@angular/core';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DndTree } from '../../../shared/components/dnd-tree/dnd-tree.component';
 import type { EditableTreeNode } from '../../../core/navigation/navigation.models';
@@ -90,6 +90,7 @@ export function shellTreeToPayload(nodes: EditableTreeNode[], reservedKeys: Set<
 @Component({
   selector: 'app-shell-nav-editor',
   imports: [DndTree, DragDropModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-nav-editor.component.html',
   styleUrl: './shell-nav-editor.component.css',
 })

@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal, DestroyRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, DestroyRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from '../../../core/settings/settings.service';
 import { entryPointId, type PortalEntryPoint, PortalUser, type EntryPointGroup } from '../../../core/models';
@@ -14,6 +14,7 @@ const MODULE_KEY = 'settings';
 @Component({
   selector: 'app-module-settings',
   imports: [FormsModule, AppOutlet, DsTree],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.css',
 })

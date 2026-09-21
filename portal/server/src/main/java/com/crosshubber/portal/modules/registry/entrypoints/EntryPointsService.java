@@ -243,15 +243,15 @@ public class EntryPointsService {
   /** Mirrors repo.reorder — sort_order = i*10 in payload order. */
   @Transactional
   public void reorder(List<Long> ids) {
+    // One batch load instead of a SELECT per id.
+    Map<Long, EntryPointEntity> byId = new LinkedHashMap<>();
+    repo.findAllById(ids).forEach(ep -> byId.put(ep.getId(), ep));
     for (int i = 0; i < ids.size(); i++) {
-      final int order = i * 10;
-      final long id = ids.get(i);
-      repo.findById(id)
-          .ifPresent(
-              ep -> {
-                ep.setSortOrder(order);
-                repo.save(ep);
-              });
+      EntryPointEntity ep = byId.get(ids.get(i));
+      if (ep != null) {
+        ep.setSortOrder(i * 10);
+        repo.save(ep);
+      }
     }
   }
 

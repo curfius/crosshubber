@@ -2,6 +2,7 @@ import { moveItemInArray, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import type { PortalEntryPoint, Tab, TabGroup, SplitDir, LeafNode, SplitNode, LayoutNode, WorkspaceMeta, SavedGroup, WorkspaceSnapshot, EntryPointGroup } from '../../../core/models';
 import { entryPointId, parseEntryPointId } from '../../../core/models';
+import { apiFetch } from '../../../core/http/api-fetch';
 import { UrlSyncService } from '../../../core/history/url-sync.service';
 import { tabKeyOf, type NavState } from '../../../core/history/nav-state';
 
@@ -457,6 +458,19 @@ export class WorkbenchService {
     this.syncAfterMutation();
   }
 
+  /** Current state serialized as a home-view snapshot (session persistence). */
+  private homeSnapshot(name: string): WorkspaceSnapshot {
+    return {
+      name,
+      savedAt: Date.now(),
+      layout: this.layout(),
+      groups: this.serializeCurrent().groups,
+      focusedGroupId: this.focusedGroupId(),
+      hideSingleTabToolbar: this.hideSingleTabToolbar(),
+      locked: this.locked(),
+    };
+  }
+
   async saveWorkspace(name: string, description = '', locked = false, color = '', status = ''): Promise<void> {
     const data = this.serializeCurrent();
     const snap: WorkspaceSnapshot = {
@@ -471,63 +485,69 @@ export class WorkbenchService {
       hideSingleTabToolbar: this.hideSingleTabToolbar(),
       locked,
     };
+    const body = {
+      name,
+      description,
+      layout: snap.layout,
+      groups: snap.groups,
+      focusedGroupId: snap.focusedGroupId,
+      hideSingleTabToolbar: snap.hideSingleTabToolbar,
+      locked: snap.locked,
+      color: snap.color,
+      status: snap.status,
+    };
     const existingId = this.cachedSnapshot?.id ?? null;
-    if (existingId) {
-      const res = await fetch(`/api/workspaces/${existingId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          description,
-          layout: snap.layout,
-          groups: snap.groups,
-          focusedGroupId: snap.focusedGroupId,
-          hideSingleTabToolbar: snap.hideSingleTabToolbar,
-          locked: snap.locked,
-          color: snap.color,
-          status: snap.status,
-        }),
-      });
-      const { id } = await res.json();
-      snap.id = id;
-    } else {
-      const res = await fetch('/api/workspaces', {
+    try {
+      if (existingId) {
+        const res = await apiFetch(`/api/workspaces/${existingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const { id } = (await res.json()) as { id: string };
+        snap.id = id;
+      } else {
+        // POST creates: color is intentionally omitted from the create body (Node parity).
+        const res = await apiFetch('/api/workspaces', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...body, color: undefined }),
+        });
+        const { id, name: savedName } = (await res.json()) as { id: string; name: string };
+        snap.id = id;
+        snap.name = savedName;
+      }
+    } catch (err) {
+      console.error('[workspaces] save failed:', err);
+      return;
+    }
+    this.applySavedWorkspace(snap, description, locked, status, 'replace');
+  }
+
+  async saveAsNewWorkspace(name: string, description = '', locked = false, color = '', status = ''): Promise<void> {
+    const data = this.serializeCurrent();
+    try {
+      const res = await apiFetch('/api/workspaces', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
           description,
-          layout: snap.layout,
-          groups: snap.groups,
-          focusedGroupId: snap.focusedGroupId,
-          hideSingleTabToolbar: snap.hideSingleTabToolbar,
-          locked: snap.locked,
-          status: snap.status,
+          layout: data.layout,
+          groups: data.groups,
+          focusedGroupId: data.focusedGroupId,
+          hideSingleTabToolbar: this.hideSingleTabToolbar(),
+          locked,
+          color: color || data.color,
+          status,
         }),
       });
-      const { id, name: savedName } = await res.json();
-      snap.id = id;
-      snap.name = savedName;
-    }
-    this.cachedSnapshot = snap;
-    this.activeWorkspace.set(snap.name);
-    this.description.set(description);
-    this.locked.set(locked);
-    this.workspaceStatus.set(status);
-    if (snap.id) localStorage.setItem(ACTIVE_KEY, snap.id);
-    this.dirty.set(false);
-    this.syncUrl('replace');
-    await this.refreshList();
-  }
-
-  async saveAsNewWorkspace(name: string, description = '', locked = false, color = '', status = ''): Promise<void> {
-    const data = this.serializeCurrent();
-    const res = await fetch('/api/workspaces', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
+      const { id, name: savedName } = (await res.json()) as { id: string; name: string };
+      const snap: WorkspaceSnapshot = {
+        id,
+        name: savedName,
         description,
+        savedAt: Date.now(),
         layout: data.layout,
         groups: data.groups,
         focusedGroupId: data.focusedGroupId,
@@ -535,49 +555,41 @@ export class WorkbenchService {
         locked,
         color: color || data.color,
         status,
-      }),
-    });
-    const { id, name: savedName } = await res.json();
-    const snap: WorkspaceSnapshot = {
-      id,
-      name: savedName,
-      description,
-      savedAt: Date.now(),
-      layout: data.layout,
-      groups: data.groups,
-      focusedGroupId: data.focusedGroupId,
-      hideSingleTabToolbar: this.hideSingleTabToolbar(),
-      locked,
-      color: color || data.color,
-      status,
-    };
+      };
+      this.applySavedWorkspace(snap, description, locked, status, 'push');
+    } catch (err) {
+      console.error('[workspaces] save-as-new failed:', err);
+    }
+  }
+
+  /** Shared post-persist state application for saveWorkspace / saveAsNewWorkspace. */
+  private async applySavedWorkspace(
+    snap: WorkspaceSnapshot,
+    description: string,
+    locked: boolean,
+    status: string,
+    urlMode: 'push' | 'replace',
+  ): Promise<void> {
     this.cachedSnapshot = snap;
-    this.activeWorkspace.set(savedName);
+    this.activeWorkspace.set(snap.name);
     this.description.set(description);
     this.locked.set(locked);
     this.workspaceStatus.set(status);
-    localStorage.setItem(ACTIVE_KEY, id);
+    if (snap.id) localStorage.setItem(ACTIVE_KEY, snap.id);
     this.dirty.set(false);
-    this.syncUrl('push');
+    this.syncUrl(urlMode);
     await this.refreshList();
   }
 
   async loadWorkspace(name: string, enterEditMode = true, updateHash = true): Promise<void> {
     if (this.hasTabs() && this.dirty()) {
-      const snap: WorkspaceSnapshot = {
-        name: this.activeWorkspace() || 'home',
-        savedAt: Date.now(),
-        layout: this.layout(),
-        groups: { ...this.serializeCurrent().groups },
-        focusedGroupId: this.focusedGroupId(),
-        hideSingleTabToolbar: this.hideSingleTabToolbar(),
-        locked: this.locked(),
-      };
-      sessionStorage.setItem(HOME_SNAPSHOT_KEY, JSON.stringify(snap));
+      sessionStorage.setItem(
+        HOME_SNAPSHOT_KEY,
+        JSON.stringify(this.homeSnapshot(this.activeWorkspace() || 'home')),
+      );
     }
     try {
-      const res = await fetch(`/api/workspaces/${encodeURIComponent(name)}`);
-      if (!res.ok) return;
+      const res = await apiFetch(`/api/workspaces/${encodeURIComponent(name)}`);
       const snap = (await res.json()) as WorkspaceSnapshot;
       this.applySnapshot(snap);
       this.cachedSnapshot = snap;
@@ -590,8 +602,8 @@ export class WorkbenchService {
       if (updateHash) {
         this.syncUrl('replace');
       }
-    } catch {
-      // ignore network errors
+    } catch (err) {
+      console.error(`[workspaces] failed to load workspace "${name}":`, err);
     }
     if (!this.activeWorkspace() && this.hasTabs()) {
       const stored = sessionStorage.getItem(HOME_SNAPSHOT_KEY);
@@ -602,7 +614,12 @@ export class WorkbenchService {
   }
 
   async deleteWorkspace(name: string): Promise<void> {
-    await fetch(`/api/workspaces/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    try {
+      await apiFetch(`/api/workspaces/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error(`[workspaces] failed to delete workspace "${name}":`, err);
+      return;
+    }
     if (this.activeWorkspace() === name) {
       this.activeWorkspace.set(null);
       this.cachedSnapshot = null;
@@ -643,20 +660,31 @@ export class WorkbenchService {
     const snapFromStorage = stored ? JSON.parse(stored) : null;
     if (snapFromStorage) {
       this.applySnapshot(snapFromStorage);
-      this.cachedSnapshot = null;
-      this.activeWorkspace.set(null);
-      this.workspaceColor.set('');
-      this.editMode.set(true);
-      this.dirty.set(true);
-      this.hideSingleTabToolbar.set(false);
-      this.locked.set(false);
-      this.description.set('');
-      localStorage.removeItem(ACTIVE_KEY);
-      this.ensureHomeTab();
-      this.syncUrl('push');
+      this.enterHomeMode('push', true);
     } else {
       this.createNewWorkspace();
     }
+  }
+
+  /**
+   * Shared home-restore epilogue: clear workspace state, re-seat the Home tab.
+   * `clearColor` distinguishes the explicit "go home" path (color reset) from the
+   * session-restore path (color comes from the restored snapshot).
+   */
+  private enterHomeMode(urlMode: 'push' | 'replace', clearColor: boolean): void {
+    this.cachedSnapshot = null;
+    this.activeWorkspace.set(null);
+    if (clearColor) {
+      this.workspaceColor.set('');
+    }
+    this.editMode.set(true);
+    this.dirty.set(true);
+    this.hideSingleTabToolbar.set(false);
+    this.locked.set(false);
+    this.description.set('');
+    localStorage.removeItem(ACTIVE_KEY);
+    this.ensureHomeTab();
+    this.syncUrl(urlMode);
   }
 
   async discardChanges(): Promise<void> {
@@ -671,8 +699,13 @@ export class WorkbenchService {
 
   async renameWorkspace(oldName: string, newName: string): Promise<void> {
     if (!newName || newName === oldName) return;
-    await this.saveWorkspace(newName, this.description(), this.locked(), this.workspaceColor(), this.workspaceStatus());
-    await fetch(`/api/workspaces/${encodeURIComponent(oldName)}`, { method: 'DELETE' });
+    try {
+      await this.saveWorkspace(newName, this.description(), this.locked(), this.workspaceColor(), this.workspaceStatus());
+      await apiFetch(`/api/workspaces/${encodeURIComponent(oldName)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error(`[workspaces] failed to rename workspace "${oldName}":`, err);
+      return;
+    }
     this.syncUrl('replace');
     await this.refreshList();
   }
@@ -694,16 +727,8 @@ export class WorkbenchService {
         try {
           const snap = JSON.parse(homeSnap) as WorkspaceSnapshot;
           this.applySnapshot(snap);
-          this.cachedSnapshot = null;
-          this.activeWorkspace.set(null);
-          this.editMode.set(true);
-          this.dirty.set(true);
-          this.hideSingleTabToolbar.set(false);
-          this.locked.set(false);
-          this.description.set('');
+          this.enterHomeMode('replace', false);
           loaded = true;
-          this.ensureHomeTab();
-          this.syncUrl('replace');
         } catch { /* ignore parse errors */ }
       }
     }
@@ -719,27 +744,17 @@ export class WorkbenchService {
 
   private onBeforeUnload = (): void => {
     if (!this.activeWorkspace() && this.hasTabs()) {
-      const snap: WorkspaceSnapshot = {
-        name: 'home',
-        savedAt: Date.now(),
-        layout: this.layout(),
-        groups: this.serializeCurrent().groups,
-        focusedGroupId: this.focusedGroupId(),
-        hideSingleTabToolbar: this.hideSingleTabToolbar(),
-        locked: this.locked(),
-      };
-      sessionStorage.setItem(HOME_SNAPSHOT_KEY, JSON.stringify(snap));
+      sessionStorage.setItem(HOME_SNAPSHOT_KEY, JSON.stringify(this.homeSnapshot('home')));
     }
   };
 
   private async refreshList(): Promise<void> {
     try {
-      const res = await fetch('/api/workspaces');
-      if (!res.ok) return;
+      const res = await apiFetch('/api/workspaces');
       const { workspaces } = (await res.json()) as { workspaces: WorkspaceMeta[] };
       this.workspaces.set(workspaces);
     } catch {
-      // ignore
+      // List refresh is best-effort; the sidebar keeps showing the last known list.
     }
   }
 
@@ -776,16 +791,7 @@ export class WorkbenchService {
 
   private saveSessionSnapshot(): void {
     if (!this.activeWorkspace() && this.hasTabs()) {
-      const snap: WorkspaceSnapshot = {
-        name: 'home',
-        savedAt: Date.now(),
-        layout: this.layout(),
-        groups: this.serializeCurrent().groups,
-        focusedGroupId: this.focusedGroupId(),
-        hideSingleTabToolbar: this.hideSingleTabToolbar(),
-        locked: this.locked(),
-      };
-      sessionStorage.setItem(HOME_SNAPSHOT_KEY, JSON.stringify(snap));
+      sessionStorage.setItem(HOME_SNAPSHOT_KEY, JSON.stringify(this.homeSnapshot('home')));
     }
   }
 

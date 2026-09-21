@@ -1,4 +1,4 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { AppArea } from './tab-area.component';
 import type { PortalEntryPoint, PortalUser, LayoutNode, LeafNode, SplitNode } from '../../core/models';
 import { WorkbenchService } from '../features/workspaces/workspaces.store';
@@ -6,6 +6,7 @@ import { WorkbenchService } from '../features/workspaces/workspaces.store';
 @Component({
   selector: 'app-layout',
   imports: [AppArea, AppLayout],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './split-layout.component.html',
   styleUrl: './split-layout.component.css',
 })

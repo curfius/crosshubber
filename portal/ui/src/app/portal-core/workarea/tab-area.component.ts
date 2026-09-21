@@ -1,4 +1,4 @@
-import { Component, output, computed, effect, inject, input, signal, viewChild, type ElementRef, type OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, output, computed, effect, inject, input, signal, viewChild, type ElementRef, type OnDestroy } from '@angular/core';
 import { AppOutlet } from './module-outlet.component';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import type { PortalUser, PortalEntryPoint, SplitDir, Tab } from '../../core/models';
@@ -9,6 +9,7 @@ import { I18nService } from '../../core/i18n/i18n.service';
 @Component({
   selector: 'app-area',
   imports: [AppOutlet, DragDropModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tab-area.component.html',
   styleUrl: './tab-area.component.css',
 })

@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { I18nAdminService } from '../../../core/i18n/i18n-admin.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -13,6 +13,7 @@ interface LabelDraft {
 @Component({
   selector: 'app-i18n-labels-editor',
   imports: [FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './i18n-labels-editor.component.html',
   styleUrl: './i18n-labels-editor.component.css',
 })

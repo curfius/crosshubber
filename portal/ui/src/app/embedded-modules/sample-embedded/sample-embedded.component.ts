@@ -1,9 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { I18nService } from '../../core/i18n/i18n.service';
 
 @Component({
   selector: 'app-module-sample-embedded',
   imports: [],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './sample-embedded.component.html',
   styleUrl: './sample-embedded.component.css',
 })

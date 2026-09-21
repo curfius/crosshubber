@@ -106,8 +106,11 @@ public class ManifestController {
       return unprocessable(result.issues());
     }
     try {
-      return ResponseEntity.status(201)
-          .body(installService.applyInstall(result.manifest(), actor(auth)));
+      ResponseEntity<?> response =
+          ResponseEntity.status(201)
+              .body(installService.applyInstall(result.manifest(), actor(auth)));
+      installService.syncRealmRoles(result.manifest());
+      return response;
     } catch (IllegalArgumentException e) {
       return ResponseEntity.internalServerError()
           .body(Map.of("error", "install failed: " + e.getMessage()));
@@ -185,6 +188,7 @@ public class ManifestController {
     if (!result.ok()) {
       return ResponseEntity.badRequest().body(Map.of("error", result.error()));
     }
+    installService.syncRealmRoles(result.manifest());
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("ok", true);
     out.put("moduleKey", result.moduleKey());

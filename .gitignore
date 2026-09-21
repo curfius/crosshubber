@@ -15,9 +15,6 @@ portal/ui/.angular/
 secrets.env
 **/secrets.env
 
-# Deployments (generated)
-deployments/
-config-management/deployments/
 portal/server/src/main/resources/static/
 
 # IDE

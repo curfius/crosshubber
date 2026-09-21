@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DndTree } from '../../../shared/components/dnd-tree/dnd-tree.component';
 import type { EditableTreeNode } from '../../../core/navigation/navigation.models';
@@ -47,6 +47,7 @@ function toPinned(nodes: EditableTreeNode[]): PinnedNode[] {
 @Component({
   selector: 'app-pinned-apps-editor',
   imports: [DndTree, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pinned-apps-editor.component.html',
   styleUrl: './pinned-apps-editor.component.css',
 })

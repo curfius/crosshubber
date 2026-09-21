@@ -10,6 +10,4 @@ import org.springframework.stereotype.Repository;
 public interface I18nLabelRepository extends JpaRepository<I18nLabelEntity, I18nLabelId> {
 
   List<I18nLabelEntity> findByLanguageCode(String languageCode);
-
-  List<I18nLabelEntity> findByKey(String key);
 }

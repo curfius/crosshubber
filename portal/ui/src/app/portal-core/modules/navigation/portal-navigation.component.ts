@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgTemplateOutlet } from '@angular/common';
 import { WorkbenchService } from '../../features/workspaces/workspaces.store';
@@ -16,6 +16,7 @@ import type { NavigationLayout, LayoutNode, LayoutSectionNode, LayoutItemNode } 
 @Component({
   selector: 'app-portal-navigation',
   imports: [FormsModule, NgTemplateOutlet],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './portal-navigation.component.html',
   styleUrl: './portal-navigation.component.css',
 })

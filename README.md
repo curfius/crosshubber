@@ -38,7 +38,7 @@ Modules are installed, versioned, and managed through the **Registry** — a bui
 └──────────────────────────────┬──────────────────────────────────┘
                                │ REST + SSE
 ┌──────────────────────────────┴──────────────────────────────────┐
-│                   Spring Boot 3.4 Server (Java 21)               │
+│                Spring Boot 4.1 Server (Java 21)                 │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐            │
 │  │ Registry │ │  Nav     │ │ Workspaces│ │  AI Hub  │  ...     │
 │  │ Modules  │ │ EntryPts │ │ Workspaces│ │ (LLM,    │            │
@@ -60,7 +60,7 @@ Modules are installed, versioned, and managed through the **Registry** — a bui
 
 | Layer | Technology |
 |---|---|
-| **Backend** | Spring Boot 3.4, Java 21, Maven |
+| **Backend** | Spring Boot 4.1.1, Java 21, Maven |
 | **Frontend** | Angular 22, TypeScript, RxJS |
 | **Database** | PostgreSQL 16 (multi-tenant via per-tenant schemas) |
 | **Identity** | Keycloak 26 (OIDC Authorization Code + PKCE) |

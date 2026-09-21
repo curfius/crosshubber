@@ -1,5 +1,10 @@
 # GAP Closure Implementation Plan — Node.js Portal → Java Portal Contract Parity
 
+> **ARCHIVED (2026-09-21).** Phases 1–8 complete (34/34 tasks); Phase 9 3/4 — only P9.3
+> (manual browser smoke test) remained open at archive time. Later commits (Spring Boot
+> 4.1.1 migration, steps 6–8) supersede parts of this document; the live contract reference
+> is the root `README.md` ("Accepted Divergences") and `scripts/contract-diff/harness.mjs`.
+
 **Repo (Java):** `C:\playground\projects\crosshubber` (this repo)
 **Reference (Node):** `C:\playground\projects\genportal\portal`
 

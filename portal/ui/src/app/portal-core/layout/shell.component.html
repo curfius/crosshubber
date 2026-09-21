@@ -28,11 +28,12 @@
   </main>
 </div>
 
-<!-- Quick Chat Modal -->
-@if (showQuickChat()) {
-<div class="fixed bottom-20 right-4 z-50 h-[500px] w-96 overflow-hidden rounded-2xl border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] shadow-2xl">
-  <app-ai-hub-quick-chat (close)="showQuickChat.set(false)" />
-</div>
+<!-- Quick Chat Modal — @defer keeps the chat surface out of the initial bundle
+     (it is also registered as a lazy embedded module). -->
+@defer (when showQuickChat()) {
+  <div class="fixed bottom-20 right-4 z-50 h-[500px] w-96 overflow-hidden rounded-2xl border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] shadow-2xl">
+    <app-ai-hub-quick-chat (close)="showQuickChat.set(false)" />
+  </div>
 }
 }
 }

@@ -11,8 +11,6 @@ import org.springframework.stereotype.Repository;
 public interface AiHubConversationRepository
     extends JpaRepository<AiHubConversationEntity, String> {
 
-  List<AiHubConversationEntity> findByUserId(String userId);
-
   List<AiHubConversationEntity> findByUserIdAndOriginOrderByUpdatedAtDesc(
       String userId, String origin);
 

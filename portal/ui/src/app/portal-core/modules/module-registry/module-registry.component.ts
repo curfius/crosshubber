@@ -1,10 +1,11 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, computed, type WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SlicePipe, UpperCasePipe, JsonPipe } from '@angular/common';
 import { EMBEDDED_LOAD_PATHS } from '../../workarea/embedded-modules';
-import type { ModuleType, EntryCategory, EntryPointFormValue, PortalModuleManifest, VersionOutput, ManifestContentEntry, ModulePayload } from '../../../core/models';
+import type { ModuleType, EntryCategory, EntryPointFormValue, PortalModuleManifest, VersionOutput, ManifestContentEntry } from '../../../core/models';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { RegistryService, type ModuleOutput, type EntryPointOutput } from './module-registry.store';
+import { buildDiffSections, type PreviewSection } from './manifest-diff';
 import { DsTree, DsTreeNode } from '../../../shared/components/ds-tree/ds-tree.component';
 import { Switch } from '../../../shared/components/switch/switch.component';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -22,6 +23,7 @@ const CONTENT_GROUPS = [
 @Component({
   selector: 'app-module-registry',
   imports: [FormsModule, SlicePipe, UpperCasePipe, JsonPipe, Switch, ConfirmDialog, DsTree, DsWizardHorizontal],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './module-registry.component.html',
   styleUrl: './module-registry.component.css',
 })
@@ -130,7 +132,6 @@ export class ModuleRegistry {
   protected readonly propName = signal('');
   protected readonly propBaseUrl = signal('');
   protected readonly propHealth = signal('');
-  protected readonly propSaving = signal(false);
 
   // ── Entry point form (now edits workingManifest when isEditing, legacy fallback otherwise)
   protected readonly showEpForm = signal(false);
@@ -154,56 +155,58 @@ export class ModuleRegistry {
 
   // ── Module CRUD ────────────────────────────────────────────────────
 
-  private async reloadModules(): Promise<void> {
+  /**
+   * Shared reload wrapper: sets `target` from `fetcher`, falling back to `fallback`
+   * on failure. Non-empty `errorKey` additionally surfaces the failure to the user;
+   * without it the reload is treated as best-effort.
+   */
+  private async reload<T>(
+    target: WritableSignal<T>,
+    fallback: T,
+    fetcher: () => Promise<T>,
+    errorKey?: string,
+  ): Promise<void> {
     try {
-      this.modules.set(await this.registry.listModules());
+      target.set(await fetcher());
     } catch {
-      this.error.set(this.i18n.t('registry.error.loadModules'));
+      target.set(fallback);
+      if (errorKey) this.error.set(this.i18n.t(errorKey));
     }
   }
 
-  private async reloadAllEntryPoints(): Promise<void> {
-    try {
-      this.allEntryPoints.set(await this.registry.listAllEntryPoints());
-    } catch {
-      // non-fatal
-    }
+  private reloadModules(): Promise<void> {
+    return this.reload(this.modules, [], () => this.registry.listModules(), 'registry.error.loadModules');
+  }
+
+  private reloadAllEntryPoints(): Promise<void> {
+    return this.reload(this.allEntryPoints, [], () => this.registry.listAllEntryPoints());
+  }
+
+  private reloadEntryPoints(): Promise<void> {
+    return this.reload(this.entryPoints, [], () => {
+      const mod = this.selectedModule();
+      return mod ? this.registry.listEntryPoints(mod.key) : Promise.resolve([]);
+    }, 'registry.error.loadEntryPoints');
+  }
+
+  private reloadVersions(): Promise<void> {
+    return this.reload(this.versions, [], () => {
+      const mod = this.selectedModule();
+      return mod ? this.registry.listVersions(mod.key) : Promise.resolve([]);
+    });
+  }
+
+  private reloadActiveManifest(): Promise<void> {
+    return this.reload(this.activeManifest, null, () => {
+      const mod = this.selectedModule();
+      return mod ? this.registry.getActiveManifest(mod.key) : Promise.resolve(null);
+    });
   }
 
   protected moduleStatus(mod: ModuleOutput): 'disabled' | 'empty' | 'active' {
     if (!mod.active) return 'disabled';
     const hasActiveEp = this.allEntryPoints().some((ep) => ep.moduleKey === mod.key && ep.active);
     return hasActiveEp ? 'active' : 'empty';
-  }
-
-  private async reloadEntryPoints(): Promise<void> {
-    const mod = this.selectedModule();
-    if (!mod) { this.entryPoints.set([]); return; }
-    try {
-      this.entryPoints.set(await this.registry.listEntryPoints(mod.key));
-    } catch {
-      this.error.set(this.i18n.t('registry.error.loadEntryPoints'));
-    }
-  }
-
-  private async reloadVersions(): Promise<void> {
-    const mod = this.selectedModule();
-    if (!mod) { this.versions.set([]); return; }
-    try {
-      this.versions.set(await this.registry.listVersions(mod.key));
-    } catch {
-      this.versions.set([]);
-    }
-  }
-
-  private async reloadActiveManifest(): Promise<void> {
-    const mod = this.selectedModule();
-    if (!mod) { this.activeManifest.set(null); return; }
-    try {
-      this.activeManifest.set(await this.registry.getActiveManifest(mod.key));
-    } catch {
-      this.activeManifest.set(null);
-    }
   }
 
   requestRollback(version: VersionOutput): void {
@@ -379,12 +382,15 @@ export class ModuleRegistry {
     this.showDraftChoice.set(false);
   }
 
-  newModule(): void {
-    this.wizardMode.set('manual');
-    this.installStep.set('basic');
+  /** Resets all wizard state (shared by newModule, openInstallWizard, openInstallWizardBlank). */
+  private resetInstallWizard(mode: 'quick' | 'manual', step: string, inputMode: 'url' | 'json'): void {
+    this.wizardMode.set(mode);
+    this.installStep.set(step);
+    this.installInputMode.set(inputMode);
+    this.installInput.set('');
+    this.parsedManifest.set(null);
     this.installError.set('');
     this.installResult.set(null);
-    this.parsedManifest.set(null);
     this.moduleExists.set(false);
     this.previewActiveManifest.set(null);
     this.healthStatus.set(null);
@@ -399,6 +405,10 @@ export class ModuleRegistry {
     ]);
     this.manualRoles.set([{ key: '', name: '', description: '' }]);
     this.showInstallWizard.set(true);
+  }
+
+  newModule(): void {
+    this.resetInstallWizard('manual', 'basic', 'url');
   }
 
   toggleModuleProperties(): void {
@@ -439,30 +449,6 @@ export class ModuleRegistry {
     if (!name) { this.error.set(this.i18n.t('registry.error.nameRequired')); return; }
     this.workingManifest.update((prev) => prev ? ({ ...prev, name, baseUrl: this.propBaseUrl().trim() || '', health: this.propHealth().trim() || undefined }) : prev);
     this.showModuleProperties.set(false);
-  }
-
-  async saveModule(): Promise<void> {
-    const key = null;
-    const name = this.propName().trim();
-    if (!name) { this.error.set(this.i18n.t('registry.error.nameRequired')); return; }
-    const payload: ModulePayload = {
-      key: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-      name,
-      baseUrl: this.propBaseUrl().trim() || null,
-      health: this.propHealth().trim() || null,
-      active: false,
-    };
-    this.propSaving.set(true);
-    this.error.set('');
-    try {
-      await this.registry.saveModule(payload);
-      this.showModuleProperties.set(false);
-      await this.reloadModules();
-    } catch (err) {
-      this.error.set((err as Error).message);
-    } finally {
-      this.propSaving.set(false);
-    }
   }
 
   async toggleModuleActive(mod: ModuleOutput, active: boolean): Promise<void> {
@@ -836,12 +822,8 @@ export class ModuleRegistry {
   // ── Entry Point CRUD (legacy: now gated, but kept for outside-edit fallback) ───────────────────────────────────────────────
 
   newEntryPoint(): void {
-    if (!this.isEditing()) {
-      // In new model, content is via workingManifest
-      this.addContent('applications');
-      return;
-    }
-    // When editing, delegate to content add (applications default)
+    // Both paths delegate to manifest content add (applications default) — kept as a
+    // thin alias because the template binds it directly.
     this.addContent('applications');
   }
 
@@ -1259,34 +1241,11 @@ export class ModuleRegistry {
   }
 
   openInstallWizard(): void {
-    this.wizardMode.set('quick');
-    this.installStep.set('input');
-    this.installInputMode.set('url');
-    this.installInput.set('');
-    this.parsedManifest.set(null);
-    this.installError.set('');
-    this.installResult.set(null);
-    this.moduleExists.set(false);
-    this.previewActiveManifest.set(null);
-    this.healthStatus.set(null);
-    this.healthDetail.set('');
-    this.diffSections.set([]);
-    this.showInstallWizard.set(true);
+    this.resetInstallWizard('quick', 'input', 'url');
   }
 
   openInstallWizardBlank(): void {
-    this.installStep.set('input');
-    this.installInputMode.set('json');
-    this.installInput.set('');
-    this.parsedManifest.set(null);
-    this.installError.set('');
-    this.installResult.set(null);
-    this.moduleExists.set(false);
-    this.previewActiveManifest.set(null);
-    this.healthStatus.set(null);
-    this.healthDetail.set('');
-    this.diffSections.set([]);
-    this.showInstallWizard.set(true);
+    this.resetInstallWizard('quick', 'input', 'json');
   }
 
   closeInstallWizard(): void {
@@ -1296,37 +1255,6 @@ export class ModuleRegistry {
   setInstallInputMode(mode: 'url' | 'json'): void {
     this.installInputMode.set(mode);
     this.installInput.set('');
-    this.installError.set('');
-  }
-
-  fillDummyManifest(): void {
-    const dummy = JSON.stringify({
-      manifestVersion: 1,
-      key: 'my-module',
-      name: 'My Module',
-      baseUrl: 'http://localhost:3000',
-      health: '/healthz',
-      content: {
-        applications: [
-          {
-            key: 'my-app',
-            name: 'My App',
-            type: 'iframe',
-            url: 'http://localhost:3000/app',
-            requiredRoles: ['app-user'],
-          },
-        ],
-        features: [],
-        adminSettings: [],
-        userSettings: [],
-      },
-      security: {
-        roles: [
-          { key: 'app-user', name: 'App User', description: 'Standard user role' },
-        ],
-      },
-    }, null, 2);
-    this.installInput.set(dummy);
     this.installError.set('');
   }
 
@@ -1400,29 +1328,7 @@ export class ModuleRegistry {
   async executeInstall(): Promise<void> {
     const manifest = this.parsedManifest();
     if (!manifest) return;
-
-    this.installBusy.set(true);
-    this.installError.set('');
-    try {
-      const result = await this.registry.installManifest(manifest);
-      this.installResult.set(result);
-      this.installStep.set('done');
-      await this.reloadModules();
-      await this.reloadAllEntryPoints();
-      const fresh = this.modules().find((m) => m.key === result.moduleKey);
-      if (fresh) {
-        await this.selectModule(fresh);
-        // Show activation proposal when we just created a major version and module is disabled
-        if (!fresh.active && result.version.endsWith('.0')) {
-          this.activationResult.set({ moduleKey: result.moduleKey, version: result.version });
-          this.showActivationProposal.set(true);
-        }
-      }
-    } catch (err) {
-      this.installError.set((err as Error).message);
-    } finally {
-      this.installBusy.set(false);
-    }
+    await this.installManifestAndShowResult(manifest);
   }
 
   async executeInstallAsNew(): Promise<void> {
@@ -1440,11 +1346,15 @@ export class ModuleRegistry {
 
     const newManifest = { ...manifest, key: `${baseKey}-${nextNum}`, name: `${manifest.name} ${nextNum}` };
     this.parsedManifest.set(newManifest);
+    await this.installManifestAndShowResult(newManifest);
+  }
 
+  /** Shared post-install flow: report, reload, select the fresh module, propose activation. */
+  private async installManifestAndShowResult(manifest: PortalModuleManifest): Promise<void> {
     this.installBusy.set(true);
     this.installError.set('');
     try {
-      const result = await this.registry.installManifest(newManifest);
+      const result = await this.registry.installManifest(manifest);
       this.installResult.set(result);
       this.installStep.set('done');
       await this.reloadModules();
@@ -1452,6 +1362,7 @@ export class ModuleRegistry {
       const fresh = this.modules().find((m) => m.key === result.moduleKey);
       if (fresh) {
         await this.selectModule(fresh);
+        // Show activation proposal when we just created a major version and module is disabled
         if (!fresh.active && result.version.endsWith('.0')) {
           this.activationResult.set({ moduleKey: result.moduleKey, version: result.version });
           this.showActivationProposal.set(true);
@@ -1534,139 +1445,4 @@ export class ModuleRegistry {
     };
     return keys[label] ? this.i18n.t(keys[label]) : label;
   }
-}
-
-// ── Preview types ─────────────────────────────────────────────────────
-
-export interface PreviewField {
-  key: string;
-  label: string;
-  oldValue?: unknown;
-  newValue: unknown;
-  changed?: boolean;
-}
-
-export interface PreviewItem {
-  action: 'create' | 'update' | 'unchanged';
-  key: string;
-  fields: PreviewField[];
-}
-
-export interface PreviewSection {
-  title: string;
-  action: 'create' | 'update' | 'unchanged';
-  fields?: PreviewField[];
-  items?: PreviewItem[];
-}
-
-function objectToFields(obj: Record<string, unknown> | object): PreviewField[] {
-  const skip = new Set(['key', 'type']);
-  const o = obj as Record<string, unknown>;
-  return Object.entries(o)
-    .filter(([k, v]) => !skip.has(k) && v !== undefined)
-    .map(([k, v]) => ({ key: k, label: k, newValue: v }));
-}
-
-function diffObjects(old: Record<string, unknown> | object, cur: Record<string, unknown> | object): PreviewField[] {
-  const skip = new Set(['key', 'type', 'description']);
-  const fields: PreviewField[] = [];
-  const o = old as Record<string, unknown>;
-  const c = cur as Record<string, unknown>;
-  const allKeys = new Set([...Object.keys(o), ...Object.keys(c)]);
-  for (const k of allKeys) {
-    if (skip.has(k)) continue;
-    const ov = o[k];
-    const nv = c[k];
-    if (JSON.stringify(ov) === JSON.stringify(nv)) {
-      fields.push({ key: k, label: k, oldValue: ov, newValue: nv, changed: false });
-    } else {
-      fields.push({ key: k, label: k, oldValue: ov, newValue: nv, changed: true });
-    }
-  }
-  return fields;
-}
-
-function computeSectionAction(items: PreviewItem[]): 'create' | 'update' | 'unchanged' {
-  if (items.every((i) => i.action === 'unchanged')) return 'unchanged';
-  if (items.every((i) => i.action === 'create')) return 'create';
-  return 'update';
-}
-
-function buildDiffSections(oldManifest: PortalModuleManifest | null, newManifest: PortalModuleManifest): PreviewSection[] {
-  const sections: PreviewSection[] = [];
-
-  // Root properties
-  if (oldManifest) {
-    const rootFields: PreviewField[] = [
-      { key: 'manifestVersion', label: 'Manifest Version', oldValue: oldManifest.manifestVersion, newValue: newManifest.manifestVersion, changed: oldManifest.manifestVersion !== newManifest.manifestVersion },
-      { key: 'key', label: 'Key', oldValue: oldManifest.key, newValue: newManifest.key, changed: oldManifest.key !== newManifest.key },
-      { key: 'name', label: 'Name', oldValue: oldManifest.name, newValue: newManifest.name, changed: oldManifest.name !== newManifest.name },
-      { key: 'baseUrl', label: 'Base URL', oldValue: oldManifest.baseUrl, newValue: newManifest.baseUrl, changed: oldManifest.baseUrl !== newManifest.baseUrl },
-      { key: 'health', label: 'Health', oldValue: oldManifest.health ?? null, newValue: newManifest.health ?? null, changed: (oldManifest.health ?? null) !== (newManifest.health ?? null) },
-    ];
-    sections.push({ title: 'Module', fields: rootFields, action: rootFields.some((f) => f.changed) ? 'update' : 'unchanged' });
-  } else {
-    sections.push({
-      title: 'Module', action: 'create',
-      fields: [
-        { key: 'manifestVersion', label: 'Manifest Version', newValue: newManifest.manifestVersion },
-        { key: 'key', label: 'Key', newValue: newManifest.key },
-        { key: 'name', label: 'Name', newValue: newManifest.name },
-        { key: 'baseUrl', label: 'Base URL', newValue: newManifest.baseUrl },
-        { key: 'health', label: 'Health', newValue: newManifest.health ?? null },
-      ],
-    });
-  }
-
-  // Content groups
-  const groups = [
-    { key: 'applications', label: 'Applications' },
-    { key: 'features', label: 'Features' },
-    { key: 'adminSettings', label: 'Admin Settings' },
-    { key: 'userSettings', label: 'User Settings' },
-  ];
-  for (const g of groups) {
-    const newEntries = (newManifest.content?.[g.key as keyof typeof newManifest.content] ?? []) as ManifestContentEntry[];
-    const oldEntries = (oldManifest?.content?.[g.key as keyof typeof oldManifest.content] ?? []) as ManifestContentEntry[];
-    if (oldEntries.length === 0 && newEntries.length === 0) continue;
-
-    const oldMap = new Map(oldEntries.map((e) => [e.key, e]));
-    const newMap = new Map(newEntries.map((e) => [e.key, e]));
-    const allKeys = new Set([...oldMap.keys(), ...newMap.keys()]);
-    const items: PreviewItem[] = [];
-    for (const k of allKeys) {
-      const ov = oldMap.get(k);
-      const nv = newMap.get(k);
-      if (!ov) items.push({ action: 'create', key: k, fields: objectToFields(nv!) });
-      else if (!nv) items.push({ action: 'update', key: k, fields: [{ key: '_deleted', label: 'deleted', oldValue: ov.name, newValue: null, changed: true }] });
-      else {
-        const diffs = diffObjects(ov, nv);
-        items.push({ action: diffs.some((f) => f.changed) ? 'update' : 'unchanged', key: k, fields: diffs });
-      }
-    }
-    sections.push({ title: g.label, items, action: computeSectionAction(items) });
-  }
-
-  // Security roles
-  const newRoles = newManifest.security?.roles ?? [];
-  const oldRoles = oldManifest?.security?.roles ?? [];
-  if (oldRoles.length > 0 || newRoles.length > 0) {
-    const oldRoleMap = new Map(oldRoles.map((r) => [r.key, r]));
-    const newRoleMap = new Map(newRoles.map((r) => [r.key, r]));
-    const allRoleKeys = new Set([...oldRoleMap.keys(), ...newRoleMap.keys()]);
-    const items: PreviewItem[] = [];
-    for (const k of allRoleKeys) {
-      const ov = oldRoleMap.get(k);
-      const nv = newRoleMap.get(k);
-      if (!ov) items.push({ action: 'create', key: k, fields: objectToFields(nv!) });
-      else if (!nv) items.push({ action: 'update', key: k, fields: [{ key: '_deleted', label: 'deleted', oldValue: ov.name, newValue: null, changed: true }] });
-      else {
-        const diffs = diffObjects(ov, nv);
-        items.push({ action: diffs.some((f) => f.changed) ? 'update' : 'unchanged', key: k, fields: diffs });
-      }
-    }
-    sections.push({ title: 'Security Roles', items, action: computeSectionAction(items) });
-  }
-
-  return sections;
 }

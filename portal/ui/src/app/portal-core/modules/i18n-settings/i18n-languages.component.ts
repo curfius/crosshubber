@@ -1,10 +1,11 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { I18nAdminService } from '../../../core/i18n/i18n-admin.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
 @Component({
   selector: 'app-i18n-languages',
   imports: [],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './i18n-languages.component.html',
   styleUrl: './i18n-languages.component.css',
 })

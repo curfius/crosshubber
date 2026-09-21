@@ -14,8 +14,6 @@ import org.springframework.stereotype.Repository;
 public interface NavigationPinnedAppRepository
     extends JpaRepository<NavigationPinnedAppEntity, UUID> {
 
-  List<NavigationPinnedAppEntity> findByUserIdOrderBySortOrderAsc(String userId);
-
   List<NavigationPinnedAppEntity> findByUserIdOrderBySortOrderAscCreatedAtAsc(String userId);
 
   List<NavigationPinnedAppEntity> findByUserIdAndParentId(String userId, UUID parentId);

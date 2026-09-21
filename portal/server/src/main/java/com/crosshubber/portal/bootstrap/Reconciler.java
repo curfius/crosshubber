@@ -10,12 +10,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.crosshubber.portal.modules.aihub.providers.AiHubProviderEntity;
 import com.crosshubber.portal.modules.aihub.providers.AiHubProviderRepository;
 import com.crosshubber.portal.modules.i18n.labels.I18nLabelEntity;
-import com.crosshubber.portal.modules.i18n.labels.I18nLabelId;
 import com.crosshubber.portal.modules.i18n.labels.I18nLabelRepository;
 import com.crosshubber.portal.modules.i18n.languages.I18nLanguageEntity;
 import com.crosshubber.portal.modules.i18n.languages.I18nLanguageRepository;
@@ -38,7 +37,7 @@ import tools.jackson.databind.node.ObjectNode;
 /**
  * Reconciles DB state with embedded catalog and tenant config at boot.
  *
- * <p>Mirrors {@code portal/src/bootstrap/reconcile.ts} â€” upserts builtin modules/entry points,
+ * <p>Mirrors {@code portal/src/bootstrap/reconcile.ts} — upserts builtin modules/entry points,
  * seeds AI Hub providers, instance settings, i18n languages/labels, and tenant_meta. All steps are
  * idempotent and non-destructive (user data is never touched). Fails fast: any seeding error aborts
  * boot instead of serving an empty portal.
@@ -48,7 +47,7 @@ public class Reconciler implements ApplicationRunner {
 
   private static final Logger log = LoggerFactory.getLogger(Reconciler.class);
 
-  /** Code-owned provider catalog â€” mirrors {@code providers.repository.ts} SEED_PROVIDERS. */
+  /** Code-owned provider catalog — mirrors {@code providers.repository.ts} SEED_PROVIDERS. */
   static final List<String[]> SEED_PROVIDERS =
       List.of(
           new String[] {"anthropic", "Anthropic", "https://api.anthropic.com"},
@@ -74,6 +73,7 @@ public class Reconciler implements ApplicationRunner {
   private final ManifestValidator manifestValidator;
   private final ManifestFetcher manifestFetcher;
   private final ObjectMapper objectMapper;
+  private final TransactionTemplate transactionTemplate;
 
   public Reconciler(
       TenantConfigLoader tenantLoader,
@@ -88,7 +88,8 @@ public class Reconciler implements ApplicationRunner {
       InstallService installService,
       ManifestValidator manifestValidator,
       ManifestFetcher manifestFetcher,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      TransactionTemplate transactionTemplate) {
     this.tenantLoader = tenantLoader;
     this.moduleRepo = moduleRepo;
     this.entryPointRepo = entryPointRepo;
@@ -102,21 +103,90 @@ public class Reconciler implements ApplicationRunner {
     this.manifestValidator = manifestValidator;
     this.manifestFetcher = manifestFetcher;
     this.objectMapper = objectMapper;
+    this.transactionTemplate = transactionTemplate;
   }
 
   @Override
-  @Transactional
   public void run(ApplicationArguments args) {
-    // Fail-fast: a seeding error must abort boot â€” never serve an empty portal.
+    // Fail-fast: a seeding error must abort boot — never serve an empty portal.
+    // Transaction layout: remote I/O (manifest fetches with retry/sleep, KC role sync) runs
+    // OUTSIDE any transaction; everything DB-bound is one atomic phase via TransactionTemplate
+    // so a failure rolls back all seeding instead of leaving a half-populated tenant.
     TenantConfigLoader.EffectiveTenantConfig tenant = tenantLoader.load();
     log.info("[reconcile] starting for tenant \"{}\"", tenant.slug());
-    reconcileBuiltins();
-    reconcileExternalModules(tenant);
-    reconcileProviders();
-    reconcileInstanceSettings(tenant);
-    reconcileI18n();
-    recordTenantMeta(tenant);
+    Map<String, JsonNode> externalManifests = fetchExternalManifests(tenant);
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          reconcileBuiltins();
+          persistExternalModules(tenant, externalManifests);
+          reconcileProviders();
+          reconcileInstanceSettings(tenant);
+          reconcileI18n();
+          recordTenantMeta(tenant);
+        });
+    syncExternalRealmRoles(externalManifests);
     log.info("[reconcile] completed for tenant \"{}\"", tenant.slug());
+  }
+
+  /**
+   * Network phase (no TX): resolves each external module's manifest (inline or fetched with retry),
+   * validates, and key-guards. Any failure aborts boot before a single DB write.
+   */
+  private Map<String, JsonNode> fetchExternalManifests(
+      TenantConfigLoader.EffectiveTenantConfig tenant) {
+    Map<String, JsonNode> manifests = new java.util.LinkedHashMap<>();
+    for (TenantConfigLoader.DesiredExternalModule ext : tenant.external()) {
+      JsonNode rawManifest = ext.manifest();
+      if (rawManifest == null && ext.manifestUrl() != null) {
+        rawManifest = fetchManifestWithRetry(ext.manifestUrl());
+      }
+      ManifestValidator.Result parsed = manifestValidator.parse(rawManifest);
+      if (!parsed.ok()) {
+        throw new IllegalStateException(
+            "external module \""
+                + ext.key()
+                + "\" has an invalid manifest: "
+                + ManifestValidator.formatIssues(parsed.issues()));
+      }
+      if (!ext.key().equals(parsed.manifest().path("key").asString())) {
+        throw new IllegalStateException(
+            "external module \""
+                + ext.key()
+                + "\" manifest declares key \""
+                + parsed.manifest().path("key").asString()
+                + "\"");
+      }
+      manifests.put(ext.key(), parsed.manifest());
+    }
+    return manifests;
+  }
+
+  /** DB phase (inside the reconciler transaction): install external modules, then activate. */
+  private void persistExternalModules(
+      TenantConfigLoader.EffectiveTenantConfig tenant, Map<String, JsonNode> externalManifests) {
+    List<String> installed = new java.util.ArrayList<>();
+    for (TenantConfigLoader.DesiredExternalModule ext : tenant.external()) {
+      JsonNode manifest = externalManifests.get(ext.key());
+      installService.applyInstall(manifest, "tenant-bootstrap:" + tenant.slug());
+      moduleRepo
+          .findById(ext.key())
+          .ifPresent(
+              module -> {
+                module.setActive(ext.active());
+                moduleRepo.save(module);
+              });
+      installed.add(ext.key());
+    }
+    if (!installed.isEmpty()) {
+      log.info("[reconcile] external modules installed: [{}]", String.join(", ", installed));
+    }
+  }
+
+  /** Post-commit (no TX): best-effort KC realm-role sync per installed external module. */
+  private void syncExternalRealmRoles(Map<String, JsonNode> externalManifests) {
+    for (JsonNode manifest : externalManifests.values()) {
+      installService.syncRealmRoles(manifest);
+    }
   }
 
   private void reconcileBuiltins() {
@@ -146,7 +216,7 @@ public class Reconciler implements ApplicationRunner {
         entity.setSecurityRoles("[]");
       }
       moduleRepo.save(entity);
-      // Entry points â€” preserve group_key/sort_order/parent_entry_key for builtins (D4):
+      // Entry points — preserve group_key/sort_order/parent_entry_key for builtins (D4):
       // navigation edits made via the UI must survive restarts.
       for (EmbeddedCatalog.Entry ep : mod.entryPoints()) {
         Optional<EntryPointEntity> epExisting =
@@ -173,7 +243,7 @@ public class Reconciler implements ApplicationRunner {
       upserted++;
     }
     log.info("[reconcile] upserted {} builtin modules", upserted);
-    // Remove retired builtins (guard: builtin=true only â€” mirrors reconcile.ts removeBuiltin)
+    // Remove retired builtins (guard: builtin=true only — mirrors reconcile.ts removeBuiltin)
     for (String retired : new String[] {"llm-providers", "ai-assistant"}) {
       moduleRepo
           .findById(retired)
@@ -184,51 +254,6 @@ public class Reconciler implements ApplicationRunner {
                   log.info("[reconcile] removed retired builtin {}", retired);
                 }
               });
-    }
-  }
-
-  /**
-   * Installs the tenant config's external modules — mirrors {@code reconcileExternalModules} in
-   * {@code reconcile.ts}: inline manifest or fetch via {@code fetchManifestWithRetry} (6 attempts,
-   * 3s apart; module services boot concurrently with the portal), schema-validate, key-guard,
-   * install through the registry flow, then activate per config. Re-installed on every boot (Node
-   * parity — each restart records a new module version). Any failure aborts boot.
-   */
-  private void reconcileExternalModules(TenantConfigLoader.EffectiveTenantConfig tenant) {
-    List<String> installed = new java.util.ArrayList<>();
-    for (TenantConfigLoader.DesiredExternalModule ext : tenant.external()) {
-      JsonNode rawManifest = ext.manifest();
-      if (rawManifest == null && ext.manifestUrl() != null) {
-        rawManifest = fetchManifestWithRetry(ext.manifestUrl());
-      }
-      ManifestValidator.Result parsed = manifestValidator.parse(rawManifest);
-      if (!parsed.ok()) {
-        throw new IllegalStateException(
-            "external module \""
-                + ext.key()
-                + "\" has an invalid manifest: "
-                + ManifestValidator.formatIssues(parsed.issues()));
-      }
-      if (!ext.key().equals(parsed.manifest().path("key").asString())) {
-        throw new IllegalStateException(
-            "external module \""
-                + ext.key()
-                + "\" manifest declares key \""
-                + parsed.manifest().path("key").asString()
-                + "\"");
-      }
-      installService.applyInstall(parsed.manifest(), "tenant-bootstrap:" + tenant.slug());
-      moduleRepo
-          .findById(ext.key())
-          .ifPresent(
-              module -> {
-                module.setActive(ext.active());
-                moduleRepo.save(module);
-              });
-      installed.add(ext.key());
-    }
-    if (!installed.isEmpty()) {
-      log.info("[reconcile] external modules installed: [{}]", String.join(", ", installed));
     }
   }
 
@@ -264,7 +289,7 @@ public class Reconciler implements ApplicationRunner {
     throw lastError;
   }
 
-  /** Seeds the AI Hub provider catalog â€” add-only, never overwrites existing rows. */
+  /** Seeds the AI Hub provider catalog — add-only, never overwrites existing rows. */
   private void reconcileProviders() {
     int created = 0;
     for (String[] p : SEED_PROVIDERS) {
@@ -316,8 +341,14 @@ public class Reconciler implements ApplicationRunner {
   }
 
   private void reconcileI18n() {
+    // Load existing rows once — up to hundreds of per-label findById SELECTs at every boot
+    // were the reconciler's largest hidden cost (227 KB seed catalog).
+    java.util.Set<String> existingLanguages = new java.util.HashSet<>();
+    for (I18nLanguageEntity row : languageRepo.findAll()) {
+      existingLanguages.add(row.getCode());
+    }
     for (I18nCatalog.Language lang : I18nCatalog.LANGUAGES) {
-      if (languageRepo.findById(lang.code()).isEmpty()) {
+      if (!existingLanguages.contains(lang.code())) {
         I18nLanguageEntity e = new I18nLanguageEntity();
         e.setCode(lang.code());
         e.setName(lang.name());
@@ -328,9 +359,9 @@ public class Reconciler implements ApplicationRunner {
         languageRepo.save(e);
       }
     }
-    // Seed labels (insert-if-absent â‰™ ON CONFLICT DO NOTHING); bump content_version
+    // Seed labels (insert-if-absent ≙ ON CONFLICT DO NOTHING); bump content_version
     // so clients invalidate their label cache when new seed labels appear on an
-    // EXISTING install â€” fresh installs skip the bump (mirrors i18n.repository.ts).
+    // EXISTING install — fresh installs skip the bump (mirrors i18n.repository.ts).
     boolean existed = i18nSettingsRepo.findById(1).isPresent();
     I18nSettingsEntity s =
         i18nSettingsRepo
@@ -345,23 +376,31 @@ public class Reconciler implements ApplicationRunner {
                   n.setContentVersion(1);
                   return n;
                 });
+    java.util.Set<String> existingLabelIds = new java.util.HashSet<>();
+    for (I18nLabelEntity row : labelRepo.findAll()) {
+      existingLabelIds.add(row.getLanguageCode() + "|" + row.getKey());
+    }
+    List<I18nLabelEntity> toInsert = new java.util.ArrayList<>();
     int newLabels = 0;
     for (Map.Entry<String, Map<String, String>> langEntry : I18nCatalog.LABELS.entrySet()) {
       String langCode = langEntry.getKey();
-      if (languageRepo.findById(langCode).isEmpty()) {
+      if (!existingLanguages.contains(langCode)) {
         continue;
       }
       for (Map.Entry<String, String> label : langEntry.getValue().entrySet()) {
-        boolean exists = labelRepo.findById(new I18nLabelId(langCode, label.getKey())).isPresent();
-        if (!exists) {
+        String id = langCode + "|" + label.getKey();
+        if (!existingLabelIds.contains(id)) {
           I18nLabelEntity e = new I18nLabelEntity();
           e.setLanguageCode(langCode);
           e.setKey(label.getKey());
           e.setValue(label.getValue());
-          labelRepo.save(e);
+          toInsert.add(e);
           newLabels++;
         }
       }
+    }
+    if (!toInsert.isEmpty()) {
+      labelRepo.saveAll(toInsert);
     }
     i18nSettingsRepo.save(s);
     if (newLabels > 0 && existed) {

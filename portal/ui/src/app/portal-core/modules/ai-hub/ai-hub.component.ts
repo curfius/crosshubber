@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, DestroyRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, DestroyRef } from '@angular/core';
 import { NavigationCoordinator } from '../../features/navigation-coordinator.service';
 import { AiHubService } from '../../../core/ai-hub/ai-hub.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -12,6 +12,7 @@ const MODULE_KEY = 'ai-hub';
 @Component({
   selector: 'app-ai-hub',
   imports: [AiHubChat, AiHubProviders],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './ai-hub.component.html',
   styleUrl: './ai-hub.component.css',
 })

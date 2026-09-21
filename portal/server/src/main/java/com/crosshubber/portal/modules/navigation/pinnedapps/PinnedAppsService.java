@@ -91,10 +91,15 @@ public class PinnedAppsService {
   public void savePinnedTree(String userId, JsonNode nodes) {
     repo.deleteByUserId(userId);
     repo.flush();
-    insertNodes(userId, nodes, null);
+    // IDs are client-generated (UUIDs set before persist), so the whole tree can be
+    // collected first and batch-saved — no per-row flush needed for parent resolution.
+    List<NavigationPinnedAppEntity> rows = new ArrayList<>();
+    insertNodes(userId, nodes, null, rows);
+    repo.saveAll(rows);
   }
 
-  private void insertNodes(String userId, JsonNode list, UUID parentId) {
+  private void insertNodes(
+      String userId, JsonNode list, UUID parentId, List<NavigationPinnedAppEntity> out) {
     int order = 0;
     for (JsonNode node : list) {
       boolean isFolder = "folder".equals(node.path("nodeType").asString());
@@ -110,10 +115,10 @@ public class PinnedAppsService {
       entity.setName(isFolder ? node.path("name").asText(null) : null);
       entity.setRef(isFolder ? null : node.path("ref").asText(null));
       entity.setSortOrder(order * 10);
-      repo.saveAndFlush(entity);
+      out.add(entity);
       JsonNode children = node.get("children");
       if (isFolder && children != null && children.isArray() && !children.isEmpty()) {
-        insertNodes(userId, children, entity.getId());
+        insertNodes(userId, children, entity.getId(), out);
       }
       order++;
     }
