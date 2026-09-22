@@ -32,12 +32,14 @@ export interface LayoutItemNode {
   id: string;
   type: 'item';
   ref: string;
+  hidden?: boolean;
 }
 
 export interface LayoutSectionNode {
   id: string;
   name: string;
   type?: 'section';
+  hidden?: boolean;
   children: (LayoutSectionNode | LayoutItemNode)[];
 }
 
@@ -45,7 +47,8 @@ export type LayoutNode = LayoutSectionNode | LayoutItemNode;
 
 export interface NavigationLayout {
   pinnedSectionEnabled: boolean;
-  sections: LayoutSectionNode[];
+  /** Root level: sections and/or app items (items are children of the synthetic editor root). */
+  sections: LayoutNode[];
 }
 
 export interface ShellGroupPayload {
@@ -53,12 +56,14 @@ export interface ShellGroupPayload {
   name: string;
   parentKey?: string | null;
   icon?: string;
+  hidden?: boolean;
 }
 
 export interface ShellItemPayload {
   moduleKey: string;
   entryKey: string;
   groupKey: string | null;
+  hidden?: boolean;
 }
 
 export interface ShellTreePayload {
@@ -76,6 +81,7 @@ export interface ShellTreeResponse {
     sortOrder: number;
     icon?: string;
     roles?: string[];
+    hidden?: boolean;
   }>;
   items: Array<{
     moduleKey: string;
@@ -88,6 +94,7 @@ export interface ShellTreeResponse {
     color?: string;
     roles?: string[];
     active?: boolean;
+    hidden?: boolean;
   }>;
 }
 
@@ -112,7 +119,19 @@ export interface EditableTreeNode {
   kind: 'folder' | 'item';
   color?: string;
   meta?: unknown;
+  /** Row hidden/visible toggle. A hidden folder effectively hides all descendants. */
+  hidden?: boolean;
   children: EditableTreeNode[];
+}
+
+/** True when the node or any of its ancestors carries hidden=true. */
+export function isEffectivelyHidden(nodes: EditableTreeNode[], id: string): boolean {
+  let current = findNode(nodes, id);
+  while (current) {
+    if (current.hidden) return true;
+    current = findParent(nodes, current.id);
+  }
+  return false;
 }
 
 function findNode(nodes: EditableTreeNode[], id: string): EditableTreeNode | null {
@@ -269,7 +288,7 @@ export function walkLayout(
 }
 
 /** Resolves layout leaf refs; returns pairs of (sectionPath, ref). */
-export function layoutLeafRefs(sections: LayoutSectionNode[]): string[] {
+export function layoutLeafRefs(sections: LayoutNode[]): string[] {
   const refs: string[] = [];
   walkLayout(sections, (node) => {
     if (node.type === 'item' && node.ref) refs.push(node.ref);

@@ -108,12 +108,36 @@ public class ShellConfigService {
     return keys;
   }
 
-  /** Groups whose role list matches the user, keyed by {@code group_key} in find order. */
+  /**
+   * Groups whose role list matches the user, keyed by {@code group_key} in find order. Nav-tree
+   * hidden sections (and their descendants) are removed from the runtime view — entry points
+   * referencing them fall away with the same rule used for role-blocked groups.
+   */
   private Map<String, EntryPointGroupEntity> allowedGroups(List<String> userRoles) {
     Map<String, EntryPointGroupEntity> byKey = new LinkedHashMap<>();
     for (EntryPointGroupEntity g : groupRepo.findAll()) {
       if (Roles.hasAnyRole(userRoles, Roles.parse(g.getRoles()))) {
         byKey.put(g.getGroupKey(), g);
+      }
+    }
+    Set<String> hiddenKeys =
+        byKey.values().stream()
+            .filter(g -> Boolean.TRUE.equals(g.getHidden()))
+            .map(EntryPointGroupEntity::getGroupKey)
+            .collect(Collectors.toSet());
+    if (!hiddenKeys.isEmpty()) {
+      boolean changed = true;
+      while (changed) {
+        changed = false;
+        for (EntryPointGroupEntity g : List.copyOf(byKey.values())) {
+          if (g.getParentKey() != null
+              && hiddenKeys.contains(g.getParentKey())
+              && byKey.containsKey(g.getGroupKey())) {
+            byKey.remove(g.getGroupKey());
+            hiddenKeys.add(g.getGroupKey());
+            changed = true;
+          }
+        }
       }
     }
     return byKey;
@@ -134,6 +158,11 @@ public class ShellConfigService {
         continue;
       }
       if (Boolean.FALSE.equals(ep.getActive())) {
+        continue;
+      }
+      // Nav-tree hidden/visible toggle (README divergence #7): hidden entry
+      // points are skipped by the runtime config, not by the tree editor.
+      if (Boolean.TRUE.equals(ep.getHidden())) {
         continue;
       }
       if (!CATEGORY_ORDER.contains(ep.getCategory())) {

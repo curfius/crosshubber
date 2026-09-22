@@ -42,6 +42,10 @@ public class EntryPointGroupEntity {
   @Column(name = "roles", columnDefinition = "text")
   private String roles;
 
+  /** Nav-tree eye toggle: hidden sections hide all entry points within them. */
+  @Column(name = "hidden", nullable = false)
+  private Boolean hidden = false;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -129,6 +133,14 @@ public class EntryPointGroupEntity {
 
   public void setRoles(String roles) {
     this.roles = roles;
+  }
+
+  public Boolean getHidden() {
+    return hidden;
+  }
+
+  public void setHidden(Boolean hidden) {
+    this.hidden = Boolean.TRUE.equals(hidden);
   }
 
   public Instant getCreatedAt() {

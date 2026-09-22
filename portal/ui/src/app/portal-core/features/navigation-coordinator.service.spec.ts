@@ -67,6 +67,7 @@ describe('NavigationCoordinator', () => {
     wb.layout.set(null);
     wb.focusedGroupId.set(null);
     wb.activeWorkspace.set(null);
+    wb.setHomeApp(null);
     docs = ep('docs', 'main', 'iframe', `${ORIGIN}/docs/index.html`);
     wiki = ep('wiki', 'main', 'iframe', 'https://wiki.example.com/home');
     wb.setEntryPoints([docs, wiki]);
@@ -146,6 +147,34 @@ describe('NavigationCoordinator', () => {
     expect(wb.getTabPath('docs:main')).toBe('/intro');
     expect(coordinator.consumePendingPath('docs')).toBe('/intro');
     expect((history.state as { v?: number }).v).toBe(1);
+  });
+
+  it('restores session tabs on cold load and activates the URL-referenced tab', async () => {
+    sessionStorage.setItem(
+      'portal.homeSnapshot',
+      JSON.stringify({
+        name: 'home',
+        savedAt: Date.now(),
+        layout: { kind: 'leaf', groupId: 'g1' },
+        groups: { g1: { tabs: ['wiki:main'], activeIdx: 0 } },
+        focusedGroupId: 'g1',
+      }),
+    );
+    replaceUrl('/?app=docs%3Amain');
+    await coordinator.applyState(urlSync.read(), { cold: true });
+    const tabs = Object.values(wb.groups()).flatMap((g) => g.tabs);
+    expect(tabs.map((t) => t.entryPoint.moduleKey).sort()).toEqual(['docs', 'wiki']);
+    expect(wb.getActiveTabKey()).toBe('docs:main');
+  });
+
+  it('activates the Home fixture (not a duplicate tab) when the cold URL app is the home app', async () => {
+    wb.setHomeApp('docs:main');
+    replaceUrl('/?app=docs%3Amain');
+    await coordinator.applyState(urlSync.read(), { cold: true });
+    const tabs = Object.values(wb.groups()).flatMap((g) => g.tabs);
+    expect(tabs.length).toBe(1);
+    expect(wb.isHomeTab(tabs[0])).toBe(true);
+    expect(wb.getActiveTabKey()).toBe('docs:main');
   });
 
   it('resolves bare moduleKey app params on cold load', async () => {

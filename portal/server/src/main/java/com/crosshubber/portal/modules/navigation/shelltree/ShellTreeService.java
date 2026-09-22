@@ -98,6 +98,9 @@ public class ShellTreeService {
         throw new IllegalArgumentException(
             "groups[" + i + "].icon: must not be longer than 64 characters");
       }
+      if (!isNullish(g.path("hidden")) && !g.path("hidden").isBoolean()) {
+        throw new IllegalArgumentException("groups[" + i + "].hidden: must be a boolean");
+      }
     }
     // Validate each item
     for (int i = 0; i < itemInputs.size(); i++) {
@@ -117,6 +120,9 @@ public class ShellTreeService {
       if (!entryKey.matches(KEY_RE)) {
         throw new IllegalArgumentException(
             "items[" + i + "].entryKey: must match [a-z0-9][a-z0-9-]{0,63}");
+      }
+      if (!isNullish(item.path("hidden")) && !item.path("hidden").isBoolean()) {
+        throw new IllegalArgumentException("items[" + i + "].hidden: must be a boolean");
       }
     }
 
@@ -139,7 +145,12 @@ public class ShellTreeService {
     }
 
     record ResolvedGroup(
-        String key, String name, String parentKey, String icon, String existingRoles) {}
+        String key,
+        String name,
+        String parentKey,
+        String icon,
+        boolean hidden,
+        String existingRoles) {}
     List<ResolvedGroup> resolved = new ArrayList<>();
     for (JsonNode g : groupInputs) {
       String key;
@@ -159,6 +170,7 @@ public class ShellTreeService {
               g.path("name").asString(),
               g.path("parentKey").isTextual() ? g.get("parentKey").asString() : null,
               g.path("icon").isTextual() ? g.get("icon").asString() : null,
+              g.path("hidden").asBoolean(false),
               isNew ? "" : orEmpty(byExistingKey.get(key).getRoles())));
     }
 
@@ -216,6 +228,7 @@ public class ShellTreeService {
       entity.setParentKey(g.parentKey());
       entity.setSortOrder(order);
       entity.setIcon(g.icon());
+      entity.setHidden(g.hidden());
       if (entity.getRoles() == null) {
         entity.setRoles(g.existingRoles());
       }
@@ -245,6 +258,7 @@ public class ShellTreeService {
       if (ep != null) {
         ep.setGroupKey(groupKey);
         ep.setSortOrder(order);
+        ep.setHidden(item.path("hidden").asBoolean(false));
         entryPointRepo.save(ep);
       }
     }

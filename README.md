@@ -150,6 +150,7 @@ The Java portal targets **byte-level API parity** with the Node reference implem
 | 4 | Models listing token pick | first **enabled** token | first token (any state) | More sensible |
 | 5 | `roles` storage | comma-joined TEXT (V11) | `text[]` | Role keys are kebab-case (validated) — no commas possible |
 | 6 | `GET /api/mfe/foo` (no trailing path) | 400 `{"error":"bad path"}` | 404 HTML | JSON is more consistent |
+| 7 | Navigation `hidden` flags | `hidden: true` on shell-tree groups/items (V23) and layout JSON nodes; omitted when `false` | not present | Per-row hidden/visible toggle for the navigation editors; hiding a section hides all apps within it. Payloads stay byte-identical while everything is visible |
 
 Byte-diffs are limited to volatile fields (UUIDs, timestamps, `contentVersion`, masked secrets, per-stack webhook URLs, DB name in psql hint).
 

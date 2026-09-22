@@ -27,6 +27,7 @@
           </span>
         </button>
 
+        @if (workspacesEnabled()) {
         <button type="button" (click)="toggle('showWorkspaces')"
           class="flex w-full items-center justify-between rounded-lg border border-[var(--portal-card-border)] px-3 py-2.5 text-left transition hover:bg-[var(--portal-bg-hover)]">
           <span>
@@ -44,6 +45,7 @@
                 : 'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 translate-x-0'"></span>
           </span>
         </button>
+        }
       </div>
     </div>
 

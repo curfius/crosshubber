@@ -38,6 +38,53 @@
   text-decoration: line-through;
 }
 
+.dnd-node-hidden .dnd-label,
+.dnd-node-hidden .dnd-avatar,
+.dnd-node-hidden .dnd-grip {
+  opacity: 0.45;
+}
+
+/* Locked root section row (editor-only; never rendered in the runtime app). */
+.dnd-root-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--portal-border-strong);
+  border-radius: 8px;
+  background: var(--portal-bg-elevated);
+}
+
+.dnd-avatar-root {
+  background: var(--portal-accent-primary);
+}
+
+.dnd-root-strip {
+  margin: 2px 8px 2px 0;
+}
+
+/* Per-row hidden/visible toggle. */
+.dnd-eye {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--portal-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.dnd-eye:hover {
+  background: var(--portal-bg-elevated);
+  color: var(--portal-text-primary);
+}
+
+.dnd-eye-off {
+  color: var(--portal-text-disabled);
+}
+
 .dnd-grip {
   display: flex;
   align-items: center;

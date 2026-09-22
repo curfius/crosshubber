@@ -3,6 +3,7 @@ import type { EditableTreeNode, PinnedNode } from './navigation.models';
 import {
   collectPinnedRefs,
   flattenTree,
+  isEffectivelyHidden,
   isSelfOrAncestor,
   moveNode,
   moveNodeRelative,
@@ -139,5 +140,22 @@ describe('collectPinnedRefs', () => {
       },
     ];
     expect(collectPinnedRefs(tree)).toEqual(['mod:a', 'mod:b', 'mod:c']);
+  });
+});
+
+describe('isEffectivelyHidden', () => {
+  it('inherits hidden state from ancestors', () => {
+    const tree = buildSampleTree();
+    (tree.find((n) => n.id === 'f1') as EditableTreeNode).hidden = true;
+    expect(isEffectivelyHidden(tree, 'f1')).toBe(true);
+    expect(isEffectivelyHidden(tree, 'b')).toBe(true); // child of hidden folder
+    expect(isEffectivelyHidden(tree, 'c')).toBe(true); // grandchild
+    expect(isEffectivelyHidden(tree, 'a')).toBe(false);
+  });
+
+  it('is false without any hidden ancestor', () => {
+    const tree = buildSampleTree();
+    expect(isEffectivelyHidden(tree, 'c')).toBe(false);
+    expect(isEffectivelyHidden(tree, 'nope')).toBe(false);
   });
 });

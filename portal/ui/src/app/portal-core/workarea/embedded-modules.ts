@@ -23,8 +23,6 @@ export const embeddedModules: Record<string, () => Promise<Type<unknown>>> = {
   'portal-navigation': () => import('../modules/navigation/portal-navigation.component').then((m) => m.PortalNavigation),
   'navigation-pinned-apps': () => import('../modules/navigation/pinned-apps-editor.component').then((m) => m.PinnedAppsEditor),
   'navigation-sidebar': () => import('../modules/navigation/sidebar-nav-editor.component').then((m) => m.SidebarNavEditor),
-  'navigation-settings': () => import('../modules/navigation/settings-nav-editor.component').then((m) => m.SettingsNavEditor),
-  'navigation-user-settings': () => import('../modules/navigation/user-settings-nav-editor.component').then((m) => m.UserSettingsNavEditor),
   'navigation-portal': () => import('../modules/navigation/portal-nav-settings.component').then((m) => m.PortalNavSettings),
 };
 

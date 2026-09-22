@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { I18nService } from '../../../core/i18n/i18n.service';
 
 @Component({
   selector: 'app-confirm-dialog',
@@ -13,7 +14,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
         </div>
         <div class="ds-modal-footer">
           <button type="button" (click)="cancelled.emit()"
-            class="ds-btn ds-btn-ghost">Cancel</button>
+            class="ds-btn ds-btn-ghost">{{ i18n.t('common.cancel') }}</button>
           <button type="button" (click)="confirmed.emit()"
             class="ds-btn ds-btn-danger">
             {{ confirmLabel() }}
@@ -25,6 +26,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConfirmDialog {
+  protected readonly i18n = inject(I18nService);
   readonly title = input<string>('Confirm');
   readonly message = input<string>('');
   readonly confirmLabel = input<string>('Delete');

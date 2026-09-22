@@ -3,6 +3,9 @@ package com.crosshubber.portal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+import java.util.Map;
+
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +20,10 @@ import org.springframework.web.client.RestClient;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+
+import com.crosshubber.portal.modules.navigation.pinnedapps.PinnedAppsService;
+
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Full-context smoke test against real PostgreSQL.
@@ -56,6 +63,10 @@ class PortalSmokeTest {
 
   @Autowired Flyway flyway;
 
+  @Autowired PinnedAppsService pinnedAppsService;
+
+  @Autowired ObjectMapper objectMapper;
+
   private RestClient http;
 
   @Autowired
@@ -87,5 +98,40 @@ class PortalSmokeTest {
             .toEntity(String.class);
     assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
     assertTrue(response.getBody().contains("\"error\":\"unauthorized\""));
+  }
+
+  /**
+   * Pinned-tree save is a delete+reinsert that HONORS client UUIDs — entities are persisted with
+   * pre-assigned ids (Persistable/isNew). Guards against regressions of the Hibernate "detached
+   * entity passed to persist" mapping bug.
+   */
+  @Test
+  void pinnedTreeSaveHonorsClientUuids() {
+    String userId = "smoke-pinned-user";
+    String treeJson =
+        """
+        [
+          {"id": "11111111-1111-1111-1111-111111111111", "nodeType": "folder", "name": "Work",
+           "children": [
+             {"id": "22222222-2222-2222-2222-222222222222", "nodeType": "item",
+              "ref": "ai-hub:main", "children": []}
+           ]}
+        ]
+        """;
+    pinnedAppsService.savePinnedTree(userId, objectMapper.readTree(treeJson));
+
+    List<Map<String, Object>> roots = pinnedAppsService.getPinnedTree(userId);
+    assertEquals(1, roots.size());
+    assertEquals("11111111-1111-1111-1111-111111111111", roots.get(0).get("id"));
+    assertEquals("folder", roots.get(0).get("nodeType"));
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> children = (List<Map<String, Object>>) roots.get(0).get("children");
+    assertEquals(1, children.size());
+    assertEquals("22222222-2222-2222-2222-222222222222", children.get(0).get("id"));
+    assertEquals("ai-hub:main", children.get(0).get("ref"));
+
+    // Re-save with the same UUIDs (update path) must not throw either.
+    pinnedAppsService.savePinnedTree(userId, objectMapper.readTree(treeJson));
+    assertEquals(1, pinnedAppsService.getPinnedTree(userId).size());
   }
 }

@@ -22,6 +22,7 @@
       <app-dnd-tree
         [nodes]="dndNodes()"
         [maxDepth]="3"
+        [rootLabel]="i18n.t('navigation.pinned.rootSection')"
         [addFolderLabel]="i18n.t('navigation.pinned.newFolder')"
         (nodesChange)="onTreeChange($event)"
         (itemClick)="openApp($event)" />

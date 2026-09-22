@@ -28,6 +28,9 @@ export class SidebarNavEditor implements OnInit {
 
   protected readonly sidebar = computed(() => this.nav.sidebar());
 
+  /** The Workspaces section toggle only exists when the feature is enabled (General tab). */
+  protected readonly workspacesEnabled = computed(() => this.nav.features().workspacesEnabled);
+
   private readonly appsByRef = computed(() => {
     const map = new Map<string, PortalEntryPoint>();
     for (const ep of this.wb.getEntryPoints()) {

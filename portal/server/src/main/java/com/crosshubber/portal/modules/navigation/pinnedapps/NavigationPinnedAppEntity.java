@@ -7,21 +7,23 @@ import org.springframework.data.domain.Persistable;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
-/** JPA entity for {@code navigation_pinned_apps} table. */
+/**
+ * JPA entity for {@code navigation_pinned_apps} table. IDs are ASSIGNED (client/service-generated
+ * UUIDs, honored by the delete+reinsert save) — {@code @GeneratedValue} must NOT be used:
+ * persisting an entity with a pre-set generated id makes Hibernate treat it as detached (500 on
+ * save).
+ */
 @Entity
 @Table(name = "navigation_pinned_apps")
 public class NavigationPinnedAppEntity implements Persistable<UUID> {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.AUTO)
   @Column(name = "id", columnDefinition = "uuid")
   private UUID id;
 

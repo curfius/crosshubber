@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { NgTemplateOutlet } from '@angular/common';
 import type { EditableTreeNode } from '../../../core/navigation/navigation.models';
 import { moveNode, moveNodeRelative, newTreeId, findParent } from '../../../core/navigation/navigation.models';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { ConfirmDialog } from '../confirm-dialog/confirm-dialog.component';
 
 /** Focuses (and selects) its host input as soon as it is rendered. */
 @Directive({
@@ -23,6 +25,8 @@ export interface DropListData {
   nodeId?: string;
   into?: boolean;
   empty?: boolean;
+  /** Root strip: drop appends at the end of the top level. */
+  append?: boolean;
 }
 
 /**
@@ -35,13 +39,23 @@ export interface DropListData {
  * resolution that makes nested lists unreachable. Placement is derived from
  * `event.dropPoint` vs the hovered row's midpoint (before/after).
  *
+ * - The WHOLE row is the drag source; the grip icon is a visual affordance.
  * - Mutations are emitted as a full new tree via `nodesChange`.
- * - New folders start in rename mode with the input focused and selected.
- * - Keyboard a11y: per-node move up / down / out / into-previous-folder buttons.
+ * - New sections start in rename mode with the input focused and selected.
+ * - Keyboard a11y: per-node move up / down / out / into-previous-section buttons.
+ * - Optional locked root section (`rootLabel`): rendered above the tree, never
+ *   movable/deletable; its drop strip appends to the top level.
+ * - Optional per-row visibility toggle (`showVisibility`): sets `hidden` on the
+ *   node; hiding a section effectively hides everything below it (rows render
+ *   dimmed). Effective visibility = own `hidden` OR any ancestor's.
+ * - Delete policy (`deleteMode`): `folders-only` restricts the bin to section
+ *   rows; `folders-and-items` allows items too (pinned = unpin). Deleting a
+ *   non-empty section asks for confirmation and moves its children to the
+ *   root level.
  */
 @Component({
   selector: 'app-dnd-tree',
-  imports: [DragDropModule, FormsModule, NgTemplateOutlet, Autofocus],
+  imports: [DragDropModule, FormsModule, NgTemplateOutlet, Autofocus, ConfirmDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dnd-tree.component.html',
   styleUrl: './dnd-tree.component.css',
@@ -52,6 +66,12 @@ export class DndTree {
   readonly showDelete = input(true);
   readonly showAddFolder = input(true);
   readonly addFolderLabel = input('New section');
+  /** When set, renders a locked root section row above the tree. */
+  readonly rootLabel = input<string | null>(null);
+  /** Renders the per-row hidden/visible eye toggle. */
+  readonly showVisibility = input(false);
+  /** Which rows offer the bin: sections only, or sections and apps. */
+  readonly deleteMode = input<'folders-only' | 'folders-and-items'>('folders-and-items');
   /** Node ids rendered greyed-out (e.g. refs to deleted entry points). */
   readonly disabledIds = input<ReadonlySet<string>>(new Set());
 
@@ -59,10 +79,13 @@ export class DndTree {
   /** Fired when the user clicks a leaf item's main row. */
   readonly itemClick = output<EditableTreeNode>();
 
+  protected readonly i18n = inject(I18nService);
+
   protected readonly expanded = signal<Set<string>>(new Set());
   protected readonly renamingId = signal<string | null>(null);
   protected readonly renameValue = signal('');
   protected readonly draggingNodeId = signal<string | null>(null);
+  protected readonly confirmNode = signal<EditableTreeNode | null>(null);
 
   protected readonly dropListsDisabled = computed(() => this.renamingId() !== null);
   protected readonly isDragging = computed(() => this.draggingNodeId() !== null);
@@ -113,21 +136,72 @@ export class DndTree {
     this.renamingId.set(null);
   }
 
+  protected canDelete(node: EditableTreeNode): boolean {
+    if (!this.showDelete()) return false;
+    if (this.deleteMode() === 'folders-only') return node.kind === 'folder';
+    return true;
+  }
+
   protected deleteNode(node: EditableTreeNode): void {
     if (node.kind === 'folder' && node.children.length > 0) {
-      if (!window.confirm(`Delete "${node.label}" and its contents?`)) return;
+      this.confirmNode.set(node);
+      return;
     }
+    this.performDelete(node);
+  }
+
+  protected confirmDelete(): void {
+    const node = this.confirmNode();
+    this.confirmNode.set(null);
+    if (node) this.performDelete(node);
+  }
+
+  protected cancelDelete(): void {
+    this.confirmNode.set(null);
+  }
+
+  /** Removes the node; a folder's children are moved to the root level. */
+  private performDelete(node: EditableTreeNode): void {
     this.emitMutated((tree) => {
+      const idx = tree.findIndex((n) => n.id === node.id);
+      if (idx >= 0) {
+        const removed = tree.splice(idx, 1)[0];
+        if (removed.kind === 'folder' && removed.children.length > 0) {
+          tree.splice(idx, 0, ...removed.children);
+        }
+        return tree;
+      }
       const remove = (nodes: EditableTreeNode[]): boolean => {
-        const idx = nodes.findIndex((n) => n.id === node.id);
-        if (idx >= 0) {
-          nodes.splice(idx, 1);
+        const i = nodes.findIndex((n) => n.id === node.id);
+        if (i >= 0) {
+          const removed = nodes.splice(i, 1)[0];
+          if (removed.kind === 'folder' && removed.children.length > 0) {
+            tree.push(...removed.children);
+          }
           return true;
         }
         for (const child of nodes) if (remove(child.children)) return true;
         return false;
       };
       remove(tree);
+      return tree;
+    });
+  }
+
+  protected toggleVisibility(node: EditableTreeNode, event: Event): void {
+    event.stopPropagation();
+    this.emitMutated((tree) => {
+      const apply = (nodes: EditableTreeNode[]): boolean => {
+        for (const n of nodes) {
+          if (n.id === node.id) {
+            n.hidden = !n.hidden;
+            return true;
+          }
+          if (apply(n.children)) return true;
+        }
+        return false;
+      };
+      apply(tree);
       return tree;
     });
   }
@@ -182,7 +256,10 @@ export class DndTree {
     const data = event.container.data;
     let next: EditableTreeNode[] | null = null;
 
-    if (data.into) {
+    if (data.into && data.append) {
+      // Root section strip → append at the end of the top level.
+      next = moveNode(this.nodes(), dragged.id, null, this.nodes().length, this.maxDepth());
+    } else if (data.into) {
       // Drop strip under a folder → first child of that folder.
       next = moveNode(this.nodes(), dragged.id, data.parentId, 0, this.maxDepth());
     } else if (data.empty) {

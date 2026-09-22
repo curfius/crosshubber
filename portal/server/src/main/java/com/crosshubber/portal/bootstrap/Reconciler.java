@@ -255,6 +255,26 @@ public class Reconciler implements ApplicationRunner {
                 }
               });
     }
+    // Retired builtin entry points: settings-nav / user-nav were absorbed into the
+    // portal-nav screen tabs; the ai-hub chat channels settings page was removed.
+    // Delete leftover rows on existing installs.
+    for (String[] retiredEp :
+        new String[][] {
+          {"navigation", "settings-nav"},
+          {"navigation", "user-nav"},
+          {"ai-hub", "channels"}
+        }) {
+      entryPointRepo
+          .findByModuleKeyAndEntryKey(retiredEp[0], retiredEp[1])
+          .ifPresent(
+              ep -> {
+                entryPointRepo.delete(ep);
+                log.info(
+                    "[reconcile] removed retired builtin entry point {}:{}",
+                    retiredEp[0],
+                    retiredEp[1]);
+              });
+    }
   }
 
   /** Mirrors {@code fetchManifestWithRetry(url, attempts=6, delayMs=3000)}. */

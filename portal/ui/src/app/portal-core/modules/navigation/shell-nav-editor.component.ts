@@ -1,8 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, OnInit, signal } from '@angular/core';
-import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DndTree } from '../../../shared/components/dnd-tree/dnd-tree.component';
 import type { EditableTreeNode } from '../../../core/navigation/navigation.models';
-import { newTreeId } from '../../../core/navigation/navigation.models';
 import type { ShellTreePayload, ShellTreeResponse, ShellGroupPayload, ShellItemPayload } from '../../../core/navigation/navigation.models';
 import { NavigationAdminService, type ShellCategory } from '../../../core/navigation/navigation-admin.service';
 import { ConfigService } from '../../../core/config/config.service';
@@ -28,6 +26,7 @@ export function shellTreeFromResponse(resp: ShellTreeResponse): EditableTreeNode
       id: `group:${g.groupKey}`,
       label: g.name,
       kind: 'folder',
+      hidden: g.hidden === true ? true : undefined,
       meta: { groupKey: g.groupKey } satisfies ShellGroupMeta,
       children: [],
     });
@@ -44,6 +43,7 @@ export function shellTreeFromResponse(resp: ShellTreeResponse): EditableTreeNode
       label: item.name,
       kind: 'item',
       color: item.color,
+      hidden: item.hidden === true ? true : undefined,
       meta: { moduleKey: item.moduleKey, entryKey: item.entryKey } satisfies ShellItemMeta,
       children: [],
     };
@@ -70,11 +70,16 @@ export function shellTreeToPayload(nodes: EditableTreeNode[], reservedKeys: Set<
       if (node.kind === 'folder') {
         const meta = node.meta as ShellGroupMeta | undefined;
         const key = meta?.groupKey ?? uniqueKey(node.label);
-        groups.push({ groupKey: key, name: node.label, parentKey });
+        groups.push({ groupKey: key, name: node.label, parentKey, hidden: !!node.hidden });
         walk(node.children, key);
       } else {
         const meta = node.meta as ShellItemMeta;
-        items.push({ moduleKey: meta.moduleKey, entryKey: meta.entryKey, groupKey: parentKey });
+        items.push({
+          moduleKey: meta.moduleKey,
+          entryKey: meta.entryKey,
+          groupKey: parentKey,
+          hidden: !!node.hidden,
+        });
       }
     }
   };
@@ -83,13 +88,14 @@ export function shellTreeToPayload(nodes: EditableTreeNode[], reservedKeys: Set<
 }
 
 /**
- * Shared editor for the Settings / User Settings shell nav trees (D3):
- * renders groups + entry points of one category and saves the FULL tree
- * with explicit Save/Discard (D10).
+ * Settings/User-Settings navigation tree editor (D3) — embedded as a tab of the
+ * portal-nav settings screen. Renders groups + entry points of one category under
+ * a locked root section, with per-row hidden/visible toggles, and saves the FULL
+ * tree with explicit Save/Discard (D10).
  */
 @Component({
   selector: 'app-shell-nav-editor',
-  imports: [DndTree, DragDropModule],
+  imports: [DndTree],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-nav-editor.component.html',
   styleUrl: './shell-nav-editor.component.css',
@@ -112,6 +118,13 @@ export class ShellNavEditor implements OnInit {
   protected readonly dirty = computed(() => JSON.stringify(this.tree()) !== this.baseline());
 
   protected readonly dndNodes = computed(() => this.tree());
+
+  /** Block title + locked root section label ("Settings/User Settings Navigation Tree"). */
+  protected readonly treeTitle = computed(() =>
+    this.category() === 'settings'
+      ? this.i18n.t('navigation.shell.settingsTreeTitle')
+      : this.i18n.t('navigation.shell.userSettingsTreeTitle'),
+  );
 
   async ngOnInit(): Promise<void> {
     await this.reload();

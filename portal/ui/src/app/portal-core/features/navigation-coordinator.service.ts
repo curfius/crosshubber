@@ -24,6 +24,9 @@ interface TabLocation {
  *
  * Deep links (D5): an `app` param naming a known but closed entry point is
  * auto-opened only on cold load; unknown keys are warned about and ignored.
+ * A cold-load `app` matching the home-app ref activates the Home tab fixture
+ * instead of opening a duplicate tab (the fixture is created by restore()
+ * before applyApp runs).
  *
  * Echo dedupe (D8): a module-reported path equal to the stored tabPaths entry
  * is dropped, preventing module -> URL -> restore -> module loops.
@@ -107,7 +110,10 @@ export class NavigationCoordinator {
   }
 
   private async applyWorkspace(ws: string | null, cold: boolean): Promise<void> {
-    if (ws === this.wb.activeWorkspace()) return;
+    // Cold load must always run the restore path: the workbench starts empty and
+    // the home view needs ensureHomeTab() + the session snapshot even when the URL
+    // carries no workspace (the null === null dedupe below is popstate-only).
+    if (!cold && ws === this.wb.activeWorkspace()) return;
     if (ws) {
       await this.wb.loadWorkspace(ws, false, false);
       if (this.wb.activeWorkspace() !== ws && cold) {

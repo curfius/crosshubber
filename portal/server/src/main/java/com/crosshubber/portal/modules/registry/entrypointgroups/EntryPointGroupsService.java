@@ -42,6 +42,9 @@ public class EntryPointGroupsService {
     if (!roles.isEmpty()) {
       out.put("roles", roles);
     }
+    if (Boolean.TRUE.equals(g.getHidden())) {
+      out.put("hidden", true);
+    }
     return out;
   }
 

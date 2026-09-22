@@ -90,6 +90,9 @@ public class EntryPointsService {
     if (notBlank(ep.getColor())) {
       out.put("color", ep.getColor());
     }
+    if (Boolean.TRUE.equals(ep.getHidden())) {
+      out.put("hidden", true);
+    }
     return out;
   }
 

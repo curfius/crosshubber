@@ -55,6 +55,8 @@ export class PortalNavigation implements OnInit {
     const filterNodes = (nodes: LayoutNode[]): LayoutNode[] => {
       const out: LayoutNode[] = [];
       for (const node of nodes) {
+        // Hidden section/app rows (eye toggle) are skipped with their subtree.
+        if (node.hidden) continue;
         if (node.type === 'item') {
           const ep = this.refToEp().get(node.ref);
           if (ep && this.matches(ep, q)) out.push(node);

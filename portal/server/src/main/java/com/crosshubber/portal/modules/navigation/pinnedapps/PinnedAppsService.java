@@ -89,8 +89,9 @@ public class PinnedAppsService {
   /** Transactional delete + reinsert of the user's pinned tree. */
   @Transactional
   public void savePinnedTree(String userId, JsonNode nodes) {
-    repo.deleteByUserId(userId);
-    repo.flush();
+    // Single bulk statement (see deleteAllForUser) — per-entity deletes break on
+    // the self-referential ON DELETE CASCADE.
+    repo.deleteAllForUser(userId);
     // IDs are client-generated (UUIDs set before persist), so the whole tree can be
     // collected first and batch-saved — no per-row flush needed for parent resolution.
     List<NavigationPinnedAppEntity> rows = new ArrayList<>();

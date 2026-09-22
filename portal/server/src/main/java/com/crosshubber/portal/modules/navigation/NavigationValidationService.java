@@ -192,6 +192,10 @@ public final class NavigationValidationService {
         out.set(key, node.get(key).deepCopy());
       }
     }
+    // Divergence (README "Accepted Divergences"): nav-tree hidden/visible toggle.
+    if (node.path("hidden").isBoolean()) {
+      out.set("hidden", node.get("hidden").deepCopy());
+    }
     JsonNode children = node.path("children");
     if (children.isArray()) {
       ArrayNode arr = JsonNodeFactory.instance.arrayNode();
@@ -243,6 +247,9 @@ public final class NavigationValidationService {
         return Validation.fail("duplicate layout node id \"" + id + "\"");
       }
       seenIds.add(id);
+      if (node.has("hidden") && !node.path("hidden").isBoolean()) {
+        return Validation.fail("hidden: Invalid input: expected boolean");
+      }
       if ("item".equals(node.path("type").asText(null))) {
         String ref = node.path("ref").asText(null);
         if (ref == null || !ref.matches(REF_RE)) {
