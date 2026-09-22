@@ -26,10 +26,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.PersistenceException;
 
-/**
- * Workspace routes — mirrors {@code portal/src/modules/workspaces/workspaces.routes.ts} +
- * service.ts: per-user CRUD with name-conflict retry ("name (n)").
- */
+/** Workspace routes: per-user CRUD with name-conflict retry ("name (n)"). */
 @RestController
 public class WorkspacesController {
 
@@ -155,8 +152,7 @@ public class WorkspacesController {
         em.flush();
         em.persist(replacement);
         em.flush();
-        // Node responds with the REQUESTED (trimmed) name even when a "name (2)" suffix was
-        // stored (workspaces.routes.ts:47).
+        // Respond with the REQUESTED (trimmed) name even when a "name (2)" suffix was stored.
         return ResponseEntity.ok(Map.of("ok", true, "id", id, "name", name));
       } catch (DataIntegrityViolationException | PersistenceException e) {
         if (!isDuplicateKey(e)) {
@@ -168,7 +164,7 @@ public class WorkspacesController {
         finalName = name + " (" + (attempt + 2) + ")";
       }
     }
-    // Retry exhaustion — Node throws and errors.ts returns the generic 500 body.
+    // Retry exhaustion — generic 500 body.
     return ResponseEntity.internalServerError().body(Map.of("error", "internal server error"));
   }
 
@@ -182,7 +178,7 @@ public class WorkspacesController {
     return ResponseEntity.ok(Map.of("ok", deleted));
   }
 
-  // ── DTOs (camelCase, mirroring workspaces.service.ts) ──
+  // ── DTOs (camelCase) ──
 
   /** Field-by-field copy (identity fields included) for rename replacements and restores. */
   private static WorkspaceEntity copyRow(WorkspaceEntity source) {

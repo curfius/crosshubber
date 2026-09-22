@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Instance settings routes — mirrors {@code portal/src/modules/settings/settings.routes.ts}.
+ * Instance settings routes.
  *
  * <p>Only {@code homeApp} is written here; the feature switches are owned by the navigation module
  * (D11).
@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/settings")
 public class SettingsController {
 
-  /** Mirrors REF_RE in navigation.service.ts. */
+  /** Ref pattern used by the navigation settings API: {@code module:entry}. */
   private static final String REF_RE = "^[a-z0-9][a-z0-9-]{0,63}:[a-z0-9][a-z0-9-]{0,63}$";
 
   private final InstanceSettingsService settingsService;

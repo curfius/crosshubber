@@ -17,8 +17,8 @@ import com.crosshubber.portal.security.PortalUser;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * User settings routes — mirrors {@code portal/src/modules/user-settings/user-settings.routes.ts}:
- * 16 KB payload cap, {@code general} scope restricted to {@code theme}/{@code language}.
+ * User settings routes: 16 KB payload cap, {@code general} scope restricted to {@code theme}/{@code
+ * language}.
  */
 @RestController
 @RequestMapping("/api/user-settings")

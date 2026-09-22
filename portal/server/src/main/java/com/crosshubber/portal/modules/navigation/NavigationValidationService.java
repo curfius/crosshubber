@@ -17,10 +17,7 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
 
-/**
- * Pure navigation tree validators + default builders — mirrors {@code
- * portal/src/modules/navigation/navigation.service.ts} (no DB access).
- */
+/** Pure navigation tree validators + default builders (no DB access). */
 public final class NavigationValidationService {
 
   private NavigationValidationService() {}
@@ -28,16 +25,16 @@ public final class NavigationValidationService {
   public static final int MAX_PINNED_DEPTH = 3;
   public static final int MAX_SHELL_DEPTH = 3;
 
-  /** Zod parity: sections/children arrays accept at most 500 items. */
+  /** Sections/children arrays accept at most 500 items. */
   public static final int MAX_LAYOUT_SECTIONS = 500;
 
   /**
-   * JS {@code localeCompare} parity for name tiebreaks (ICU collation). Locale.ROOT is the closest
-   * deterministic match — JS itself is locale-dependent.
+   * Deterministic name-tiebreak collator. Locale.ROOT keeps ordering stable across servers and JVM
+   * default locales.
    */
   private static final Collator NAME_COLLATOR = Collator.getInstance(Locale.ROOT);
 
-  /** Mirrors REF_RE in navigation.service.ts. */
+  /** Reference format {@code moduleKey:entryKey}, both sides kebab-case. */
   public static final String REF_RE = "^[a-z0-9][a-z0-9-]{0,63}:[a-z0-9][a-z0-9-]{0,63}$";
 
   public record Validation(boolean success, String error) {
@@ -74,7 +71,7 @@ public final class NavigationValidationService {
       if (node == null || !node.isObject()) {
         return Validation.fail("tree nodes must be objects");
       }
-      // id: optional, string, <=64 chars (zod parity — numeric ids must not be coerced)
+      // id: optional, string, <=64 chars (numeric ids must not be coerced)
       JsonNode id = node.get("id");
       if (id != null && !id.isNull()) {
         if (!id.isTextual()) {
@@ -140,7 +137,7 @@ public final class NavigationValidationService {
     return Validation.ok();
   }
 
-  /** Zod-style JSON type name for "expected X, received Y" messages. */
+  /** JSON type name for "expected X, received Y" messages. */
   private static String jsonType(JsonNode node) {
     if (node.isTextual()) {
       return "string";
@@ -162,7 +159,7 @@ public final class NavigationValidationService {
 
   // ── Portal Navigation layout ─────────────────────────────────────────
 
-  /** Strips unknown keys from a layout payload before persisting (zod strict-schema parity). */
+  /** Strips unknown keys from a layout payload before persisting (strict-schema). */
   public static JsonNode stripLayout(JsonNode layout) {
     if (layout == null || !layout.isObject()) {
       return layout;
@@ -192,7 +189,7 @@ public final class NavigationValidationService {
         out.set(key, node.get(key).deepCopy());
       }
     }
-    // Divergence (README "Accepted Divergences"): nav-tree hidden/visible toggle.
+    // Design note (README): nav-tree hidden/visible toggle — kept when boolean.
     if (node.path("hidden").isBoolean()) {
       out.set("hidden", node.get("hidden").deepCopy());
     }

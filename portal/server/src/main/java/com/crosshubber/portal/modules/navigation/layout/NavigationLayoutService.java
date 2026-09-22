@@ -13,10 +13,7 @@ import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
 
 import tools.jackson.databind.JsonNode;
 
-/**
- * Portal Navigation layout (instance singleton) — mirrors the layout part of {@code
- * portal/src/modules/navigation/navigation.repository.ts}.
- */
+/** Portal Navigation layout (instance singleton). */
 @Service
 public class NavigationLayoutService {
 

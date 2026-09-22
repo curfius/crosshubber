@@ -14,7 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.crosshubber.portal.common.JsonUtils;
 
-/** Module registry CRUD — mirrors {@code portal/src/modules/modules/modules.service.ts}. */
+/** Module registry CRUD. */
 @Service
 public class ModulesService {
 
@@ -37,7 +37,7 @@ public class ModulesService {
     return includeInactive ? modules : modules.stream().filter(ModuleEntity::getActive).toList();
   }
 
-  /** Output DTO — mirrors rowToModule in modules.service.ts. */
+  /** Output DTO. */
   public Map<String, Object> toOutput(ModuleEntity m) {
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("key", m.getKey());
@@ -135,8 +135,8 @@ public class ModulesService {
     if (input.get("health") instanceof String health) {
       entity.setHealth(health);
     }
-    // Node quirk: security_roles is ALWAYS overwritten — input.securityRoles ?? '[]' — because
-    // the ON CONFLICT COALESCE is fed a never-null EXCLUDED value (modules.repository.ts).
+    // security_roles is always overwritten (missing input → '[]') because the ON CONFLICT
+    // COALESCE is fed a never-null EXCLUDED value.
     entity.setSecurityRoles(
         writeJson(
             input.get("securityRoles") == null ? java.util.List.of() : input.get("securityRoles")));

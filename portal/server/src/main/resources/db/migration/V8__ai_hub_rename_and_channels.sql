@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS ai_hub_channel_inbound (
 );
 
 -- Module settings blob moves with the module (runs before the reconciler
--- creates the ai-hub row — see server.ts bootstrap ordering).
+-- creates the ai-hub row — see bootstrap ordering).
 UPDATE module_settings SET module_key = 'ai-hub'
  WHERE module_key = 'ai-assistant'
    AND NOT EXISTS (SELECT 1 FROM module_settings WHERE module_key = 'ai-hub');

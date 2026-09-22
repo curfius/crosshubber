@@ -11,9 +11,8 @@ import jakarta.validation.constraints.Pattern;
 /**
  * Binds all portal environment configuration from {@code application.yml}.
  *
- * <p>Mirrors {@code C:/playground/projects/genportal/portal/src/config.ts} env parsing and
- * validation. Fail-fast via Jakarta Validation. All fields map from {@code portal.*} prefix with
- * relaxed binding (kebab-case to camelCase).
+ * <p>Fail-fast via Jakarta Validation. All fields map from {@code portal.*} prefix with relaxed
+ * binding (kebab-case to camelCase); every value is overridable via environment variables.
  */
 @Configuration
 @EnableConfigurationProperties
@@ -29,7 +28,7 @@ public class PortalProperties {
   /** Tenant config directory override; empty uses repo {@code tenants/}. */
   private String tenantConfigDir = "";
 
-  /** HTTP port — defaults to 3000, mirrors {@code config.port}. */
+  /** HTTP port — defaults to 3000. */
   private int port = 3000;
 
   /** Public base URL for callbacks, e.g. {@code http://localhost:3000}. */
@@ -219,11 +218,7 @@ public class PortalProperties {
     this.kcAdmin = kcAdmin;
   }
 
-  /**
-   * Database nested properties.
-   *
-   * <p>Mirrors {@code config.db} in the Node config.
-   */
+  /** Database nested properties ({@code portal.db.*} / {@code DB_*} env overrides). */
   public static class Db {
 
     private String host;

@@ -1,7 +1,7 @@
 {
   "realm": "dev",
   "enabled": true,
-  "displayName": "genportal — dev",
+  "displayName": "crosshubber — dev",
   "registrationAllowed": false,
   "registrationEmailAsUsername": false,
   "loginWithEmailAllowed": false,
@@ -116,7 +116,7 @@
       "emailVerified": true,
       "firstName": "Dev",
       "lastName": "User",
-      "email": "dev@genportal.local",
+      "email": "dev@crosshubber.local",
       "credentials": [
         {
           "type": "password",
@@ -133,7 +133,7 @@
       "emailVerified": true,
       "firstName": "Dev",
       "lastName": "Plain",
-      "email": "devuser@genportal.local",
+      "email": "devuser@crosshubber.local",
       "credentials": [
         {
           "type": "password",

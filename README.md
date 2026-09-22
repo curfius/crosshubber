@@ -124,11 +124,11 @@ cd ../server && mvn -DskipTests package
 
 **Login:** `dev/dev` (admin, all `portal-*` roles) or `devuser/dev`.
 
-Environment variables mirror `genportal/portal/src/config.ts` — see `portal/server/src/main/resources/application.yml`.
+All configuration is environment-overridable — see `portal/server/src/main/resources/application.yml`.
 
 ## Seeding & Reconciliation
 
-- **Flyway** (`V1..V11`) owns DDL — runs automatically on boot.
+- **Flyway** (`V1..V24`) owns DDL — runs automatically on boot.
 - **Reconciler** (fail-fast) seeds at boot:
   - Builtin modules & entry points from embedded catalog
   - External modules from `modules.external[]` (retry + manifest fetch + validation)
@@ -136,23 +136,28 @@ Environment variables mirror `genportal/portal/src/config.ts` — see `portal/se
   - Instance settings, i18n languages/labels
   - Tenant metadata (`tenant_meta` table)
 
-## Contract Parity
+## API Ownership
 
-The Java portal targets **byte-level API parity** with the Node reference implementation (`genportal/portal`). A contract-diff harness (`scripts/contract-diff/harness.mjs`) replays both stacks against identical data and classifies diffs as `identical | byte-diff | semantic-diff`. Accepted divergences are documented in the table below.
+Crosshubber's API is **self-owned**. The portal started as a port of an earlier Node
+implementation, but that reference has been decommissioned: good ideas were imported and
+kept, the rest was dropped. Response shapes evolve when Crosshubber needs them to —
+changes are covered by `mvn verify` and `npm test`, not by a parity harness.
 
-## Accepted Divergences
+Historical porting plans live under `docs/archive/`.
 
-| # | Case | Java | Node | Why |
-|---|---|---|---|---|
-| 1 | Proxy upstream fetch failure | 502 `{"error":"upstream fetch failed"}` | 500 `{"error":"internal server error"}` | More accurate status |
-| 2 | Scalar JSON body on PUT/POST | 400 `{"error":"invalid request body"}` | 500 | Correct status |
-| 3 | Tenant config digest | `Object.hashCode()` hex | Node digest algo | Only recorded in `tenant_meta` |
-| 4 | Models listing token pick | first **enabled** token | first token (any state) | More sensible |
-| 5 | `roles` storage | comma-joined TEXT (V11) | `text[]` | Role keys are kebab-case (validated) — no commas possible |
-| 6 | `GET /api/mfe/foo` (no trailing path) | 400 `{"error":"bad path"}` | 404 HTML | JSON is more consistent |
-| 7 | Navigation `hidden` flags | `hidden: true` on shell-tree groups/items (V23) and layout JSON nodes; omitted when `false` | not present | Per-row hidden/visible toggle for the navigation editors; hiding a section hides all apps within it. Payloads stay byte-identical while everything is visible |
+## Design notes
 
-Byte-diffs are limited to volatile fields (UUIDs, timestamps, `contentVersion`, masked secrets, per-stack webhook URLs, DB name in psql hint).
+Intentional API/storage decisions (several date back to the original port):
+
+| # | Decision | Rationale |
+|---|---|---|
+| 1 | Proxy upstream fetch failure → 502 `{"error":"upstream fetch failed"}` | More accurate status than a generic 500 |
+| 2 | Scalar JSON body on PUT/POST → 400 `{"error":"invalid request body"}` | Correct status |
+| 3 | Tenant config digest = `Object.hashCode()` hex | Only recorded in `tenant_meta` |
+| 4 | Models listing picks the first **enabled** token | More sensible than any-state |
+| 5 | `roles` stored comma-joined TEXT (V11) | Role keys are kebab-case (validated) — no commas possible; API output stays an array |
+| 6 | `GET /api/mfe/foo` (no trailing path) → 400 `{"error":"bad path"}` | JSON is more consistent than HTML |
+| 7 | Navigation `hidden` flags (V23) | Per-row hidden/visible toggle for the navigation editors; omitted when `false` so payloads stay minimal |
 
 ## Development
 

@@ -2,8 +2,8 @@ import type { Type } from '@angular/core';
 
 /**
  * Loadable embedded modules in this build.
- * Keys MUST match the authoritative backend catalog
- * (portal/src/shared/embedded-catalog.ts) — enforced by embedded-modules.spec.ts.
+ * Keys MUST match the authoritative backend embedded catalog — enforced by
+ * embedded-modules.spec.ts.
  */
 export const embeddedModules: Record<string, () => Promise<Type<unknown>>> = {
   'sample-embedded': () => import('../../embedded-modules/sample-embedded/sample-embedded.component').then((m) => m.SampleEmbedded),

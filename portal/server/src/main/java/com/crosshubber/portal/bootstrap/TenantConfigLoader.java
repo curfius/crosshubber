@@ -20,9 +20,9 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * Loads effective tenant config.
  *
- * <p>Port of {@code portal/src/bootstrap/tenant-config.ts} — reads {@code _default/tenant.json} +
- * {@code ${slug}/tenant.json} and deep-merges before defaults. Exposes the desired external modules
- * ({@code modules.external[]}) for the boot reconciler.
+ * <p>reads {@code _default/tenant.json} + {@code ${slug}/tenant.json} and deep-merges before
+ * defaults. Exposes the desired external modules ({@code modules.external[]}) for the boot
+ * reconciler.
  */
 @Component
 public class TenantConfigLoader {
@@ -37,7 +37,7 @@ public class TenantConfigLoader {
     this.mapper = mapper;
   }
 
-  /** Desired external module — mirrors {@code DesiredExternalModule} in tenant-config.ts. */
+  /** Desired external module from the tenant overlay. */
   public record DesiredExternalModule(
       String key, String serviceKey, String manifestUrl, JsonNode manifest, boolean active) {}
 
@@ -109,9 +109,9 @@ public class TenantConfigLoader {
   }
 
   /**
-   * Parses {@code modules.external[]} — mirrors tenant-config.ts: entries without a string key are
-   * skipped silently; entries with neither {@code manifestUrl} nor {@code manifest} are warned and
-   * skipped; {@code active} defaults to true.
+   * Parses {@code modules.external[]}: entries without a string key are skipped silently; entries
+   * with neither {@code manifestUrl} nor {@code manifest} are warned and skipped; {@code active}
+   * defaults to true.
    */
   private List<DesiredExternalModule> parseExternalModules(JsonNode externalList) {
     List<DesiredExternalModule> external = new ArrayList<>();

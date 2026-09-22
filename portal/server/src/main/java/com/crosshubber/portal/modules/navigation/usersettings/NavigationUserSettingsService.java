@@ -17,9 +17,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Per-user navigation settings (sidebar) — mirrors the user-settings part of {@code
- * portal/src/modules/navigation/navigation.repository.ts} + mergeUserSettings in
- * navigation.routes.ts.
+ * Per-user navigation settings (sidebar) — read/write the user-settings document with merge-on-save
+ * semantics.
  */
 @Service
 public class NavigationUserSettingsService {
@@ -96,7 +95,7 @@ public class NavigationUserSettingsService {
     if (body == null || !body.isObject()) {
       return "body must be an object";
     }
-    // Explicit null for a known key is rejected (zod parity), not silently ignored.
+    // Explicit null for a known key is rejected, not silently ignored.
     JsonNode sidebar = body.get("sidebar");
     if (sidebar != null && sidebar.isNull()) {
       return "sidebar: Invalid input: expected object, received null";

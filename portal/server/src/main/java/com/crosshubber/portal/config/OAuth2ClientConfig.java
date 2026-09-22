@@ -18,10 +18,10 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.endpoint.PkceParameterNames;
 
 /**
- * OIDC client registration for Keycloak — mirrors {@code keycloak-identity-provider.ts} discovery
- * semantics: the issuer/endpoints are the browser-facing (public) Keycloak URL so the authorization
- * redirect and {@code iss} claim match what the metadata advertises; server-side calls to the same
- * URLs work in compose via {@code extra_hosts: localhost:host-gateway}.
+ * OIDC client registration for Keycloak discovery semantics: the issuer/endpoints are the
+ * browser-facing (public) Keycloak URL so the authorization redirect and {@code iss} claim match
+ * what the metadata advertises; server-side calls to the same URLs work in compose via {@code
+ * extra_hosts: localhost:host-gateway}.
  *
  * <p>Registration is built in code (not YAML) because the public/internal issuer split comes from
  * {@link PortalProperties}. PKCE (S256) is enabled explicitly — Spring only auto-enables it for
@@ -94,14 +94,14 @@ public class OAuth2ClientConfig {
     return resolver;
   }
 
-  /** 32 random bytes, base64url — mirrors {@code randomPKCECodeVerifier()}. */
+  /** 32 random bytes, base64url. */
   private static String createCodeVerifier() {
     byte[] bytes = new byte[32];
     new SecureRandom().nextBytes(bytes);
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
 
-  /** BASE64URL(SHA256(verifier)) — mirrors {@code calculatePKCECodeChallenge()} (S256). */
+  /** BASE64URL(SHA256(verifier)) (S256). */
   private static String createCodeChallenge(String codeVerifier) {
     try {
       byte[] digest =

@@ -10,10 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.crosshubber.portal.common.Roles;
 
-/**
- * Entry point groups domain service — mirrors {@code
- * portal/src/modules/entry-points/entry-point-groups.service.ts}.
- */
+/** Entry point groups domain service. */
 @Service
 public class EntryPointGroupsService {
 
@@ -27,7 +24,7 @@ public class EntryPointGroupsService {
     this.repo = repo;
   }
 
-  /** Output DTO — mirrors rowToOutput in entry-point-groups.service.ts. */
+  /** Output DTO. */
   public static Map<String, Object> toOutput(EntryPointGroupEntity g) {
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("groupKey", g.getGroupKey());

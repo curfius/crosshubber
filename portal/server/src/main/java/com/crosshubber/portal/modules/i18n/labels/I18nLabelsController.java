@@ -18,13 +18,13 @@ import org.springframework.web.bind.annotation.RestController;
 import com.crosshubber.portal.modules.i18n.I18nService;
 
 /**
- * Label bundle reads/writes — mirrors the labels routes in i18n.routes.ts. Reads are public; writes
- * require {@code portal-i18n-edit} and bump content_version.
+ * Label bundle reads/writes. Reads are public; writes require {@code portal-i18n-edit} and bump
+ * content_version.
  */
 @RestController
 public class I18nLabelsController {
 
-  // (?i) mirrors Node's case-insensitive LANG_CODE_RE (i18n.routes.ts:9).
+  // (?i) LANG_CODE_RE.
   private static final String LANG_CODE_RE = "(?i)^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$";
   private static final String I18N_KEY_RE = "^[a-z0-9]+(?:[.-][a-z0-9]+)+$";
 

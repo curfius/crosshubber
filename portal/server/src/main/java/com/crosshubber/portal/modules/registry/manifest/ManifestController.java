@@ -23,9 +23,7 @@ import com.crosshubber.portal.security.PortalUser;
 import tools.jackson.databind.JsonNode;
 
 /**
- * Module manifest lifecycle routes — mirrors {@code
- * portal/src/modules/registry/registry.routes.ts}. All endpoints are admin-only ({@code
- * portal-registry-edit}).
+ * Module manifest lifecycle routes. All endpoints are admin-only ({@code portal-registry-edit}).
  */
 @RestController
 @RequestMapping("/api/registry")
@@ -273,7 +271,7 @@ public class ManifestController {
     return ResponseEntity.unprocessableEntity().body(out);
   }
 
-  /** Audit actor — mirrors registry.routes.ts actor(). */
+  /** Audit actor actor(). */
   private String actor(Authentication auth) {
     if (auth != null && auth.getPrincipal() instanceof PortalUser user) {
       return props.getTenantSlug() + "/" + user.name() + " (" + user.sub() + ")";

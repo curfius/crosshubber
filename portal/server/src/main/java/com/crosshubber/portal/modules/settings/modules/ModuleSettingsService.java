@@ -10,10 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.crosshubber.portal.common.JsonUtils;
 
-/**
- * Per-module settings store — mirrors {@code
- * portal/src/modules/module-settings/module-settings.repository.ts}.
- */
+/** Per-module settings store. */
 @Service
 public class ModuleSettingsService {
 

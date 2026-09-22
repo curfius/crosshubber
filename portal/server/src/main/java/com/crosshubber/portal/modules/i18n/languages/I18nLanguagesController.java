@@ -11,14 +11,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.portal.modules.i18n.I18nService;
 
-/**
- * PUT /api/i18n/languages/{code} — mirrors the language route in i18n.routes.ts. The
- * default/fallback language cannot be disabled.
- */
+/** PUT /api/i18n/languages/{code}. The default/fallback language cannot be disabled. */
 @RestController
 public class I18nLanguagesController {
 
-  // (?i) mirrors Node's case-insensitive LANG_CODE_RE (i18n.routes.ts:9) — an uppercase code
+  // (?i) LANG_CODE_RE — an uppercase code
   // passes the regex and then falls through to the 404 "unknown language" path (codes are
   // stored lowercase).
   private static final String LANG_CODE_RE = "(?i)^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$";

@@ -16,7 +16,7 @@ import com.crosshubber.portal.modules.navigation.NavigationValidationService;
 
 import tools.jackson.databind.JsonNode;
 
-/** Pinned apps routes — mirrors the pinned-apps section of navigation.routes.ts. */
+/** Pinned apps routes. */
 @RestController
 public class PinnedAppsController {
 

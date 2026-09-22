@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Module registry routes — mirrors {@code portal/src/modules/modules/modules.routes.ts}. */
+/** Module registry routes. */
 @RestController
 @RequestMapping("/api/registry/modules")
 public class ModulesController {

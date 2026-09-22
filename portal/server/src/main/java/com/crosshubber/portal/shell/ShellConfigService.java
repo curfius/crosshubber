@@ -29,9 +29,8 @@ import com.crosshubber.portal.modules.usersettings.scopes.UserSettingsRepository
 import com.crosshubber.portal.security.PortalUser;
 
 /**
- * Aggregates the authenticated user's shell config for {@code GET /api/config} — mirrors {@code
- * portal/src/modules/portal/portal.routes.ts} triple filtering: visible modules -> allowed groups
- * -> visible entry points.
+ * Aggregates the authenticated user's shell config for {@code GET /api/config} triple filtering:
+ * visible modules -> allowed groups -> visible entry points.
  */
 @Service
 public class ShellConfigService {
@@ -145,8 +144,8 @@ public class ShellConfigService {
 
   /**
    * Entry points visible to the user: module visible + active + known category + role match + group
-   * allowed (or no group). Category filter excludes admin-settings (Node parity). Sorted by
-   * category order, then sort_order, then name.
+   * allowed (or no group). Category filter excludes admin-settings (admin settings are reachable
+   * only via their own routes). Sorted by category order, then sort_order, then name.
    */
   private List<Map<String, Object>> visibleEntryPoints(
       List<String> userRoles,
@@ -160,7 +159,7 @@ public class ShellConfigService {
       if (Boolean.FALSE.equals(ep.getActive())) {
         continue;
       }
-      // Nav-tree hidden/visible toggle (README divergence #7): hidden entry
+      // Nav-tree hidden/visible toggle (README Design notes #7): hidden entry
       // points are skipped by the runtime config, not by the tree editor.
       if (Boolean.TRUE.equals(ep.getHidden())) {
         continue;

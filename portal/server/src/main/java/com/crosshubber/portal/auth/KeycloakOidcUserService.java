@@ -43,7 +43,7 @@ public class KeycloakOidcUserService extends OidcUserService {
   @Override
   public OidcUser loadUser(OidcUserRequest userRequest) {
     OidcUser user = super.loadUser(userRequest);
-    // Node parity: access token realm_access first, ID token realm_access as fallback
+    // realm_access roles: access token first, ID token as fallback
     List<String> roles =
         realmRolesFrom(decodeJwtClaims(userRequest.getAccessToken().getTokenValue()))
             .or(() -> realmRolesFrom(user.getIdToken().getClaims()))

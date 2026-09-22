@@ -1,5 +1,5 @@
 # Portal Server — Spring Boot configuration
-# Mirrors C:/playground/projects/genportal/portal/src/config.ts
+# Every value is overridable via environment variables (PORT, TENANT_SLUG, OIDC_ISSUER, ...)
 
 server:
   port: ${PORT:3000}

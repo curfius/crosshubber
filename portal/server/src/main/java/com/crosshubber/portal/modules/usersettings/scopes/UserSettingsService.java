@@ -14,9 +14,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 
 /**
- * Per-user settings scopes — mirrors {@code
- * portal/src/modules/user-settings/user-settings.repository.ts}. Updates use an atomic JSONB merge
- * upsert so concurrent PUTs never lose keys.
+ * Per-user settings scopes. Updates use an atomic JSONB merge upsert so concurrent PUTs never lose
+ * keys.
  */
 @Service
 public class UserSettingsService {

@@ -11,9 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.crosshubber.portal.common.JsonUtils;
 
 /**
- * Instance settings (singleton row id=1) — mirrors {@code
- * portal/src/modules/settings/settings.repository.ts}: defaults merged under the stored JSONB,
- * partial updates merge on top.
+ * Instance settings (singleton row id=1): defaults merged under the stored JSONB, partial updates
+ * merge on top.
  */
 @Service
 public class InstanceSettingsService {

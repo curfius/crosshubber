@@ -10,7 +10,7 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * i18n seed catalog — mirrors {@code portal/src/shared/i18n-catalog.ts}.
+ * i18n seed catalog.
  *
  * <p>The full language/label inventory is shipped as {@code i18n-catalog.json} on the classpath and
  * parsed once at class-load. Seeding semantics (applied by the Reconciler): new languages/keys

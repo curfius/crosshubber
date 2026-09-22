@@ -18,8 +18,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Manifest fetcher — mirrors {@code portal/src/modules/registry/manifest.fetcher.ts}: 5 s timeout,
- * 1 MB body cap, SSRF protection, {@code .well-known} resolution.
+ * Manifest fetcher: 5 s timeout, 1 MB body cap, SSRF protection, {@code .well-known} resolution.
  */
 @Service
 public class ManifestFetcher {

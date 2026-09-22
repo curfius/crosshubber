@@ -20,7 +20,7 @@ Based on https://google.github.io/styleguide/javaguide.html and google-java-form
 
 | Element | Convention | Example |
 |---|---|---|
-| Packages | lowercase, no underscores | `com.genportal.portal` |
+| Packages | lowercase, no underscores | `com.crosshubber.portal` |
 | Classes/Interfaces/Enums | UpperCamelCase | `PortalProperties`, `ModuleRepository` |
 | Methods | lowerCamelCase | `getSession`, `listWorkspaces` |
 | Fields (non-static) | lowerCamelCase | `sessionService` |
@@ -35,7 +35,7 @@ Based on https://google.github.io/styleguide/javaguide.html and google-java-form
 - Static imports: `import static org.junit.jupiter.api.Assertions.assertEquals;` after non-static.
 - Example:
 ```java
-import com.genportal.portal.config.PortalProperties;
+import com.crosshubber.portal.config.PortalProperties;
 import java.time.Instant;
 import javax.crypto.Mac;
 import org.springframework.stereotype.Service;
@@ -45,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 ## File Structure
 
 ```java
-package com.genportal.portal.modules.portal;
+package com.crosshubber.portal.modules.portal;
 
 import ...;
 

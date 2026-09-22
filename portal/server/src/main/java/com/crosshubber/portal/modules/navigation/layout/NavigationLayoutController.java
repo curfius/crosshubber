@@ -15,10 +15,7 @@ import com.crosshubber.portal.security.PortalUser;
 
 import tools.jackson.databind.JsonNode;
 
-/**
- * Navigation layout routes — mirrors navigation.routes.ts layout endpoints. PUT requires {@code
- * portal-navigation-edit}.
- */
+/** Navigation layout routes layout endpoints. PUT requires {@code portal-navigation-edit}. */
 @RestController
 public class NavigationLayoutController {
 

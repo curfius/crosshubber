@@ -3,9 +3,9 @@ import { EMBEDDED_LOAD_PATHS, embeddedModules } from './embedded-modules';
 
 // The authoritative embedded-module catalog lives in the backend
 // (portal/server/src/main/java/com/crosshubber/portal/bootstrap/EmbeddedCatalog.java);
-// parity between it and this loader map is enforced by the reconciler and the
-// contract-diff harness, not by a TS import. These tests pin the loader-map
-// invariants that are checkable client-side.
+// keep this loader map in sync with it — the reconciler/EntryPointsController reject
+// unknown load paths server-side. These tests pin the loader-map invariants that are
+// checkable client-side.
 
 describe('embedded module loader map', () => {
   it('derives EMBEDDED_LOAD_PATHS from the loader map keys', () => {

@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The codebase is a well-structured **Spring Boot 4.1.1 / Java 21 modular monolith** ported from Node.js/TypeScript. While architecturally sound, it carries legacy patterns from the TypeScript port and misses many Spring abstractions. This document outlines all identified optimizations organized by priority and category.
+The codebase is a well-structured **Spring Boot 4.1.1 / Java 21 modular monolith**. While architecturally sound, it carries some legacy patterns and misses many Spring abstractions. This document outlines all identified optimizations organized by priority and category.
 
 **Completed in Steps 1–8:** #2, #4, #5, #6, #7, #13, #14, #15, #17, #19, #20, #21, #22, #23, #24, #25
 

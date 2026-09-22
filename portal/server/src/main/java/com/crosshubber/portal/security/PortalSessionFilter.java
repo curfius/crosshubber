@@ -28,9 +28,8 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * Validates the {@code portalSession} HMAC cookie and populates SecurityContext.
  *
- * <p>Cookie format: {@code base64url(JSON).base64url(hmacSHA256(secret))} — mirrors {@code
- * portal/src/session.ts}. Expired sessions with a refresh token are renewed transparently,
- * mirroring {@code requireAuth} in middleware/auth.ts.
+ * <p>Cookie format: {@code base64url(JSON).base64url(hmacSHA256(secret))}. Expired sessions with a
+ * refresh token are renewed transparently, mirroring {@code requireAuth} in middleware/auth.ts.
  */
 public class PortalSessionFilter extends OncePerRequestFilter {
 
@@ -76,10 +75,7 @@ public class PortalSessionFilter extends OncePerRequestFilter {
     chain.doFilter(request, response);
   }
 
-  /**
-   * Expired-but-valid cookie with a refresh token — renew the session (mirrors {@code
-   * refreshSession} in middleware/auth.ts).
-   */
+  /** Expired-but-valid cookie with a refresh token — renew the session. */
   private void tryRefresh(String token, HttpServletResponse response) {
     SessionData raw = decodeSessionRaw(token, props.getSessionSecret());
     if (raw == null || raw.refreshToken() == null || raw.refreshToken().isBlank()) {
@@ -110,7 +106,7 @@ public class PortalSessionFilter extends OncePerRequestFilter {
     SecurityContextHolder.getContext().setAuthentication(auth);
   }
 
-  /** Builds the Set-Cookie value for the session cookie (mirrors auth.routes.ts). */
+  /** Builds the Set-Cookie value for the session cookie. */
   public static String sessionCookie(String token, PortalProperties props) {
     return COOKIE_NAME
         + "="
@@ -120,7 +116,7 @@ public class PortalSessionFilter extends OncePerRequestFilter {
         + (props.isCookieSecure() ? "; Secure" : "");
   }
 
-  // -- Cookie + HMAC helpers (mirrors session.ts) --
+  // -- Cookie + HMAC helpers --
 
   public static String parseCookie(String header, String name) {
     if (header == null) {
@@ -179,7 +175,7 @@ public class PortalSessionFilter extends OncePerRequestFilter {
     return decodeRaw(token, secret, objectMapper);
   }
 
-  /** Decodes a signed cookie without expiry check (mirrors decodeSessionRaw in auth.ts). */
+  /** Decodes a signed cookie without expiry check. */
   public static SessionData decodeRaw(String token, String secret, ObjectMapper mapper) {
     if (token == null) {
       return null;
@@ -210,7 +206,7 @@ public class PortalSessionFilter extends OncePerRequestFilter {
     return MessageDigest.isEqual(ab, bb);
   }
 
-  /** Encodes the session for Set-Cookie (mirrors session.ts encodeSession). */
+  /** Encodes the session for Set-Cookie. */
   public static String encodeSession(SessionData data, String secret, ObjectMapper mapper) {
     try {
       String json = mapper.writeValueAsString(data);

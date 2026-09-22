@@ -21,8 +21,8 @@ import com.crosshubber.portal.modules.i18n.settings.I18nSettingsEntity;
 import com.crosshubber.portal.modules.i18n.settings.I18nSettingsRepository;
 
 /**
- * i18n domain service — mirrors {@code portal/src/modules/i18n/i18n.repository.ts}. Every write
- * bumps {@code content_version} so clients invalidate cached bundles.
+ * i18n domain service. Every write bumps {@code content_version} so clients invalidate cached
+ * bundles.
  */
 @Service
 public class I18nService {
@@ -123,8 +123,8 @@ public class I18nService {
   @Transactional
   public I18nLanguageEntity updateLanguage(
       String code, Boolean enabled, String name, String nativeName, Integer sortOrder) {
-    // Node parity (i18n.repository.ts:167): an empty patch returns the language without saving
-    // or bumping content_version (spurious bumps force clients to re-download bundles).
+    // An empty patch returns the language without saving or bumping content_version
+    // (spurious bumps force clients to re-download bundles).
     if (enabled == null && name == null && nativeName == null && sortOrder == null) {
       return languageRepo.findById(code).orElse(null);
     }

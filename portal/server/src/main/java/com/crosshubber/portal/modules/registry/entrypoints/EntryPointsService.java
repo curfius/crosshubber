@@ -16,9 +16,8 @@ import com.crosshubber.portal.common.Roles;
 import com.crosshubber.portal.config.PortalProperties;
 
 /**
- * Entry points domain service — mirrors {@code
- * portal/src/modules/entry-points/entry-points.service.ts}: validation (categories, types,
- * portal-origin guards, registered load paths), upsert and reorder.
+ * Entry points domain service: validation (categories, types, portal-origin guards, registered load
+ * paths), upsert and reorder.
  */
 @Service
 public class EntryPointsService {
@@ -38,7 +37,7 @@ public class EntryPointsService {
 
   // ── Output mapping ───────────────────────────────────────────────────
 
-  /** Output DTO — mirrors rowToOutput in entry-points.service.ts (key order matters). */
+  /** Output DTO (key order matters). */
   public static Map<String, Object> toOutput(EntryPointEntity ep) {
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("id", ep.getId());

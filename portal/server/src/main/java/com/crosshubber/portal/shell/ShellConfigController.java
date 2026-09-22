@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.portal.security.PortalUser;
 
-/** Shell config endpoint — mirrors {@code GET /api/config} in portal.routes.ts. */
+/** Shell config endpoint in portal.routes.ts. */
 @RestController
 public class ShellConfigController {
 

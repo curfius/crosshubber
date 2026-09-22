@@ -22,10 +22,9 @@ import com.crosshubber.portal.modules.registry.entrypoints.EntryPointsService;
 import tools.jackson.databind.JsonNode;
 
 /**
- * Settings-shell tree editor (groups + items) — mirrors the shell-tree endpoints in {@code
- * portal/src/modules/navigation/navigation.routes.ts}: group key resolution (slugified {@code
- * nav-*} keys), per-bucket renumbering, ungrouping of unlisted items and cascade cleanup of removed
- * groups — one transaction.
+ * Settings-shell tree editor (groups + items): group key resolution (slugified {@code nav-*} keys),
+ * per-bucket renumbering, ungrouping of unlisted items and cascade cleanup of removed groups — one
+ * transaction.
  */
 @Service
 public class ShellTreeService {

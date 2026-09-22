@@ -18,8 +18,8 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * AES-256-GCM encryption for LLM keys and channel credentials.
  *
- * <p>Mirrors {@code portal/src/modules/ai-hub/crypto.ts}: random 12-byte IV, 16-byte tag,
- * base64(iv+tag+ciphertext).
+ * <p>Payload layout: base64(random 12-byte IV + 16-byte tag + ciphertext). Keep the layout stable —
+ * existing stored secrets depend on it.
  */
 @Service
 public class CryptoService {
@@ -70,8 +70,8 @@ public class CryptoService {
           new GCMParameterSpec(TAG_LEN_BITS, iv));
       byte[] encrypted =
           cipher.doFinal(plaintext.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-      // GCM in Java appends tag to ciphertext; we need to split tag (last 16) for parity
-      // Node's format: iv(12) + tag(16) + cipher. Java's encrypted = cipher+tag.
+      // Stored payload layout is iv(12) + tag(16) + ciphertext; Java's doFinal returns
+      // ciphertext+tag, so split the tag (last 16 bytes) and reassemble in that order.
       byte[] tag = new byte[16];
       byte[] cipherBytes = new byte[encrypted.length - 16];
       System.arraycopy(encrypted, 0, cipherBytes, 0, cipherBytes.length);

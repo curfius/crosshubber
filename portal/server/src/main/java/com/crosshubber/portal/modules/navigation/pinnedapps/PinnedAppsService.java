@@ -19,9 +19,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Pinned apps (per user) — mirrors the pinned-apps part of {@code
- * portal/src/modules/navigation/navigation.repository.ts}: tree save is a transactional
- * delete+reinsert, client UUIDs are honored.
+ * Pinned apps (per user) — tree save is a transactional delete+reinsert; client UUIDs are honored.
  */
 @Service
 public class PinnedAppsService {

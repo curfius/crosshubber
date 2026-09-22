@@ -16,9 +16,8 @@ import org.springframework.web.client.RestClient;
 import com.crosshubber.portal.config.PortalProperties;
 
 /**
- * Keycloak admin client (client-credentials) — mirrors {@code
- * portal/src/adapters/keycloak-admin/kc-admin-client.ts}. Used by the module registry to sync
- * manifest-declared realm roles.
+ * Keycloak admin client (client-credentials). Used by the module registry to sync manifest-declared
+ * realm roles.
  */
 @Service
 public class KcAdminClient {

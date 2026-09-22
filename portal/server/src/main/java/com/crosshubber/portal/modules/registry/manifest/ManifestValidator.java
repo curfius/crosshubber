@@ -18,9 +18,9 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Manifest schema validation — mirrors {@code portal/src/modules/registry/manifest.schema.ts}
- * (parseManifest) plus {@code install.service.ts validateManifest}. Produces the same {@code "path:
- * message"} issue strings.
+ * Manifest schema validation — strict allow-list of top-level keys, per-type entry rules, and
+ * domain checks (key/name/baseUrl, at-least-one entry, portal-origin recursion guard). Issues use
+ * {@code "path: message"} strings, surfaced verbatim by the registry UI.
  */
 @Service
 public class ManifestValidator {
@@ -225,7 +225,7 @@ public class ManifestValidator {
     }
   }
 
-  // ── validateManifest (install.service.ts) ────────────────────────────
+  // ── validateManifest (install path) ────────────────────────────
 
   /** Domain validation: portal-origin recursion guards + content presence. */
   public List<String> validateDomain(JsonNode manifest) {
@@ -270,7 +270,7 @@ public class ManifestValidator {
     return errors;
   }
 
-  // ── Entry helpers (mirrors install.service.ts) ───────────────────────
+  // ── Entry helpers ───────────────────────
 
   public record FlatEntry(JsonNode entry, String category) {}
 
@@ -367,7 +367,7 @@ public class ManifestValidator {
     }
   }
 
-  /** Convenience for issue formatting parity. */
+  /** Joins issues into a single semicolon-separated string. */
   public static String formatIssues(List<String> issues) {
     return String.join("; ", issues);
   }

@@ -17,9 +17,9 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * Auth routes — login start + logout.
  *
- * <p>Mirrors {@code portal/src/modules/auth/auth.routes.ts}: login start now redirects into the
- * standard OIDC authorization-code flow (Spring Security oauth2-client), and logout redirects to
- * the Keycloak end-session endpoint for valid sessions, {@code /login} for anonymous visitors.
+ * <p>Login start redirects into the standard OIDC authorization-code flow (Spring Security
+ * oauth2-client); logout redirects to the Keycloak end-session endpoint for valid sessions, {@code
+ * /login} for anonymous visitors.
  */
 @RestController
 public class AuthController {

@@ -4,7 +4,6 @@
 --
 -- Static defaults are intentionally minimal:
 --   - schemas/roles/tables for dedicated app modules are GENERATED per tenant
---     with real credentials (02-modules.sql, backoffice-tools/src/provision/deploy.ts)
---   - portal-owned DDL is applied by the portal's versioned migrator at boot
---     (portal/src/bootstrap/migrator.ts — advisory lock + __migrations history)
+--     with real credentials (02-modules.sql, provision/deploy pipeline)
+--   - portal-owned DDL is applied by Flyway at boot (advisory lock + schema history)
 --   - Keycloak does not use Postgres in tenant deployments (dev-file DB)

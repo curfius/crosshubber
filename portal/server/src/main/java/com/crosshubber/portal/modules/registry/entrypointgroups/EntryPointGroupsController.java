@@ -15,10 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Entry point groups routes — mirrors {@code
- * portal/src/modules/entry-points/entry-point-groups.routes.ts}.
- */
+/** Entry point groups routes. */
 @RestController
 @RequestMapping("/api/registry/entry-point-groups")
 public class EntryPointGroupsController {

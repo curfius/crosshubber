@@ -15,7 +15,7 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
 /**
  * SPA fallback — serves {@code index.html} for non-API GET routes.
  *
- * <p>Mirrors {@code portal/src/server.ts:88} express.static + SPA fallback.
+ * <p>Static assets are served from {@code classpath:/static/} (the UI build output).
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {

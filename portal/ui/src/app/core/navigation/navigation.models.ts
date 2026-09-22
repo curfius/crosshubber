@@ -1,6 +1,5 @@
 // ── Navigation domain models + pure tree helpers ───────────────────────
-// Mirrors portal/src/modules/navigation/navigation.service.ts (kept separate
-// so the UI bundle stays independent from backend imports).
+// UI-local types and tree helpers (kept independent from backend imports).
 
 export type PinnedNodeType = 'folder' | 'item';
 

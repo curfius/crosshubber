@@ -2,11 +2,7 @@ package com.crosshubber.portal.common;
 
 import java.util.List;
 
-/**
- * Role helper — ANY-of semantics.
- *
- * <p>Mirrors {@code portal/src/modules/_shared/roles.ts} hasAnyRole.
- */
+/** Role helper — ANY-of semantics. */
 public final class Roles {
 
   private Roles() {}

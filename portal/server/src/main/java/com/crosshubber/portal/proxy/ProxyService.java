@@ -15,9 +15,8 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
 /**
- * MFE asset proxy — mirrors {@code portal/src/modules/proxy/proxy.routes.ts}: resolves the module's
- * {@code mfe} entry point (60 s in-memory cache), then fetches {@code <entryUrl-origin>/<rest>}
- * server-side and pipes body + content-type.
+ * MFE asset proxy: resolves the module's {@code mfe} entry point (60 s in-memory cache), then
+ * fetches {@code <entryUrl-origin>/<rest>} server-side and pipes body + content-type.
  */
 @Service
 public class ProxyService {

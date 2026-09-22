@@ -2,12 +2,7 @@ package com.crosshubber.portal.bootstrap;
 
 import java.util.List;
 
-/**
- * Builtin module catalog.
- *
- * <p>Mirrors {@code portal/src/shared/embedded-catalog.ts} — single source of truth for
- * portal-owned modules.
- */
+/** Builtin module catalog — single source of truth for portal-owned modules. */
 public final class EmbeddedCatalog {
 
   private EmbeddedCatalog() {}

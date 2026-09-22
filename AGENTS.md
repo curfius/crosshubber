@@ -15,8 +15,10 @@ from the code alone.
 | Messaging | NATS (event broker) |
 | Style | Google Java Style via Spotless + Checkstyle (2-space, 100 cols) |
 
-The Java portal is a **byte-level API port** of a Node.js reference implementation
-(external repo `genportal`). Contract compatibility governs most design decisions.
+The API is **Crosshubber-owned**. The portal began as a port of an earlier Node
+implementation that has since been decommissioned; good ideas were imported, the rest
+dropped. Response shapes change when Crosshubber needs them to — cover changes with
+tests (`mvn verify` / `npm test`), not a parity harness.
 
 ## Repo map
 
@@ -29,14 +31,14 @@ portal/
       auth/ security/ config/ common/ bootstrap/ shell/ workspaces/ proxy/
     src/main/resources/
       application.yml         portal.* config; env-driven, dev defaults insecure-by-design
-      db/migration/           Flyway V1..V21 (DDL only here)
+      db/migration/           Flyway V1..V24 (DDL only here)
       i18n-catalog.json       GENERATED seed catalog (~227 KB, 8 languages) — don't hand-edit
   ui/                         Angular 22 workspace shell
     src/app/core/             Platform services (bridge, i18n, theme, auth, config...)
     src/app/portal-core/      Shell layout, workarea, 18 lazy module UIs, feature stores
     src/design-system/        CSS-only design system (tokens + components + 18 themes)
 config-management/tenants-config/   Tenant config overlays (consumed at boot)
-scripts/contract-diff/harness.mjs   Contract-parity regression harness (the only script)
+scripts/                          Standalone tooling (e.g. sync-design-system.mjs)
 docs/archive/                       Archived implementation plans
 .opencode/skills/                   Project-local opencode skills (source of truth)
 ```
@@ -57,26 +59,23 @@ npm run build           # bundle budgets are enforced — build fails on budget 
 
 # Full dev stack
 docker compose up --build -d     # portal :28084, keycloak :28080, pg :25432, nats :32252
-
-# Contract parity check (needs both Node genportal stack :18084 and Java stack :28084)
-node scripts/contract-diff/harness.mjs
 ```
 
 Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/dev` (limited).
 
 ## Hard invariants — do not violate
 
-1. **Byte-level API contract**: JSON keys, casing, nesting, null/empty handling, list
-   ordering, status codes, and error message strings (`{"error":"..."}` envelope) must
-   match the Node reference unless listed in the README "Accepted Divergences" table.
-   Changing any of those without updating that table breaks parity. This is why some
-   Java code looks un-idiomatic on purpose (e.g. `Map<String,Object>` DTOs are being
-   migrated to records, but key casing per endpoint is owned by the DTO, not global
-   Jackson config — never enable `default-property-inclusion: non_null` globally).
+1. **API responses are Crosshubber-owned**: JSON keys, casing, nesting, null/empty
+   handling, list ordering, status codes, and the `{"error":"..."}` envelope are design
+   decisions of this repo (see README "Design notes"). Changing them is allowed when
+   Crosshubber needs it — update tests and the README notes. Conventions that remain
+   binding: key casing per endpoint is owned by the DTO/record, not global Jackson
+   config — never enable `default-property-inclusion: non_null` globally.
 2. **Flyway owns all DDL**. Never touch `ddl-auto` (`none` in prod; test profile uses
    `validate`). New indexes/tables = new `V<n>__*.sql` migration only.
-3. **API output changes require harness re-run**. After any change touching a response:
-   `node scripts/contract-diff/harness.mjs` must show no new `semantic-diff`.
+3. **Response-shape changes need tests green**: after any change touching an HTTP
+   response, run `mvn verify` and `npm test` (plus update any affected unit/snapshot
+   tests). There is no parity harness.
 4. **Secrets are never committed**. `config-management/tenants-config/dev/secrets.env`
    and `.env` are gitignored. `application.yml` holds insecure dev defaults by design —
    real secrets come from env/compose, never from code.
@@ -132,24 +131,31 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
 ## Gotchas / historical landmines
 
 - **Mojibake**: files in this repo have been CP1252-double-encoded by tooling twice
-  (i18n-catalog.json, harness.mjs, several Java/TS files, fixed 2026-09-21). Symptom:
+  (i18n-catalog.json, several Java/TS files, fixed 2026-09-21). Symptom:
   `â€"` instead of `—`, `Â§` instead of `§`. Repair by decoding UTF-8 → re-encoding
   CP1252 → decoding UTF-8 (only if all chars > U+00FF are CP1252 specials). Never save
   files through PS 5.1 `Set-Content`/`Out-File` (they emit BOMs and mojibake on write).
 - **The reconciler is fail-fast and runs at every boot** — it re-seeds i18n labels,
   providers, settings idempotently. Keep its upserts idempotent and cheap.
-- **Contract parity constraints**: `entry_points.roles` is stored comma-joined (V11)
-  because keys are kebab-case validated; `GET /api/mfe/<key>` without trailing path
-  returns 400 JSON by design; proxy upstream failures return 502 (not 500).
+- **Design notes (intentional quirks)**: `entry_points.roles` is stored comma-joined
+  (V11) because keys are kebab-case validated; `GET /api/mfe/<key>` without trailing
+  path returns 400 JSON by design; proxy upstream failures return 502 (not 500).
 - **Tenant config deep-merge**: arrays in the tenant overlay REPLACE the `_default`
   arrays (don't concatenate) — `dev/tenant.json` relies on this to blank demo modules.
-- **`i18n-catalog.json` is generated** from the Node stack's label exports. Hand edits
-  are lost on regeneration. The (removed) regen script is archived in docs/archive.
+- **`i18n-catalog.json`** is the repo-owned seed catalog (originally exported from the
+  pre-decommission Node stack; the regen script is gone). Edits are allowed; the
+  reconciler seeds insert-if-absent, so changed values need a migration (see `V24__*`)
+  or an update pass if existing installs must pick them up.
 - Windows dev environment: PowerShell 5.1. Avoid `&&` (unsupported) — use
   `cmd1; if ($?) { cmd2 }`. Native exes with spaces in paths need the call operator.
 
 ## Backlog pointers
 
+- `plan/AI_PLAN.md` — roadmap for the portal agent (session context pack, manifest
+  `agentContributions` v2, MCP tool execution, A2A-shaped sub-agents, module-owned
+  knowledge retrieval).
+- `plan/UX_PLAN.md` — portal navigation/UX optimization roadmap (journey-based
+  Phases 1–3; Phase 1 quick wins implemented 2026-09-22).
 - `portal/server/OPTIMIZATIONS.md` — the running backend optimization plan (items #1
   typed DTOs, #9 @Valid, #10 shared constants, #11 enums, #12 optimistic locking,
   #16 @Cacheable, #26 projections were open as of 2026-09; #27 Reconciler TX was fixed
@@ -166,5 +172,10 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
   **Do NOT add a TranslatePipe** — `i18n.t()` reads the `labels` computed signal inside
   template calls, so it is signal-tracked; a pure pipe would break label-reload
   reactivity and an impure pipe saves nothing.
-- `docs/archive/GAP_CLOSURE_IMPLEMENTATION_PLAN.md` — the port's working plan
-  (historical; contract reference is now the README + harness).
+- Deferred pre-decommission behavioral cleanups (2026-09-22 decoupling kept comments-only):
+  empty-patch no-op in `I18nService` ("return the language without saving"), ICU/
+  `localeCompare` tiebreak emulation in `NavigationValidationService` — revisit with
+  tests when touching those files.
+- `docs/archive/GAP_CLOSURE_IMPLEMENTATION_PLAN.md` — the original port's working plan
+  (historical; the reference implementation it was written against has been
+  decommissioned).

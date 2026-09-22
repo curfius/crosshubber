@@ -18,7 +18,7 @@ import com.crosshubber.portal.modules.i18n.I18nService;
 @RestController
 public class I18nSettingsController {
 
-  // (?i) mirrors Node's case-insensitive LANG_CODE_RE (i18n.routes.ts:9).
+  // (?i) LANG_CODE_RE.
   private static final String LANG_CODE_RE = "(?i)^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$";
 
   private final I18nService i18nService;

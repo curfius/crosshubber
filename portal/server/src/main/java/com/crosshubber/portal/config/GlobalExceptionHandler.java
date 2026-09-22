@@ -17,7 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * Centralized error handling.
  *
- * <p>Mirrors {@code portal/src/middleware/errors.ts} — always {@code {error:"..."}}.
+ * <p>Always answers with the {@code {"error":"..."}} envelope (README "Design notes").
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 
-/** Shell health service — mirrors {@code portal/src/modules/portal/portal.service.ts}. */
+/** Shell health service. */
 @Service
 public class ShellHealthService {
 

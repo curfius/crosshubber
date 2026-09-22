@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.portal.modules.i18n.I18nService;
 
-/** GET /api/i18n/config — public (mirrors i18n.routes.ts public reads). */
+/** GET /api/i18n/config — public. */
 @RestController
 public class I18nConfigController {
 

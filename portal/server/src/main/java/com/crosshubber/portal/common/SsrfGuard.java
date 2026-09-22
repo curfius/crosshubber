@@ -10,8 +10,8 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * SSRF guard for outbound fetches (manifest fetcher, MFE proxy).
  *
- * <p>Mirrors {@code portal/src/modules/registry/manifest.fetcher.ts} assertNotPrivate: blocks
- * loopback, RFC1918, link-local, ULA and 0.0.0.0 unless private access is explicitly allowed.
+ * <p>Blocks loopback, RFC1918, link-local, ULA and 0.0.0.0 unless private access is explicitly
+ * allowed.
  *
  * <p>For full TOCTOU safety, prefer {@link #resolveAndValidate} and connect to the returned
  * addresses directly (e.g. via {@code InetAddress}-based socket). {@link #assertSafeUrl} is a

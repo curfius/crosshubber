@@ -20,9 +20,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Module settings routes — mirrors {@code
- * portal/src/modules/module-settings/module-settings.routes.ts}: writes require the platform
- * fast-path role or one of the module's declared {@code securityRoles} manager keys.
+ * Module settings routes: writes require the platform fast-path role or one of the module's
+ * declared {@code securityRoles} manager keys.
  */
 @RestController
 @RequestMapping("/api/module-settings")

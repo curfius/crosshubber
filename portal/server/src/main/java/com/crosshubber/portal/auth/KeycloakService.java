@@ -45,7 +45,7 @@ public class KeycloakService {
 
   public record RefreshResult(boolean ok, PortalUser user, String idToken, String refreshToken) {}
 
-  /** Refresh-token grant — mirrors {@code refreshTokenGrant}. */
+  /** Refresh-token grant. */
   public RefreshResult refresh(String refreshToken) {
     String tokenUrl = props.getIssuer() + "/protocol/openid-connect/token";
     try {
@@ -83,8 +83,8 @@ public class KeycloakService {
   }
 
   /**
-   * Keycloak end-session URL — mirrors {@code logoutUrl(idTokenHint, postLogoutUri)}: public
-   * issuer, {@code id_token_hint} set only when present, then {@code post_logout_redirect_uri}.
+   * Keycloak end-session URL: public issuer, {@code id_token_hint} set only when present, then
+   * {@code post_logout_redirect_uri}.
    *
    * <p>Parameters are percent-encoded explicitly — {@code UriComponentsBuilder.encode()} treats
    * {@code &}/{@code =} as legal query characters and would not prevent parameter injection.

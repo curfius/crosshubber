@@ -13,7 +13,7 @@ import com.crosshubber.portal.security.PortalUser;
 
 import tools.jackson.databind.JsonNode;
 
-/** Navigation user-settings routes — mirrors navigation.routes.ts user-settings. */
+/** Navigation user-settings routes user-settings. */
 @RestController
 public class NavigationUserSettingsController {
 

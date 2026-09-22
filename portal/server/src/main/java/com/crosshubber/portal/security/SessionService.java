@@ -11,8 +11,7 @@ import org.springframework.stereotype.Service;
 /**
  * In-memory session registry.
  *
- * <p>Mirrors {@code portal/src/middleware/auth.ts} activeSessions Map + 10-min GC. Stores
- * additional session info including idToken for logout.
+ * <p>Maps token → session info (expiry + idToken for logout) and GCs expired entries on a schedule.
  */
 @Service
 public class SessionService {

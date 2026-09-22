@@ -22,10 +22,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
-/**
- * Manifest install/version/draft lifecycle — mirrors {@code
- * portal/src/modules/registry/install.service.ts}.
- */
+/** Manifest install/version/draft lifecycle. */
 @Service
 public class InstallService {
 
