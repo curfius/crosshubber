@@ -1,0 +1,114 @@
+/* ==========================================================================
+   THEME: MALO 3
+   Inspired by maloclinics.com - Purple & teal modern aesthetic.
+   Bold purple-teal gradient energy with dark olive depth.
+   ========================================================================== */
+
+[data-theme="malo-3"] {
+  --portal-bg-base:         #0a0f06;
+  --portal-bg-surface:      #0f1a0a;
+  --portal-bg-elevated:     #182a10;
+  --portal-bg-overlay:      rgba(0, 0, 0, 0.70);
+  --portal-bg-hover:        rgba(24, 42, 16, 0.70);
+  --portal-bg-active:       rgba(24, 42, 16, 0.50);
+  --portal-bg-subtle:       rgba(15, 26, 10, 0.60);
+  --portal-bg-glass:        rgba(255, 255, 255, 0.04);
+
+  --portal-text-primary:    #eef5ec;
+  --portal-text-secondary:  #c4d8bc;
+  --portal-text-tertiary:   #8fad82;
+  --portal-text-muted:      #607a56;
+  --portal-text-disabled:   #3d5435;
+  --portal-text-inverse:    #0a0f06;
+  --portal-text-link:       #1fc0da;
+  --portal-text-link-hover: #5fdbe8;
+
+  --portal-border-default:  #182a10;
+  --portal-border-subtle:   #243d18;
+  --portal-border-strong:   #3d5435;
+  --portal-border-focus:    #156361;
+  --portal-border-input:    #243d18;
+
+  --portal-accent-primary:        #156361;
+  --portal-accent-primary-hover:  #1fc0da;
+  --portal-accent-primary-active: #104e4c;
+  --portal-accent-primary-subtle: rgba(21, 99, 97, 0.15);
+  --portal-accent-primary-glow:   rgba(21, 99, 97, 0.30);
+
+  --portal-accent-secondary:        #380684;
+  --portal-accent-secondary-hover:  #5a10b8;
+  --portal-accent-secondary-active: #2a0464;
+  --portal-accent-secondary-subtle: rgba(56, 6, 132, 0.20);
+
+  --portal-status-success:        #6ecf8e;
+  --portal-status-success-subtle: rgba(110, 207, 142, 0.12);
+  --portal-status-success-bg:     rgba(110, 207, 142, 0.08);
+  --portal-status-warning:        #e9a53a;
+  --portal-status-warning-subtle: rgba(233, 165, 58, 0.12);
+  --portal-status-warning-bg:     rgba(233, 165, 58, 0.08);
+  --portal-status-danger:         #e94e1b;
+  --portal-status-danger-subtle:  rgba(233, 78, 27, 0.12);
+  --portal-status-danger-bg:      rgba(233, 78, 27, 0.08);
+  --portal-status-info:           #1fc0da;
+  --portal-status-info-subtle:    rgba(31, 192, 218, 0.12);
+  --portal-status-info-bg:        rgba(31, 192, 218, 0.08);
+
+  --portal-sidebar-bg:             #0f1a0a;
+  --portal-sidebar-border:         #182a10;
+  --portal-sidebar-hover:          rgba(24, 42, 16, 0.70);
+  --portal-sidebar-active:         rgba(21, 99, 97, 0.10);
+  --portal-sidebar-text:           #8fad82;
+  --portal-sidebar-text-hover:     #eef5ec;
+  --portal-sidebar-text-active:    #1fc0da;
+  --portal-sidebar-section-label:  #607a56;
+
+  --portal-toolbar-bg:     rgba(15, 26, 10, 0.85);
+  --portal-toolbar-border: #182a10;
+
+  --portal-tab-bg:              rgba(15, 26, 10, 0.85);
+  --portal-tab-border:          #182a10;
+  --portal-tab-active-bg:       #182a10;
+  --portal-tab-active-border:   #243d18;
+  --portal-tab-active-text:     #eef5ec;
+  --portal-tab-inactive-text:   #8fad82;
+  --portal-tab-hover-bg:        rgba(24, 42, 16, 0.60);
+  --portal-tab-hover-text:      #c4d8bc;
+
+  --portal-input-bg:             #182a10;
+  --portal-input-border:         #243d18;
+  --portal-input-border-focus:   #156361;
+  --portal-input-text:           #c4d8bc;
+  --portal-input-placeholder:    #607a56;
+
+  --portal-card-bg:          #0f1a0a;
+  --portal-card-border:      #182a10;
+  --portal-card-hover-border: #243d18;
+
+  --portal-modal-bg:        #0f1a0a;
+  --portal-modal-border:    #243d18;
+
+  --portal-btn-primary-bg:        #156361;
+  --portal-btn-primary-bg-hover:  #1fc0da;
+  --portal-btn-primary-bg-active: #104e4c;
+  --portal-btn-primary-text:      #ffffff;
+  --portal-btn-secondary-bg:      #182a10;
+  --portal-btn-secondary-bg-hover:#243d18;
+  --portal-btn-secondary-text:    #c4d8bc;
+  --portal-btn-danger-bg:         #c43510;
+  --portal-btn-danger-bg-hover:   #e94e1b;
+  --portal-btn-ghost-bg-hover:    rgba(24, 42, 16, 0.70);
+  --portal-btn-ghost-text:        #8fad82;
+  --portal-btn-ghost-text-hover:  #eef5ec;
+
+  --portal-font-family-sans:     "Inter", "Gilroy Regular", ui-sans-serif, sans-serif;
+  --portal-font-family-display:  "Gilroy Bold", "Gilroy Regular", "Inter", sans-serif;
+  --portal-font-weight-normal:   400;
+  --portal-font-weight-medium:   500;
+  --portal-font-weight-semibold: 600;
+  --portal-font-weight-bold:     700;
+
+  --portal-gradient-primary: linear-gradient(to bottom right, #243000, #156361);
+  --portal-gradient-brand:  linear-gradient(to right, #380684, #1fc0da);
+
+  color-scheme: dark;
+}

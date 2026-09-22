@@ -1,0 +1,13 @@
+/* ==========================================================================
+   THEME: DARK SLATE BOLD
+   Dark Slate with heavier font weights for emphasis and presence.
+   ========================================================================== */
+
+[data-theme="dark-slate-bold"] {
+  --portal-font-weight-normal:   500;
+  --portal-font-weight-medium:   600;
+  --portal-font-weight-semibold: 700;
+  --portal-font-weight-bold:     800;
+
+  color-scheme: dark;
+}

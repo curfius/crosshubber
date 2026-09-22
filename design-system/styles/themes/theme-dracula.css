@@ -1,0 +1,113 @@
+/* ==========================================================================
+   THEME: DRACULA
+   Based on the official Dracula color palette. Vibrant and expressive.
+   ========================================================================== */
+
+[data-theme="dracula"] {
+  --portal-bg-base:         #282a36;
+  --portal-bg-surface:      #2d303e;
+  --portal-bg-elevated:     #363949;
+  --portal-bg-overlay:      rgba(0, 0, 0, 0.60);
+  --portal-bg-hover:        rgba(54, 57, 73, 0.70);
+  --portal-bg-active:       rgba(54, 57, 73, 0.50);
+  --portal-bg-subtle:       rgba(45, 48, 62, 0.60);
+  --portal-bg-glass:        rgba(255, 255, 255, 0.05);
+
+  --portal-text-primary:    #f8f8f2;
+  --portal-text-secondary:  #e0e0d4;
+  --portal-text-tertiary:   #bfbfbf;
+  --portal-text-muted:      #808080;
+  --portal-text-disabled:   #6272a4;
+  --portal-text-inverse:    #282a36;
+  --portal-text-link:       #bd93f9;
+  --portal-text-link-hover: #ff79c6;
+
+  --portal-border-default:  #363949;
+  --portal-border-subtle:   #44475a;
+  --portal-border-strong:   #6272a4;
+  --portal-border-focus:    #bd93f9;
+  --portal-border-input:    #44475a;
+
+  --portal-accent-primary:        #bd93f9;
+  --portal-accent-primary-hover:  #d4a5ff;
+  --portal-accent-primary-active: #a87de8;
+  --portal-accent-primary-subtle: rgba(189, 147, 249, 0.15);
+  --portal-accent-primary-glow:   rgba(189, 147, 249, 0.30);
+
+  --portal-accent-secondary:        #ff79c6;
+  --portal-accent-secondary-hover:  #ff92d0;
+  --portal-accent-secondary-active: #e85eaa;
+  --portal-accent-secondary-subtle: rgba(255, 121, 198, 0.15);
+
+  --portal-status-success:        #50fa7b;
+  --portal-status-success-subtle: rgba(80, 250, 123, 0.12);
+  --portal-status-success-bg:     rgba(80, 250, 123, 0.08);
+  --portal-status-warning:        #f1fa8c;
+  --portal-status-warning-subtle: rgba(241, 250, 140, 0.12);
+  --portal-status-warning-bg:     rgba(241, 250, 140, 0.08);
+  --portal-status-danger:         #ff5555;
+  --portal-status-danger-subtle:  rgba(255, 85, 85, 0.12);
+  --portal-status-danger-bg:      rgba(255, 85, 85, 0.08);
+  --portal-status-info:           #8be9fd;
+  --portal-status-info-subtle:    rgba(139, 233, 253, 0.12);
+  --portal-status-info-bg:        rgba(139, 233, 253, 0.08);
+
+  --portal-sidebar-bg:             #2d303e;
+  --portal-sidebar-border:         #363949;
+  --portal-sidebar-hover:          rgba(54, 57, 73, 0.70);
+  --portal-sidebar-active:         rgba(189, 147, 249, 0.10);
+  --portal-sidebar-text:           #bfbfbf;
+  --portal-sidebar-text-hover:     #f8f8f2;
+  --portal-sidebar-text-active:    #bd93f9;
+  --portal-sidebar-section-label:  #808080;
+
+  --portal-toolbar-bg:     rgba(45, 48, 62, 0.85);
+  --portal-toolbar-border: #363949;
+
+  --portal-tab-bg:              rgba(45, 48, 62, 0.85);
+  --portal-tab-border:          #363949;
+  --portal-tab-active-bg:       #363949;
+  --portal-tab-active-border:   #44475a;
+  --portal-tab-active-text:     #f8f8f2;
+  --portal-tab-inactive-text:   #bfbfbf;
+  --portal-tab-hover-bg:        rgba(54, 57, 73, 0.60);
+  --portal-tab-hover-text:      #e0e0d4;
+
+  --portal-input-bg:             #363949;
+  --portal-input-border:         #44475a;
+  --portal-input-border-focus:   #bd93f9;
+  --portal-input-text:           #e0e0d4;
+  --portal-input-placeholder:    #808080;
+
+  --portal-card-bg:          #2d303e;
+  --portal-card-border:      #363949;
+  --portal-card-hover-border: #44475a;
+
+  --portal-modal-bg:        #2d303e;
+  --portal-modal-border:    #44475a;
+
+  --portal-btn-primary-bg:        #bd93f9;
+  --portal-btn-primary-bg-hover:  #d4a5ff;
+  --portal-btn-primary-bg-active: #a87de8;
+  --portal-btn-primary-text:      #282a36;
+  --portal-btn-secondary-bg:      #363949;
+  --portal-btn-secondary-bg-hover:#44475a;
+  --portal-btn-secondary-text:    #e0e0d4;
+  --portal-btn-danger-bg:         #ff5555;
+  --portal-btn-danger-bg-hover:   #ff6e6e;
+  --portal-btn-ghost-bg-hover:    rgba(54, 57, 73, 0.70);
+  --portal-btn-ghost-text:        #bfbfbf;
+  --portal-btn-ghost-text-hover:  #f8f8f2;
+
+  --portal-font-family-sans:     "Inter", ui-sans-serif, sans-serif;
+  --portal-font-family-display:  "Gilroy Bold", "Gilroy Regular", "Inter", sans-serif;
+  --portal-font-weight-normal:   400;
+  --portal-font-weight-medium:   500;
+  --portal-font-weight-semibold: 600;
+  --portal-font-weight-bold:     700;
+
+  --portal-gradient-primary: linear-gradient(to bottom right, #bd93f9, #ff79c6);
+  --portal-gradient-brand:  linear-gradient(to right, #bd93f9, #ff79c6);
+
+  color-scheme: dark;
+}

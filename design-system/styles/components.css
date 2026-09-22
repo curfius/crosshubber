@@ -1,0 +1,1737 @@
+/* ==========================================================================
+   COMPONENT CLASSES
+   Reusable .ds-* classes for all portal and embedded module components.
+   These classes consume design tokens and respond to theme changes.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   BUTTONS
+   -------------------------------------------------------------------------- */
+.ds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--portal-space-2);
+  padding: var(--portal-space-2) var(--portal-space-3);
+  font-size: var(--portal-font-size-sm);
+  font-weight: var(--portal-font-weight-medium);
+  line-height: var(--portal-line-height-tight);
+  border-radius: var(--portal-radius-lg);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--portal-transition-fast);
+  white-space: nowrap;
+  user-select: none;
+}
+.ds-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ds-btn-primary {
+  background: var(--portal-btn-primary-bg);
+  color: var(--portal-btn-primary-text);
+  border-color: transparent;
+}
+.ds-btn-primary:hover:not(:disabled) {
+  background: var(--portal-btn-primary-bg-hover);
+}
+.ds-btn-primary:active:not(:disabled) {
+  background: var(--portal-btn-primary-bg-active);
+}
+
+.ds-btn-secondary {
+  background: var(--portal-btn-secondary-bg);
+  color: var(--portal-btn-secondary-text);
+  border-color: var(--portal-border-subtle);
+}
+.ds-btn-secondary:hover:not(:disabled) {
+  background: var(--portal-btn-secondary-bg-hover);
+  border-color: var(--portal-border-strong);
+}
+.ds-btn-secondary:active:not(:disabled) {
+  background: var(--portal-btn-secondary-bg-active);
+}
+
+.ds-btn-danger {
+  background: var(--portal-btn-danger-bg);
+  color: var(--portal-btn-danger-text);
+  border-color: transparent;
+}
+.ds-btn-danger:hover:not(:disabled) {
+  background: var(--portal-btn-danger-bg-hover);
+}
+.ds-btn-danger:active:not(:disabled) {
+  background: var(--portal-btn-danger-bg-active);
+}
+
+.ds-btn-ghost {
+  background: var(--portal-btn-ghost-bg);
+  color: var(--portal-btn-ghost-text);
+  border-color: transparent;
+}
+.ds-btn-ghost:hover:not(:disabled) {
+  background: var(--portal-btn-ghost-bg-hover);
+  color: var(--portal-btn-ghost-text-hover);
+}
+.ds-btn-ghost:active:not(:disabled) {
+  background: var(--portal-btn-ghost-bg-active);
+}
+
+.ds-btn-accent {
+  background: var(--portal-accent-secondary);
+  color: #ffffff;
+  border-color: transparent;
+}
+.ds-btn-accent:hover:not(:disabled) {
+  background: var(--portal-accent-secondary-hover);
+}
+.ds-btn-accent:active:not(:disabled) {
+  background: var(--portal-accent-secondary-active);
+}
+
+.ds-btn-sm {
+  padding: var(--portal-space-1) var(--portal-space-2);
+  font-size: var(--portal-font-size-xs);
+  border-radius: var(--portal-radius-md);
+}
+
+.ds-btn-lg {
+  padding: var(--portal-space-2\.5) var(--portal-space-4);
+  font-size: var(--portal-font-size-base);
+  border-radius: var(--portal-radius-xl);
+}
+
+.ds-btn-icon {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--portal-radius-lg);
+}
+.ds-btn-icon-sm {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: var(--portal-radius-md);
+}
+
+/* Icon-button intent variants — tint the hover with a status color. */
+.ds-btn-icon-danger:hover:not(:disabled) {
+  background: var(--portal-status-danger-subtle);
+  color: var(--portal-status-danger);
+}
+.ds-btn-icon-success:hover:not(:disabled) {
+  background: var(--portal-status-success-subtle);
+  color: var(--portal-status-success);
+}
+.ds-btn-icon-warning:hover:not(:disabled) {
+  background: var(--portal-status-warning-subtle);
+  color: var(--portal-status-warning);
+}
+
+.ds-btn-gradient {
+  background: var(--portal-gradient-primary);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: var(--portal-shadow-md), var(--portal-shadow-glow);
+}
+.ds-btn-gradient:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+/* --------------------------------------------------------------------------
+   INPUTS
+   -------------------------------------------------------------------------- */
+.ds-input {
+  width: 100%;
+  padding: var(--portal-space-2) var(--portal-space-3);
+  font-size: var(--portal-font-size-sm);
+  color: var(--portal-input-text);
+  background: var(--portal-input-bg);
+  border: 1px solid var(--portal-input-border);
+  border-radius: var(--portal-radius-lg);
+  outline: none;
+  transition: border-color var(--portal-transition-fast),
+              box-shadow var(--portal-transition-fast);
+}
+.ds-input::placeholder {
+  color: var(--portal-input-placeholder);
+}
+.ds-input:focus {
+  border-color: var(--portal-input-border-focus);
+  box-shadow: 0 0 0 3px var(--portal-accent-primary-subtle);
+}
+.ds-input:disabled {
+  background: var(--portal-input-disabled-bg);
+  color: var(--portal-input-disabled-text);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ds-input-error {
+  border-color: var(--portal-status-danger);
+}
+.ds-input-error:focus {
+  box-shadow: 0 0 0 3px var(--portal-status-danger-subtle);
+}
+
+.ds-select {
+  width: 100%;
+  padding: var(--portal-space-2) var(--portal-space-3);
+  font-size: var(--portal-font-size-sm);
+  color: var(--portal-input-text);
+  background: var(--portal-input-bg);
+  border: 1px solid var(--portal-input-border);
+  border-radius: var(--portal-radius-lg);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--portal-space-3) center;
+  padding-right: var(--portal-space-8);
+  transition: border-color var(--portal-transition-fast);
+}
+.ds-select:focus {
+  border-color: var(--portal-input-border-focus);
+}
+.ds-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ds-textarea {
+  width: 100%;
+  padding: var(--portal-space-2) var(--portal-space-3);
+  font-size: var(--portal-font-size-sm);
+  color: var(--portal-input-text);
+  background: var(--portal-input-bg);
+  border: 1px solid var(--portal-input-border);
+  border-radius: var(--portal-radius-lg);
+  outline: none;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color var(--portal-transition-fast);
+}
+.ds-textarea:focus {
+  border-color: var(--portal-input-border-focus);
+}
+
+.ds-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--portal-accent-primary);
+  cursor: pointer;
+}
+
+.ds-toggle {
+  position: relative;
+  display: inline-flex;
+  width: 44px;
+  height: 24px;
+  border-radius: var(--portal-radius-full);
+  background: var(--portal-border-subtle);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: background var(--portal-transition-fast);
+}
+.ds-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--portal-radius-full);
+  background: #ffffff;
+  box-shadow: var(--portal-shadow-sm);
+  transition: transform var(--portal-transition-fast);
+}
+.ds-toggle-active {
+  background: var(--portal-accent-primary);
+}
+.ds-toggle-active::after {
+  transform: translateX(20px);
+}
+
+.ds-label {
+  display: block;
+  font-size: var(--portal-font-size-xs);
+  font-weight: var(--portal-font-weight-medium);
+  color: var(--portal-text-tertiary);
+  margin-bottom: var(--portal-space-1);
+}
+
+/* --------------------------------------------------------------------------
+   CARDS
+   -------------------------------------------------------------------------- */
+.ds-card {
+  background: var(--portal-card-bg);
+  border: 1px solid var(--portal-card-border);
+  border-radius: var(--portal-card-radius);
+  transition: border-color var(--portal-transition-fast);
+}
+.ds-card-hover:hover {
+  border-color: var(--portal-card-hover-border);
+}
+
+.ds-card-header {
+  padding: var(--portal-space-4);
+  border-bottom: 1px solid var(--portal-card-border);
+}
+
+.ds-card-body {
+  padding: var(--portal-space-4);
+}
+
+.ds-card-footer {
+  padding: var(--portal-space-4);
+  border-top: 1px solid var(--portal-card-border);
+}
+
+/* --------------------------------------------------------------------------
+   BADGES
+   -------------------------------------------------------------------------- */
+.ds-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--portal-space-0\.5) var(--portal-space-2);
+  font-size: var(--portal-font-size-xs);
+  font-weight: var(--portal-font-weight-medium);
+  border-radius: var(--portal-radius-full);
+  line-height: var(--portal-line-height-tight);
+}
+
+.ds-badge-default {
+  background: var(--portal-bg-elevated);
+  color: var(--portal-text-tertiary);
+  border: 1px solid var(--portal-border-subtle);
+}
+
+.ds-badge-success {
+  background: var(--portal-status-success-bg);
+  color: var(--portal-status-success);
+  border: 1px solid transparent;
+}
+
+.ds-badge-warning {
+  background: var(--portal-status-warning-bg);
+  color: var(--portal-status-warning);
+  border: 1px solid transparent;
+}
+
+.ds-badge-danger {
+  background: var(--portal-status-danger-bg);
+  color: var(--portal-status-danger);
+  border: 1px solid transparent;
+}
+
+.ds-badge-info {
+  background: var(--portal-status-info-bg);
+  color: var(--portal-status-info);
+  border: 1px solid transparent;
+}
+
+.ds-badge-outline {
+  background: transparent;
+  border: 1px solid var(--portal-border-subtle);
+  color: var(--portal-text-tertiary);
+}
+
+.ds-badge-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--portal-space-2);
+}
+.ds-badge-dot::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: var(--portal-radius-full);
+  background: currentColor;
+}
+
+/* --------------------------------------------------------------------------
+   TABS
+   -------------------------------------------------------------------------- */
+.ds-tab-bar {
+  display: flex;
+  align-items: stretch;
+  height: var(--portal-tab-height);
+  background: var(--portal-tab-bg);
+  border-bottom: 1px solid var(--portal-tab-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ds-tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.ds-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-2);
+  padding: 0 var(--portal-space-3);
+  font-size: var(--portal-font-size-sm);
+  color: var(--portal-tab-inactive-text);
+  border-bottom: 2px solid transparent;
+  border-radius: var(--portal-radius-md) var(--portal-radius-md) 0 0;
+  cursor: pointer;
+  transition: color var(--portal-transition-fast),
+              background var(--portal-transition-fast);
+  white-space: nowrap;
+  user-select: none;
+}
+.ds-tab:hover {
+  color: var(--portal-tab-hover-text);
+  background: var(--portal-tab-hover-bg);
+}
+
+.ds-tab-active {
+  color: var(--portal-tab-active-text);
+  background: var(--portal-tab-active-bg);
+  border-bottom-color: var(--portal-accent-primary);
+}
+
+.ds-tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--portal-radius-sm);
+  color: var(--portal-text-muted);
+  transition: all var(--portal-transition-fast);
+  margin-left: var(--portal-space-1);
+}
+.ds-tab-close:hover {
+  background: var(--portal-bg-elevated);
+  color: var(--portal-text-primary);
+}
+
+.ds-tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--portal-radius-full);
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   SIDEBAR
+   -------------------------------------------------------------------------- */
+.ds-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--portal-sidebar-bg);
+  border-right: 1px solid var(--portal-sidebar-border);
+  transition: width var(--portal-transition-slow);
+  overflow: hidden;
+}
+
+.ds-sidebar-collapsed {
+  width: var(--portal-sidebar-width-collapsed);
+  align-items: center;
+}
+.ds-sidebar-expanded {
+  width: var(--portal-sidebar-width-expanded);
+}
+
+.ds-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-3);
+  padding: var(--portal-space-2) var(--portal-space-3);
+  border-radius: var(--portal-radius-lg);
+  color: var(--portal-sidebar-text);
+  cursor: pointer;
+  transition: all var(--portal-transition-fast);
+  text-decoration: none;
+  text-align: left;
+}
+.ds-sidebar-item:hover {
+  background: var(--portal-sidebar-hover);
+  color: var(--portal-sidebar-text-hover);
+}
+
+.ds-sidebar-item-active {
+  background: var(--portal-sidebar-active);
+  color: var(--portal-sidebar-text-active);
+  border-left: 3px solid var(--portal-accent-primary);
+  padding-left: calc(var(--portal-space-3) - 3px);
+}
+
+.ds-sidebar-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.ds-sidebar-item-label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--portal-font-size-sm);
+  font-weight: var(--portal-font-weight-medium);
+}
+
+.ds-sidebar-section-label {
+  padding: var(--portal-space-4) var(--portal-space-5) var(--portal-space-2);
+  font-size: 11px;
+  font-weight: var(--portal-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--portal-sidebar-section-label);
+}
+
+/* Collapsed-mode adjustments: active rows get a full accent ring (the left
+   bar reads poorly on centered icon-only tiles), rows become fixed 40px
+   tiles, and section labels collapse into short centered rules — no room
+   for text at 64px. */
+.ds-sidebar-collapsed .ds-sidebar-item {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  justify-content: center;
+}
+.ds-sidebar-collapsed .ds-sidebar-item-active {
+  border: 1px solid var(--portal-accent-primary);
+  padding: 0;
+}
+/* Sections emit their own mini-rule below; standalone dividers would just
+   double the lines, so they disappear entirely in collapsed mode. */
+.ds-sidebar-collapsed .ds-sidebar-divider {
+  display: none;
+}
+.ds-sidebar-collapsed .ds-sidebar-section-label {
+  height: 0;
+  width: 24px;
+  padding: 0;
+  margin: var(--portal-space-2) auto;
+  font-size: 0;
+  border-top: 1px solid var(--portal-border-strong);
+  overflow: hidden;
+}
+
+.ds-sidebar-divider {
+  margin: var(--portal-space-2) var(--portal-space-3);
+  border-top: 1px solid var(--portal-sidebar-border);
+}
+
+/* --------------------------------------------------------------------------
+   TOOLBAR
+   -------------------------------------------------------------------------- */
+.ds-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--portal-space-2);
+  height: var(--portal-toolbar-height);
+  padding: 0 var(--portal-space-3);
+  background: var(--portal-toolbar-bg);
+  border-bottom: 1px solid var(--portal-toolbar-border);
+  flex-shrink: 0;
+}
+
+.ds-toolbar-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--portal-border-subtle);
+  margin: 0 var(--portal-space-1);
+}
+
+.ds-toolbar-label {
+  font-size: var(--portal-font-size-sm);
+  color: var(--portal-text-tertiary);
+}
+
+/* --------------------------------------------------------------------------
+   MODAL
+   -------------------------------------------------------------------------- */
+.ds-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--portal-z-modal-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--portal-modal-backdrop);
+  padding: var(--portal-space-6);
+}
+
+.ds-modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - var(--portal-space-12));
+  background: var(--portal-modal-bg);
+  border: 1px solid var(--portal-modal-border);
+  border-radius: var(--portal-modal-radius);
+  box-shadow: var(--portal-modal-shadow);
+  overflow: hidden;
+  animation: ds-fade-in-scale 0.2s ease-out;
+}
+
+.ds-modal-lg {
+  max-width: 640px;
+}
+
+.ds-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--portal-space-5);
+  border-bottom: 1px solid var(--portal-card-border);
+}
+
+.ds-modal-title {
+  font-size: var(--portal-font-size-lg);
+  font-weight: var(--portal-font-weight-medium);
+  color: var(--portal-text-primary);
+}
+
+.ds-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--portal-radius-lg);
+  color: var(--portal-text-muted);
+  cursor: pointer;
+  transition: all var(--portal-transition-fast);
+}
+.ds-modal-close:hover {
+  background: var(--portal-bg-elevated);
+  color: var(--portal-text-primary);
+}
+
+.ds-modal-body {
+  padding: var(--portal-space-5);
+  overflow-y: auto;
+}
+
+.ds-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--portal-space-2);
+  padding: var(--portal-space-4) var(--portal-space-5);
+  border-top: 1px solid var(--portal-card-border);
+}
+
+/* --------------------------------------------------------------------------
+   TABLE
+   -------------------------------------------------------------------------- */
+.ds-table-wrapper {
+  overflow: hidden;
+  border-radius: var(--portal-radius-xl);
+  border: 1px solid var(--portal-card-border);
+}
+
+.ds-table {
+  width: 100%;
+  text-align: left;
+  font-size: var(--portal-font-size-sm);
+}
+
+.ds-table thead {
+  background: var(--portal-bg-surface);
+}
+
+.ds-table th {
+  padding: var(--portal-space-3) var(--portal-space-4);
+  font-size: 11px;
+  font-weight: var(--portal-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--portal-text-muted);
+}
+
+.ds-table td {
+  padding: var(--portal-space-3) var(--portal-space-4);
+}
+
+.ds-table tbody {
+  background: var(--portal-bg-subtle);
+}
+
+.ds-table tbody tr {
+  border-top: 1px solid var(--portal-card-border);
+  transition: background var(--portal-transition-fast);
+}
+
+.ds-table tbody tr:hover {
+  background: var(--portal-bg-hover);
+}
+
+/* --------------------------------------------------------------------------
+   AVATAR
+   -------------------------------------------------------------------------- */
+.ds-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--portal-radius-full);
+  font-weight: var(--portal-font-weight-semibold);
+  color: #ffffff;
+  background: var(--portal-gradient-primary);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.ds-avatar-sm {
+  width: 24px;
+  height: 24px;
+  font-size: var(--portal-font-size-xs);
+}
+
+.ds-avatar-md {
+  width: 32px;
+  height: 32px;
+  font-size: var(--portal-font-size-xs);
+}
+
+.ds-avatar-lg {
+  width: 48px;
+  height: 48px;
+  font-size: var(--portal-font-size-lg);
+}
+
+/* --------------------------------------------------------------------------
+   CHAT BUBBLES
+   -------------------------------------------------------------------------- */
+.ds-chat-bubble {
+  max-width: 80%;
+  padding: var(--portal-space-3) var(--portal-space-4);
+  font-size: var(--portal-font-size-sm);
+  line-height: var(--portal-line-height-normal);
+  white-space: pre-wrap;
+}
+
+.ds-chat-bubble-user {
+  margin-left: auto;
+  border-radius: var(--portal-radius-xl) var(--portal-radius-xl) var(--portal-radius-sm) var(--portal-radius-sm);
+  background: var(--portal-accent-primary-subtle);
+  color: var(--portal-text-secondary);
+}
+
+.ds-chat-bubble-assistant {
+  margin-right: auto;
+  border-radius: var(--portal-radius-xl) var(--portal-radius-xl) var(--portal-radius-xl) var(--portal-radius-sm);
+  background: var(--portal-bg-elevated);
+  color: var(--portal-text-secondary);
+}
+
+.ds-chat-typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ds-chat-typing-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: var(--portal-radius-full);
+  background: var(--portal-text-muted);
+  animation: ds-bounce 0.6s ease-in-out infinite;
+}
+.ds-chat-typing-dot:nth-child(2) { animation-delay: 150ms; }
+.ds-chat-typing-dot:nth-child(3) { animation-delay: 300ms; }
+
+/* --------------------------------------------------------------------------
+   DROPDOWN / POPOVER
+   -------------------------------------------------------------------------- */
+.ds-dropdown {
+  position: absolute;
+  z-index: var(--portal-z-dropdown);
+  min-width: 200px;
+  background: var(--portal-bg-surface);
+  border: 1px solid var(--portal-border-default);
+  border-radius: var(--portal-radius-lg);
+  box-shadow: var(--portal-shadow-xl);
+  padding: var(--portal-space-1);
+  animation: ds-fade-in 0.15s ease-out;
+}
+
+.ds-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-2);
+  width: 100%;
+  padding: var(--portal-space-2) var(--portal-space-3);
+  font-size: var(--portal-font-size-sm);
+  color: var(--portal-text-secondary);
+  border-radius: var(--portal-radius-md);
+  cursor: pointer;
+  transition: all var(--portal-transition-fast);
+  text-align: left;
+}
+.ds-dropdown-item:hover {
+  background: var(--portal-bg-hover);
+  color: var(--portal-text-primary);
+}
+
+.ds-dropdown-divider {
+  height: 1px;
+  margin: var(--portal-space-1) 0;
+  background: var(--portal-border-default);
+}
+
+/* --------------------------------------------------------------------------
+   ALERT / NOTICE
+   -------------------------------------------------------------------------- */
+.ds-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--portal-space-3);
+  padding: var(--portal-space-3) var(--portal-space-4);
+  border-radius: var(--portal-radius-lg);
+  font-size: var(--portal-font-size-sm);
+  border: 1px solid transparent;
+}
+
+.ds-alert-info {
+  background: var(--portal-status-info-bg);
+  border-color: rgba(96, 165, 250, 0.2);
+  color: var(--portal-status-info);
+}
+
+.ds-alert-success {
+  background: var(--portal-status-success-bg);
+  border-color: rgba(52, 211, 153, 0.2);
+  color: var(--portal-status-success);
+}
+
+.ds-alert-warning {
+  background: var(--portal-status-warning-bg);
+  border-color: rgba(251, 191, 36, 0.2);
+  color: var(--portal-status-warning);
+}
+
+.ds-alert-danger {
+  background: var(--portal-status-danger-bg);
+  border-color: rgba(248, 113, 113, 0.2);
+  color: var(--portal-status-danger);
+}
+
+/* --------------------------------------------------------------------------
+   FIELDSET / FORM GROUP
+   -------------------------------------------------------------------------- */
+.ds-fieldset {
+  border: 1px solid var(--portal-border-default);
+  border-radius: var(--portal-radius-lg);
+  padding: var(--portal-space-3);
+}
+
+.ds-fieldset-legend {
+  padding: 0 var(--portal-space-1);
+  font-size: 11px;
+  font-weight: var(--portal-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--portal-text-muted);
+}
+
+.ds-form-group {
+  margin-bottom: var(--portal-space-4);
+}
+
+.ds-form-hint {
+  margin-top: var(--portal-space-1);
+  font-size: 10px;
+  color: var(--portal-text-disabled);
+}
+
+.ds-form-error {
+  margin-top: var(--portal-space-1);
+  font-size: var(--portal-font-size-sm);
+  color: var(--portal-status-danger);
+}
+
+/* --------------------------------------------------------------------------
+   SPLIT PANE DIVIDER
+   -------------------------------------------------------------------------- */
+.ds-split-divider {
+  flex-shrink: 0;
+  background: var(--portal-bg-elevated);
+  transition: background var(--portal-transition-fast);
+  cursor: default;
+}
+.ds-split-divider-horizontal {
+  width: 4px;
+}
+.ds-split-divider-vertical {
+  height: 4px;
+}
+.ds-split-divider-active {
+  cursor: col-resize;
+  background: var(--portal-accent-primary);
+}
+.ds-split-divider-active-vertical {
+  cursor: row-resize;
+  background: var(--portal-accent-primary);
+}
+.ds-split-divider:hover {
+  background: var(--portal-accent-primary-glow);
+}
+
+/* --------------------------------------------------------------------------
+   COLOR DOT (for workspace/module icons)
+   -------------------------------------------------------------------------- */
+.ds-color-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--portal-radius-md);
+  font-size: var(--portal-font-size-sm);
+  font-weight: var(--portal-font-weight-semibold);
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.ds-color-dot-sm {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+
+.ds-color-dot-lg {
+  width: 40px;
+  height: 40px;
+  font-size: var(--portal-font-size-base);
+}
+
+.ds-color-pip {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--portal-radius-full);
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   APP CARD (dashboard grid items)
+   -------------------------------------------------------------------------- */
+.ds-app-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--portal-space-2);
+  padding: var(--portal-space-3);
+  border: 1px solid var(--portal-card-border);
+  border-radius: var(--portal-radius-lg);
+  background: var(--portal-card-bg);
+  cursor: pointer;
+  transition: all var(--portal-transition-fast);
+  text-align: center;
+}
+.ds-app-card:hover {
+  border-color: var(--portal-accent-primary);
+  background: var(--portal-bg-hover);
+}
+
+.ds-app-card-name {
+  width: 100%;
+  font-size: var(--portal-font-size-sm);
+  font-weight: var(--portal-font-weight-medium);
+  color: var(--portal-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-app-card-type {
+  font-size: 9px;
+  font-weight: var(--portal-font-weight-medium);
+  color: var(--portal-text-disabled);
+  background: var(--portal-bg-elevated);
+  padding: 1px 6px;
+  border-radius: var(--portal-radius-sm);
+}
+
+/* --------------------------------------------------------------------------
+   SEARCH INPUT (with icon)
+   -------------------------------------------------------------------------- */
+.ds-search {
+  position: relative;
+}
+.ds-search-icon {
+  position: absolute;
+  left: var(--portal-space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--portal-text-muted);
+  pointer-events: none;
+}
+.ds-search .ds-input {
+  padding-left: var(--portal-space-8);
+}
+
+/* --------------------------------------------------------------------------
+   SECTION HEADER (collapsible)
+   -------------------------------------------------------------------------- */
+.ds-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-2);
+  width: 100%;
+  padding: var(--portal-space-1) 0;
+  font-size: 11px;
+  font-weight: var(--portal-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--portal-text-muted);
+  cursor: pointer;
+  transition: color var(--portal-transition-fast);
+  text-align: left;
+}
+.ds-section-header:hover {
+  color: var(--portal-text-tertiary);
+}
+
+.ds-section-count {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: var(--portal-font-weight-normal);
+  color: var(--portal-text-disabled);
+}
+
+.ds-section-chevron {
+  width: 12px;
+  height: 12px;
+  transition: transform var(--portal-transition-fast);
+}
+.ds-section-chevron-open {
+  transform: rotate(90deg);
+}
+
+/* --------------------------------------------------------------------------
+   TREE NAVIGATION
+   Nested list navigation with optional built-in search header.
+   Depth indentation is applied via inline padding-left on nodes.
+   -------------------------------------------------------------------------- */
+.ds-tree {
+  display: flex;
+  flex-direction: column;
+  gap: var(--portal-space-0-5, 2px);
+  padding: var(--portal-space-3);
+  background: var(--portal-bg-surface);
+  border: 1px solid var(--portal-border-default);
+  border-radius: var(--portal-radius-lg);
+}
+
+/* Variant: no surface chrome — bare list for embedding inside panels/cards */
+.ds-tree-unboxed {
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.ds-tree-header {
+  margin-bottom: var(--portal-space-2);
+}
+
+.ds-tree-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--portal-text-muted);
+  transition: transform var(--portal-transition-fast);
+}
+.ds-tree-chevron.open {
+  transform: rotate(90deg);
+}
+
+.ds-tree-node {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-2);
+  width: 100%;
+  padding: var(--portal-space-2) var(--portal-space-3);
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: var(--portal-radius-md);
+  background: transparent;
+  font-size: var(--portal-font-size-sm);
+  text-align: left;
+  color: var(--portal-text-secondary);
+  cursor: pointer;
+  transition: all var(--portal-transition-fast);
+}
+.ds-tree-node:hover {
+  background: var(--portal-bg-hover);
+  color: var(--portal-text-primary);
+}
+
+.ds-tree-node-selected,
+.ds-tree-node-active {
+  background: var(--portal-bg-active);
+  border-left-color: var(--portal-accent-primary);
+  color: var(--portal-text-primary);
+  font-weight: var(--portal-font-weight-medium);
+}
+.ds-tree-node-selected:hover,
+.ds-tree-node-active:hover {
+  background: var(--portal-bg-active);
+  color: var(--portal-text-primary);
+}
+
+.ds-tree-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-tree-meta {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--portal-text-muted);
+}
+
+.ds-tree-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--portal-radius-full);
+  flex-shrink: 0;
+}
+
+.ds-tree-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--portal-radius-sm);
+  color: var(--portal-text-disabled);
+  opacity: 0;
+  transition: all var(--portal-transition-fast);
+}
+.ds-tree-node:hover .ds-tree-action {
+  opacity: 1;
+}
+.ds-tree-action:hover {
+  background: var(--portal-status-danger-subtle);
+  color: var(--portal-status-danger);
+}
+
+/* Optional actions row pinned to the bottom (e.g. "Add item"). */
+.ds-tree-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-1);
+  margin-top: var(--portal-space-2);
+  padding-top: var(--portal-space-2);
+  border-top: 1px solid var(--portal-border-default);
+}
+.ds-tree-footer .ds-tree-node {
+  width: auto;
+  gap: var(--portal-space-1);
+  font-size: var(--portal-font-size-xs);
+  color: var(--portal-text-muted);
+  background: none;
+  border-left-color: transparent;
+}
+.ds-tree-footer .ds-tree-node:hover {
+  color: var(--portal-text-primary);
+  background: var(--portal-bg-hover);
+}
+
+/* ==========================================================================
+   WIZARD WORKFLOW - VERTICAL (ds-wv-*)
+   Stack of collapsible panels. Only the current step is expanded; completed
+   steps are collapsed with summary and re-expandable for editing; future
+   steps are disabled. Connector line spans the gap between indicators.
+   Animation: grid 0fr → 1fr on body (no fixed max-height).
+   ========================================================================== */
+
+/* Container */
+.ds-wv {
+  display: flex;
+  flex-direction: column;
+  gap: var(--portal-space-3);
+  position: relative;
+}
+
+/* Step panel */
+.ds-wv-step {
+  position: relative;
+  z-index: 1;
+  background: var(--portal-card-bg);
+  border: 1px solid var(--portal-card-border);
+  border-radius: var(--portal-card-radius);
+  transition: border-color var(--portal-transition-fast),
+              box-shadow var(--portal-transition-fast),
+              opacity var(--portal-transition-fast);
+}
+
+/* Vertical connector — line between indicators */
+.ds-wv-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--portal-space-4) + var(--portal-wizard-indicator-size) / 2 - var(--portal-wizard-connector-width) / 2);
+  top: calc(var(--portal-space-4) + var(--portal-wizard-indicator-size));
+  bottom: calc(var(--portal-space-3) * -1 - 2px);
+  width: var(--portal-wizard-connector-width);
+  background: var(--portal-border-default);
+  z-index: 0;
+  pointer-events: none;
+}
+.ds-wv-step-completed:not(:last-child)::after {
+  background: var(--portal-status-success);
+  opacity: 0.35;
+}
+.ds-wv-step-active:not(:last-child)::after,
+.ds-wv-step-expanded:not(:last-child)::after {
+  opacity: 0;
+}
+.ds-wv-step-error:not(:last-child)::after {
+  background: var(--portal-status-danger);
+  opacity: 0.30;
+}
+
+/* State borders */
+.ds-wv-step-active {
+  border-color: var(--portal-accent-primary);
+  box-shadow: var(--portal-shadow-sm);
+  z-index: 2;
+}
+.ds-wv-step-error {
+  border-color: var(--portal-status-danger);
+}
+.ds-wv-step-error.ds-wv-step-active {
+  border-color: var(--portal-status-danger);
+  box-shadow: 0 0 0 3px var(--portal-status-danger-subtle);
+}
+.ds-wv-step-disabled {
+  opacity: 0.55;
+}
+.ds-wv-step-disabled .ds-wv-step-header {
+  cursor: not-allowed;
+}
+
+/* Header — button when interactive, div when disabled */
+.ds-wv-step-header {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-3);
+  width: 100%;
+  padding: var(--portal-space-3) var(--portal-space-4);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  position: relative;
+  z-index: 1;
+  transition: background var(--portal-transition-fast);
+}
+.ds-wv-step-header:hover {
+  background: var(--portal-bg-hover);
+}
+.ds-wv-step-active .ds-wv-step-header,
+.ds-wv-step-active .ds-wv-step-header:hover {
+  background: var(--portal-bg-subtle);
+  cursor: default;
+}
+.ds-wv-step-disabled .ds-wv-step-header,
+.ds-wv-step-disabled .ds-wv-step-header:hover {
+  background: transparent;
+  cursor: not-allowed;
+}
+.ds-wv-step-header:focus-visible {
+  outline: 2px solid var(--portal-border-focus);
+  outline-offset: -2px;
+}
+
+/* Indicator circle */
+.ds-wv-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--portal-wizard-indicator-size);
+  height: var(--portal-wizard-indicator-size);
+  border-radius: var(--portal-radius-full);
+  flex-shrink: 0;
+  font-size: var(--portal-font-size-xs);
+  font-weight: var(--portal-font-weight-semibold);
+  border: 2px solid var(--portal-border-subtle);
+  background: var(--portal-bg-surface);
+  color: var(--portal-text-muted);
+  transition: all var(--portal-transition-fast);
+  position: relative;
+  z-index: 2;
+}
+.ds-wv-step-active .ds-wv-indicator {
+  background: var(--portal-accent-primary);
+  border-color: var(--portal-accent-primary);
+  color: #ffffff;
+  box-shadow: 0 0 0 4px var(--portal-accent-primary-subtle);
+}
+.ds-wv-step-completed .ds-wv-indicator {
+  background: var(--portal-status-success);
+  border-color: var(--portal-status-success);
+  color: #ffffff;
+}
+.ds-wv-step-error .ds-wv-indicator {
+  background: var(--portal-status-danger);
+  border-color: var(--portal-status-danger);
+  color: #ffffff;
+}
+.ds-wv-step-disabled .ds-wv-indicator {
+  background: var(--portal-bg-elevated);
+  border-color: var(--portal-border-default);
+  color: var(--portal-text-disabled);
+}
+
+/* Titles */
+.ds-wv-step-titles {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ds-wv-step-title {
+  font-size: var(--portal-font-size-sm);
+  font-weight: var(--portal-font-weight-medium);
+  color: var(--portal-text-primary);
+  line-height: var(--portal-line-height-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-wv-step-disabled .ds-wv-step-title {
+  color: var(--portal-text-muted);
+}
+.ds-wv-step-description {
+  font-size: var(--portal-font-size-xs);
+  color: var(--portal-text-muted);
+  line-height: var(--portal-line-height-normal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-wv-step-summary {
+  font-size: var(--portal-font-size-xs);
+  color: var(--portal-text-tertiary);
+  line-height: var(--portal-line-height-normal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-wv-step-completed:not(.ds-wv-step-expanded) .ds-wv-step-summary {
+  display: block;
+}
+.ds-wv-step-active .ds-wv-step-summary,
+.ds-wv-step-expanded .ds-wv-step-summary,
+.ds-wv-step-disabled .ds-wv-step-summary,
+.ds-wv-step-error:not(.ds-wv-step-expanded) .ds-wv-step-summary {
+  display: none;
+}
+.ds-wv-step-active .ds-wv-step-description,
+.ds-wv-step-expanded .ds-wv-step-description {
+  display: none;
+}
+
+/* Optional badge */
+.ds-wv-step-optional-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: var(--portal-font-weight-medium);
+  color: var(--portal-text-muted);
+  background: var(--portal-bg-elevated);
+  border: 1px solid var(--portal-border-default);
+  border-radius: var(--portal-radius-full);
+  line-height: 1;
+}
+
+/* Header right side: action + chevron */
+.ds-wv-step-action {
+  flex-shrink: 0;
+  font-size: var(--portal-font-size-xs);
+  font-weight: var(--portal-font-weight-medium);
+  color: var(--portal-accent-primary);
+  opacity: 0;
+  transition: opacity var(--portal-transition-fast);
+}
+.ds-wv-step-completed .ds-wv-step-action {
+  opacity: 1;
+}
+.ds-wv-step-active .ds-wv-step-action,
+.ds-wv-step-disabled .ds-wv-step-action,
+.ds-wv-step-expanded .ds-wv-step-action {
+  opacity: 0;
+  pointer-events: none;
+}
+.ds-wv-step-header:hover .ds-wv-step-action {
+  opacity: 1;
+}
+
+.ds-wv-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--portal-text-muted);
+  transition: transform var(--portal-transition-normal);
+}
+.ds-wv-step-header[aria-expanded="true"] .ds-wv-chevron {
+  transform: rotate(180deg);
+}
+.ds-wv-step-disabled .ds-wv-chevron {
+  opacity: 0.35;
+}
+.ds-wv-step-active .ds-wv-chevron {
+  color: var(--portal-text-tertiary);
+}
+
+/* Collapsible body — grid 0fr → 1fr animation */
+.ds-wv-step-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--portal-transition-slow);
+}
+.ds-wv-step-active .ds-wv-step-body,
+.ds-wv-step-expanded .ds-wv-step-body {
+  grid-template-rows: 1fr;
+}
+.ds-wv-step-disabled .ds-wv-step-body {
+  display: none;
+}
+.ds-wv-step-body-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+.ds-wv-step-content {
+  padding: var(--portal-space-4);
+  border-top: 1px solid var(--portal-card-border);
+}
+.ds-wv-step-error .ds-wv-step-content {
+  border-top-color: rgba(248, 113, 113, 0.25);
+}
+.ds-wv-step-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--portal-space-2);
+  padding: var(--portal-space-3) var(--portal-space-4);
+  border-top: 1px solid var(--portal-card-border);
+  background: var(--portal-bg-subtle);
+}
+
+/* Error message */
+.ds-wv-step-error-msg {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-2);
+  margin-top: var(--portal-space-3);
+  padding: var(--portal-space-2) var(--portal-space-3);
+  font-size: var(--portal-font-size-xs);
+  color: var(--portal-status-danger);
+  background: var(--portal-status-danger-bg);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: var(--portal-radius-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-wv-step-body { transition: none; }
+  .ds-wv-chevron { transition: none; }
+}
+
+/* ==========================================================================
+   WIZARD WORKFLOW - HORIZONTAL (ds-wh-*)
+   Panel card with a scrollable steps bar at the top and full-width body
+   below. Steps bar overflows horizontally; body always occupies full width.
+   ========================================================================== */
+
+/* Container — panel card */
+.ds-wh {
+  display: flex;
+  flex-direction: column;
+  background: var(--portal-card-bg);
+  border: 1px solid var(--portal-card-border);
+  border-radius: var(--portal-card-radius);
+  overflow: hidden;
+}
+
+/* Scrollable steps bar */
+.ds-wh-steps {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  border-bottom: 1px solid var(--portal-card-border);
+  padding: var(--portal-space-2);
+  position: relative;
+}
+.ds-wh-steps > .ds-wh-step:first-child {
+  margin-left: auto;
+}
+.ds-wh-steps > .ds-wh-step:last-child {
+  margin-right: auto;
+}
+
+/* Individual step header inside the bar */
+.ds-wh-step {
+  flex: 0 0 auto;
+  min-width: 120px;
+  position: relative;
+  z-index: 1;
+}
+
+.ds-wh-step-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--portal-space-2);
+  width: 100%;
+  padding: var(--portal-space-3) var(--portal-space-2);
+  text-align: center;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  position: relative;
+  z-index: 1;
+  transition: background var(--portal-transition-fast);
+  border-radius: var(--portal-radius-lg);
+}
+.ds-wh-step-header:hover {
+  background: var(--portal-bg-hover);
+}
+.ds-wh-step-active .ds-wh-step-header,
+.ds-wh-step-active .ds-wh-step-header:hover {
+  background: var(--portal-bg-subtle);
+  cursor: default;
+}
+.ds-wh-step-disabled .ds-wh-step-header,
+.ds-wh-step-disabled .ds-wh-step-header:hover {
+  background: transparent;
+  cursor: not-allowed;
+}
+.ds-wh-step-header:focus-visible {
+  outline: 2px solid var(--portal-border-focus);
+  outline-offset: -2px;
+}
+
+/* Horizontal connector inside the steps bar */
+.ds-wh-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: calc(50% + var(--portal-wizard-indicator-size) / 2 + var(--portal-space-2));
+  right: calc(var(--portal-space-2) * -1);
+  top: calc(var(--portal-space-3) + var(--portal-wizard-indicator-size) / 2 - var(--portal-wizard-connector-width) / 2);
+  bottom: auto;
+  width: auto;
+  height: var(--portal-wizard-connector-width);
+  background: var(--portal-border-default);
+  z-index: 0;
+  pointer-events: none;
+}
+.ds-wh-step-completed:not(:last-child)::after {
+  background: var(--portal-status-success);
+  opacity: 0.35;
+}
+.ds-wh-step-active:not(:last-child)::after,
+.ds-wh-step-expanded:not(:last-child)::after {
+  opacity: 0;
+}
+.ds-wh-step-error:not(:last-child)::after {
+  background: var(--portal-status-danger);
+  opacity: 0.30;
+}
+
+/* Indicator circle */
+.ds-wh-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--portal-wizard-indicator-size);
+  height: var(--portal-wizard-indicator-size);
+  border-radius: var(--portal-radius-full);
+  flex-shrink: 0;
+  font-size: var(--portal-font-size-xs);
+  font-weight: var(--portal-font-weight-semibold);
+  border: 2px solid var(--portal-border-subtle);
+  background: var(--portal-bg-surface);
+  color: var(--portal-text-muted);
+  transition: all var(--portal-transition-fast);
+  position: relative;
+  z-index: 2;
+}
+.ds-wh-step-active .ds-wh-indicator {
+  background: var(--portal-accent-primary);
+  border-color: var(--portal-accent-primary);
+  color: #ffffff;
+  box-shadow: 0 0 0 4px var(--portal-accent-primary-subtle);
+}
+.ds-wh-step-completed .ds-wh-indicator {
+  background: var(--portal-status-success);
+  border-color: var(--portal-status-success);
+  color: #ffffff;
+}
+.ds-wh-step-error .ds-wh-indicator {
+  background: var(--portal-status-danger);
+  border-color: var(--portal-status-danger);
+  color: #ffffff;
+}
+.ds-wh-step-disabled .ds-wh-indicator {
+  background: var(--portal-bg-elevated);
+  border-color: var(--portal-border-default);
+  color: var(--portal-text-disabled);
+}
+
+/* Titles — centered in horizontal layout */
+.ds-wh-step-titles {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  width: 100%;
+}
+.ds-wh-step-title {
+  font-size: var(--portal-font-size-sm);
+  font-weight: var(--portal-font-weight-medium);
+  color: var(--portal-text-primary);
+  line-height: var(--portal-line-height-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.ds-wh-step-disabled .ds-wh-step-title {
+  color: var(--portal-text-muted);
+}
+.ds-wh-step-description {
+  font-size: var(--portal-font-size-xs);
+  color: var(--portal-text-muted);
+  line-height: var(--portal-line-height-normal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  text-align: center;
+}
+.ds-wh-step-summary {
+  font-size: var(--portal-font-size-xs);
+  color: var(--portal-text-tertiary);
+  line-height: var(--portal-line-height-normal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  text-align: center;
+}
+.ds-wh-step-completed:not(.ds-wh-step-expanded) .ds-wh-step-summary {
+  display: block;
+}
+.ds-wh-step-active .ds-wh-step-summary,
+.ds-wh-step-expanded .ds-wh-step-summary,
+.ds-wh-step-disabled .ds-wh-step-summary,
+.ds-wh-step-error:not(.ds-wh-step-expanded) .ds-wh-step-summary {
+  display: none;
+}
+.ds-wh-step-active .ds-wh-step-description,
+.ds-wh-step-expanded .ds-wh-step-description {
+  display: none;
+}
+
+/* Optional badge */
+.ds-wh-step-optional-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: var(--portal-font-weight-medium);
+  color: var(--portal-text-muted);
+  background: var(--portal-bg-elevated);
+  border: 1px solid var(--portal-border-default);
+  border-radius: var(--portal-radius-full);
+  line-height: 1;
+}
+
+/* State borders on step */
+.ds-wh-step-active {
+  border-color: var(--portal-accent-primary);
+}
+.ds-wh-step-error {
+  border-color: var(--portal-status-danger);
+}
+.ds-wh-step-disabled {
+  opacity: 0.55;
+}
+
+/* Full-width body below the steps bar */
+.ds-wh-body {
+  width: 100%;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--portal-transition-slow);
+}
+.ds-wh-body-open {
+  grid-template-rows: 1fr;
+}
+.ds-wh-body-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+.ds-wh-body-content {
+  padding: var(--portal-space-4);
+  border-top: 1px solid var(--portal-card-border);
+}
+.ds-wh-step-error.ds-wh-step-active ~ .ds-wh .ds-wh-body-content,
+.ds-wh-body-error .ds-wh-body-content {
+  border-top-color: rgba(248, 113, 113, 0.25);
+}
+.ds-wh-step-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--portal-space-2);
+  padding: var(--portal-space-3) var(--portal-space-4);
+  border-top: 1px solid var(--portal-card-border);
+  background: var(--portal-bg-subtle);
+}
+
+/* Error message */
+.ds-wh-step-error-msg {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-2);
+  margin-top: var(--portal-space-3);
+  padding: var(--portal-space-2) var(--portal-space-3);
+  font-size: var(--portal-font-size-xs);
+  color: var(--portal-status-danger);
+  background: var(--portal-status-danger-bg);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: var(--portal-radius-md);
+}
+
+/* States on body error border */
+.ds-wh-body-error .ds-wh-body-content {
+  border-top-color: rgba(248, 113, 113, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-wh-body { transition: none; }
+}

@@ -1,0 +1,106 @@
+/* ==========================================================================
+   THEME: SUNSET
+   Warm oranges, reds, and ambers on dark. Energetic and bold.
+   ========================================================================== */
+
+[data-theme="sunset"] {
+  --portal-bg-base:         #120a08;
+  --portal-bg-surface:      #1a100c;
+  --portal-bg-elevated:     #2b1a14;
+  --portal-bg-overlay:      rgba(0, 0, 0, 0.70);
+  --portal-bg-hover:        rgba(43, 26, 20, 0.70);
+  --portal-bg-active:       rgba(43, 26, 20, 0.50);
+  --portal-bg-subtle:       rgba(26, 16, 12, 0.60);
+  --portal-bg-glass:        rgba(255, 255, 255, 0.04);
+
+  --portal-text-primary:    #f5ede8;
+  --portal-text-secondary:  #d4b8a8;
+  --portal-text-tertiary:   #a07d6d;
+  --portal-text-muted:      #7a5c4e;
+  --portal-text-disabled:   #5a4238;
+  --portal-text-inverse:    #120a08;
+  --portal-text-link:       #fb923c;
+  --portal-text-link-hover: #fdba74;
+
+  --portal-border-default:  #2b1a14;
+  --portal-border-subtle:   #3d2a20;
+  --portal-border-strong:   #5a4238;
+  --portal-border-focus:    #f97316;
+  --portal-border-input:    #3d2a20;
+
+  --portal-accent-primary:        #f97316;
+  --portal-accent-primary-hover:  #fb923c;
+  --portal-accent-primary-active: #ea580c;
+  --portal-accent-primary-subtle: rgba(249, 115, 22, 0.15);
+  --portal-accent-primary-glow:   rgba(249, 115, 22, 0.30);
+
+  --portal-accent-secondary:        #ef4444;
+  --portal-accent-secondary-hover:  #f87171;
+  --portal-accent-secondary-active: #dc2626;
+  --portal-accent-secondary-subtle: rgba(239, 68, 68, 0.15);
+
+  --portal-status-success:        #4ade80;
+  --portal-status-success-subtle: rgba(74, 222, 128, 0.12);
+  --portal-status-success-bg:     rgba(74, 222, 128, 0.08);
+  --portal-status-warning:        #fbbf24;
+  --portal-status-warning-subtle: rgba(251, 191, 36, 0.12);
+  --portal-status-warning-bg:     rgba(251, 191, 36, 0.08);
+  --portal-status-danger:         #f87171;
+  --portal-status-danger-subtle:  rgba(248, 113, 113, 0.12);
+  --portal-status-danger-bg:      rgba(248, 113, 113, 0.08);
+  --portal-status-info:           #fb923c;
+  --portal-status-info-subtle:    rgba(251, 146, 60, 0.12);
+  --portal-status-info-bg:        rgba(251, 146, 60, 0.08);
+
+  --portal-sidebar-bg:             #1a100c;
+  --portal-sidebar-border:         #2b1a14;
+  --portal-sidebar-hover:          rgba(43, 26, 20, 0.70);
+  --portal-sidebar-active:         rgba(249, 115, 22, 0.10);
+  --portal-sidebar-text:           #a07d6d;
+  --portal-sidebar-text-hover:     #f5ede8;
+  --portal-sidebar-text-active:    #fb923c;
+  --portal-sidebar-section-label:  #7a5c4e;
+
+  --portal-toolbar-bg:     rgba(26, 16, 12, 0.85);
+  --portal-toolbar-border: #2b1a14;
+
+  --portal-tab-bg:              rgba(26, 16, 12, 0.85);
+  --portal-tab-border:          #2b1a14;
+  --portal-tab-active-bg:       #2b1a14;
+  --portal-tab-active-border:   #3d2a20;
+  --portal-tab-active-text:     #f5ede8;
+  --portal-tab-inactive-text:   #a07d6d;
+  --portal-tab-hover-bg:        rgba(43, 26, 20, 0.60);
+  --portal-tab-hover-text:      #d4b8a8;
+
+  --portal-input-bg:             #2b1a14;
+  --portal-input-border:         #3d2a20;
+  --portal-input-border-focus:   #f97316;
+  --portal-input-text:           #d4b8a8;
+  --portal-input-placeholder:    #7a5c4e;
+
+  --portal-card-bg:          #1a100c;
+  --portal-card-border:      #2b1a14;
+  --portal-card-hover-border: #3d2a20;
+
+  --portal-modal-bg:        #1a100c;
+  --portal-modal-border:    #3d2a20;
+
+  --portal-btn-primary-bg:        #f97316;
+  --portal-btn-primary-bg-hover:  #fb923c;
+  --portal-btn-primary-bg-active: #ea580c;
+  --portal-btn-primary-text:      #ffffff;
+  --portal-btn-secondary-bg:      #2b1a14;
+  --portal-btn-secondary-bg-hover:#3d2a20;
+  --portal-btn-secondary-text:    #d4b8a8;
+  --portal-btn-danger-bg:         #dc2626;
+  --portal-btn-danger-bg-hover:   #ef4444;
+  --portal-btn-ghost-bg-hover:    rgba(43, 26, 20, 0.70);
+  --portal-btn-ghost-text:        #a07d6d;
+  --portal-btn-ghost-text-hover:  #f5ede8;
+
+  --portal-gradient-primary: linear-gradient(to bottom right, #f97316, #ef4444);
+  --portal-gradient-brand:  linear-gradient(to right, #f97316, #ef4444);
+
+  color-scheme: dark;
+}

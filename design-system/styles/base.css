@@ -1,0 +1,372 @@
+/* ==========================================================================
+   BASE STYLES
+   Reset, typography defaults, scrollbar styling, focus rings, and global
+   utility classes. This file should be imported after design-tokens.css.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   FONT FACE DECLARATIONS
+   Gilroy (display) + Inter (body) + Fragment Mono (code)
+   Source: maloclinics.com / Google Fonts
+   -------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Gilroy Regular";
+  src: url("https://framerusercontent.com/assets/zoaCeFOKVe2WV2vbChMqWwTDr8E.woff2") format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Gilroy Bold";
+  src: url("https://framerusercontent.com/assets/VmkFwjdYRgBQaOt2yGVpQJMZQ.woff2") format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2") format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 100 900;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa25L7SUc.woff2") format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 100 900;
+  unicode-range: U+0100-02BA, U+02BD, U+02C6, U+02C9, U+02CC, U+02D9, U+02DD, U+02DF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Fragment Mono";
+  src: url("https://fonts.gstatic.com/s/fragmentmono/v6/4iCr6K5wfMRRjxp0DA6-2CLnB4NHhg.woff2") format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* --------------------------------------------------------------------------
+   CSS RESET (minimal)
+   Wrapped in @layer base: when the design system is used alongside Tailwind,
+   its utilities layer must be able to override these element-level defaults.
+   Standalone usage (showroom) is unaffected — layers only matter when other
+   layered stylesheets compete.
+   -------------------------------------------------------------------------- */
+@layer base {
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--portal-font-family-sans);
+  font-size: var(--portal-font-size-base);
+  font-weight: var(--portal-font-weight-normal);
+  line-height: var(--portal-line-height-normal);
+  color: var(--portal-text-secondary);
+  background-color: var(--portal-bg-base);
+  min-height: 100vh;
+}
+
+img, svg, video, canvas {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: var(--portal-text-link);
+  text-decoration: none;
+  transition: color var(--portal-transition-fast);
+}
+a:hover {
+  color: var(--portal-text-link-hover);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+input, textarea, select {
+  font: inherit;
+  color: inherit;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+} /* end @layer base */
+
+/* --------------------------------------------------------------------------
+   TYPOGRAPHY UTILITIES
+   -------------------------------------------------------------------------- */
+.ds-font-display {
+  font-family: var(--portal-font-family-display);
+}
+
+.ds-heading-1 {
+  font-family: var(--portal-font-family-display);
+  font-size: var(--portal-font-size-2xl);
+  font-weight: var(--portal-font-weight-semibold);
+  color: var(--portal-text-primary);
+  line-height: var(--portal-line-height-tight);
+  letter-spacing: var(--portal-letter-spacing-tight);
+}
+
+.ds-heading-2 {
+  font-family: var(--portal-font-family-display);
+  font-size: var(--portal-font-size-xl);
+  font-weight: var(--portal-font-weight-medium);
+  color: var(--portal-text-primary);
+  line-height: var(--portal-line-height-tight);
+}
+
+.ds-heading-3 {
+  font-size: var(--portal-font-size-lg);
+  font-weight: var(--portal-font-weight-medium);
+  color: var(--portal-text-primary);
+  line-height: var(--portal-line-height-tight);
+}
+
+.ds-body {
+  font-size: var(--portal-font-size-base);
+  color: var(--portal-text-secondary);
+  line-height: var(--portal-line-height-normal);
+}
+
+.ds-body-sm {
+  font-size: var(--portal-font-size-sm);
+  color: var(--portal-text-tertiary);
+  line-height: var(--portal-line-height-normal);
+}
+
+.ds-caption {
+  font-size: var(--portal-font-size-xs);
+  color: var(--portal-text-muted);
+  line-height: var(--portal-line-height-normal);
+  letter-spacing: var(--portal-letter-spacing-wide);
+}
+
+.ds-label {
+  font-size: var(--portal-font-size-xs);
+  font-weight: var(--portal-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--portal-letter-spacing-widest);
+  color: var(--portal-text-muted);
+}
+
+.ds-mono {
+  font-family: var(--portal-font-family-mono);
+  font-size: 0.85em;
+}
+
+/* --------------------------------------------------------------------------
+   SCROLLBAR STYLING
+   -------------------------------------------------------------------------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--portal-border-subtle);
+  border-radius: var(--portal-radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--portal-border-strong);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--portal-border-subtle) transparent;
+}
+
+/* --------------------------------------------------------------------------
+   FOCUS RING
+   -------------------------------------------------------------------------- */
+.ds-focus-ring {
+  outline: none;
+}
+.ds-focus-ring:focus-visible {
+  outline: 2px solid var(--portal-border-focus);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   SELECTION
+   -------------------------------------------------------------------------- */
+::selection {
+  background: var(--portal-accent-primary-subtle);
+  color: var(--portal-text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   GLOBAL UTILITY CLASSES
+   -------------------------------------------------------------------------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.ds-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ds-flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ds-grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--portal-space-3);
+}
+
+/* --------------------------------------------------------------------------
+   ANIMATION KEYFRAMES
+   -------------------------------------------------------------------------- */
+@keyframes ds-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ds-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
+@keyframes ds-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+@keyframes ds-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ds-fade-in-scale {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.ds-animate-spin {
+  animation: ds-spin 1s linear infinite;
+}
+
+.ds-animate-bounce {
+  animation: ds-bounce 0.6s ease-in-out infinite;
+}
+
+.ds-animate-pulse {
+  animation: ds-pulse 2s ease-in-out infinite;
+}
+
+.ds-animate-fade-in {
+  animation: ds-fade-in 0.2s ease-out;
+}
+
+.ds-animate-fade-in-scale {
+  animation: ds-fade-in-scale 0.2s ease-out;
+}
+
+/* --------------------------------------------------------------------------
+   LOADING SPINNER
+   -------------------------------------------------------------------------- */
+.ds-spinner {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--portal-border-default);
+  border-top-color: var(--portal-accent-primary);
+  border-radius: var(--portal-radius-full);
+  animation: ds-spin 0.8s linear infinite;
+}
+
+.ds-spinner-sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.ds-spinner-lg {
+  width: 56px;
+  height: 56px;
+  border-width: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   EMPTY STATE
+   -------------------------------------------------------------------------- */
+.ds-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--portal-space-3);
+  padding: var(--portal-space-12) var(--portal-space-6);
+  text-align: center;
+}
+
+.ds-empty-state-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--portal-radius-2xl);
+  background: var(--portal-bg-elevated);
+  color: var(--portal-text-muted);
+}
+
+.ds-empty-state-title {
+  font-size: var(--portal-font-size-base);
+  color: var(--portal-text-muted);
+}
+
+.ds-empty-state-description {
+  font-size: var(--portal-font-size-sm);
+  color: var(--portal-text-disabled);
+  max-width: 300px;
+}

@@ -23,6 +23,8 @@
 @import "./design-system/styles/themes/theme-malo-3.css";
 @import "./design-system/styles/themes/theme-malo-light.css";
 @import "./design-system/styles/themes/theme-malo-dark.css";
+@import "./design-system/styles/themes/theme-carris-light.css";
+@import "./design-system/styles/themes/theme-carris-dark.css";
 
 /* Remap Tailwind's type scale onto the design-system font sizes so every
    text-* utility renders at DS density across all themes. */
@@ -41,4 +43,6 @@
   outline: 2px solid var(--portal-border-focus);
   outline-offset: 2px;
 }
+
+@source "./src/app";
 

@@ -1,0 +1,113 @@
+/* ==========================================================================
+   THEME: CARRIS DARK
+   Dark theme inspired by carrismetropolitana.pt. Deep dark backgrounds with
+   vibrant yellow/gold accents reflecting the CARRIS Metropolitana brand.
+   ========================================================================== */
+
+[data-theme="carris-dark"] {
+  --portal-bg-base:         #121218;
+  --portal-bg-surface:      #1a1a24;
+  --portal-bg-elevated:     #242430;
+  --portal-bg-overlay:      rgba(0, 0, 0, 0.70);
+  --portal-bg-hover:        rgba(36, 36, 48, 0.80);
+  --portal-bg-active:       rgba(36, 36, 48, 0.60);
+  --portal-bg-subtle:       rgba(26, 26, 36, 0.70);
+  --portal-bg-glass:        rgba(255, 255, 255, 0.04);
+
+  --portal-text-primary:    #e8e8f0;
+  --portal-text-secondary:  #c0c0cc;
+  --portal-text-tertiary:   #9696a5;
+  --portal-text-muted:      #6a6a78;
+  --portal-text-disabled:   #484858;
+  --portal-text-inverse:    #121218;
+  --portal-text-link:       #ffdd01;
+  --portal-text-link-hover: #ffe540;
+
+  --portal-border-default:  #2a2a38;
+  --portal-border-subtle:   #383848;
+  --portal-border-strong:   #505068;
+  --portal-border-focus:    #ffdd01;
+  --portal-border-input:    #383848;
+
+  --portal-accent-primary:        #ffdd01;
+  --portal-accent-primary-hover:  #ffe540;
+  --portal-accent-primary-active: #e6c700;
+  --portal-accent-primary-subtle: rgba(255, 221, 1, 0.12);
+  --portal-accent-primary-glow:   rgba(255, 221, 1, 0.25);
+
+  --portal-accent-secondary:        #ff6900;
+  --portal-accent-secondary-hover:  #ff8533;
+  --portal-accent-secondary-active: #e65e00;
+  --portal-accent-secondary-subtle: rgba(255, 105, 0, 0.12);
+
+  --portal-status-success:        #5dba50;
+  --portal-status-success-subtle: rgba(93, 186, 80, 0.12);
+  --portal-status-success-bg:     rgba(93, 186, 80, 0.08);
+  --portal-status-warning:        #ff6900;
+  --portal-status-warning-subtle: rgba(255, 105, 0, 0.12);
+  --portal-status-warning-bg:     rgba(255, 105, 0, 0.08);
+  --portal-status-danger:         #ef4444;
+  --portal-status-danger-subtle:  rgba(239, 68, 68, 0.12);
+  --portal-status-danger-bg:      rgba(239, 68, 68, 0.08);
+  --portal-status-info:           #60a5fa;
+  --portal-status-info-subtle:    rgba(96, 165, 250, 0.12);
+  --portal-status-info-bg:        rgba(96, 165, 250, 0.08);
+
+  --portal-sidebar-bg:             #1a1a24;
+  --portal-sidebar-border:         #2a2a38;
+  --portal-sidebar-hover:          rgba(36, 36, 48, 0.80);
+  --portal-sidebar-active:         rgba(255, 221, 1, 0.08);
+  --portal-sidebar-text:           #9696a5;
+  --portal-sidebar-text-hover:     #e8e8f0;
+  --portal-sidebar-text-active:    #ffdd01;
+  --portal-sidebar-section-label:  #6a6a78;
+
+  --portal-toolbar-bg:     rgba(26, 26, 36, 0.85);
+  --portal-toolbar-border: #2a2a38;
+
+  --portal-tab-bg:              rgba(26, 26, 36, 0.85);
+  --portal-tab-border:          #2a2a38;
+  --portal-tab-active-bg:       #242430;
+  --portal-tab-active-border:   #383848;
+  --portal-tab-active-text:     #e8e8f0;
+  --portal-tab-inactive-text:   #9696a5;
+  --portal-tab-hover-bg:        rgba(36, 36, 48, 0.70);
+  --portal-tab-hover-text:      #c0c0cc;
+
+  --portal-input-bg:             #242430;
+  --portal-input-border:         #383848;
+  --portal-input-border-focus:   #ffdd01;
+  --portal-input-text:           #e8e8f0;
+  --portal-input-placeholder:    #6a6a78;
+
+  --portal-card-bg:          #1a1a24;
+  --portal-card-border:      #2a2a38;
+  --portal-card-hover-border: #383848;
+
+  --portal-modal-bg:        #1a1a24;
+  --portal-modal-border:    #383848;
+
+  --portal-btn-primary-bg:        #ffdd01;
+  --portal-btn-primary-bg-hover:  #ffe540;
+  --portal-btn-primary-bg-active: #e6c700;
+  --portal-btn-primary-text:      #121218;
+  --portal-btn-secondary-bg:      #242430;
+  --portal-btn-secondary-bg-hover:#383848;
+  --portal-btn-secondary-text:    #c0c0cc;
+  --portal-btn-danger-bg:         #ef4444;
+  --portal-btn-danger-bg-hover:   #f87171;
+  --portal-btn-ghost-bg-hover:    rgba(36, 36, 48, 0.80);
+  --portal-btn-ghost-text:        #9696a5;
+  --portal-btn-ghost-text-hover:  #e8e8f0;
+
+  --portal-shadow-sm:  0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --portal-shadow-md:  0 4px 6px -1px rgba(0, 0, 0, 0.35), 0 2px 4px -2px rgba(0, 0, 0, 0.25);
+  --portal-shadow-lg:  0 10px 15px -3px rgba(0, 0, 0, 0.40), 0 4px 6px -4px rgba(0, 0, 0, 0.20);
+  --portal-shadow-xl:  0 20px 25px -5px rgba(0, 0, 0, 0.40), 0 8px 10px -6px rgba(0, 0, 0, 0.20);
+  --portal-shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.60);
+
+  --portal-gradient-primary: linear-gradient(to bottom right, #ffdd01, #ff6900);
+  --portal-gradient-brand:  linear-gradient(to right, #ffdd01, #ff6900);
+
+  color-scheme: dark;
+}
