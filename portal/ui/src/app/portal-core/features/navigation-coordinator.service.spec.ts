@@ -3,6 +3,8 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vite
 import { NavigationCoordinator } from './navigation-coordinator.service';
 import { UrlSyncService } from '../../core/history/url-sync.service';
 import { Bridge } from '../../core/bridge/bridge.service';
+import { I18nService } from '../../core/i18n/i18n.service';
+import { ToastService } from '../../core/toast/toast.service';
 import { WorkbenchService } from './workspaces/workspaces.store';
 import type { PortalEntryPoint } from '../../core/models';
 
@@ -46,6 +48,8 @@ describe('NavigationCoordinator', () => {
   let wb: WorkbenchService;
   let coordinator: NavigationCoordinator;
   let urlSync: UrlSyncService;
+  let toast: ToastService;
+  let i18n: I18nService;
   let docs: PortalEntryPoint;
   let wiki: PortalEntryPoint;
   let warnSpy: ReturnType<typeof vi.spyOn>;
@@ -56,12 +60,17 @@ describe('NavigationCoordinator', () => {
     TestBed.inject(Bridge);
     coordinator = TestBed.inject(NavigationCoordinator);
     urlSync = TestBed.inject(UrlSyncService);
+    toast = TestBed.inject(ToastService);
+    // Captured here: TestBed resets between tests, so a mid-test inject would
+    // resolve a different root instance than the coordinator holds.
+    i18n = TestBed.inject(I18nService);
   });
 
   beforeEach(() => {
     replaceUrl('/');
     localStorage.clear();
     sessionStorage.clear();
+    toast.dismiss();
     wb.replaceAllTabPaths({});
     wb.groups.set({});
     wb.layout.set(null);
@@ -190,6 +199,15 @@ describe('NavigationCoordinator', () => {
     await coordinator.applyState(urlSync.read(), { cold: true });
     expect(Object.values(wb.groups()).flatMap((g) => g.tabs)).toEqual([]);
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('nope:main'));
+  });
+
+  it('toasts the user when a cold-load deep link names an unknown app', async () => {
+    const tSpy = vi.spyOn(i18n, 't').mockReturnValue('TOAST MSG');
+    replaceUrl('/?app=nope:main');
+    await coordinator.applyState(urlSync.read(), { cold: true });
+    expect(tSpy).toHaveBeenCalledWith('nav.unknownApp', { app: 'nope:main' });
+    expect(toast.message()).toBe('TOAST MSG');
+    tSpy.mockRestore();
   });
 
   it('never auto-opens closed apps on popstate', async () => {

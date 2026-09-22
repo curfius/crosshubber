@@ -507,7 +507,7 @@ export class WorkbenchService {
         const { id } = (await res.json()) as { id: string };
         snap.id = id;
       } else {
-        // POST creates: color is intentionally omitted from the create body (Node parity).
+        // POST creates without color so the server applies its default; set later via PUT.
         const res = await apiFetch('/api/workspaces', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -697,17 +697,36 @@ export class WorkbenchService {
     this.editMode.set(false);
   }
 
+  /**
+   * Renames any workspace (active or not) by loading its snapshot and PUTting
+   * the new name under the same UUID id — the server renames in place, so no
+   * DELETE of the old name is needed. The former implementation saved the
+   * *current view* under the new name (fine only for the active workspace,
+   * data-destroying for any other).
+   */
   async renameWorkspace(oldName: string, newName: string): Promise<void> {
     if (!newName || newName === oldName) return;
     try {
-      await this.saveWorkspace(newName, this.description(), this.locked(), this.workspaceColor(), this.workspaceStatus());
-      await apiFetch(`/api/workspaces/${encodeURIComponent(oldName)}`, { method: 'DELETE' });
+      const getRes = await apiFetch(`/api/workspaces/${encodeURIComponent(oldName)}`);
+      const detail = (await getRes.json()) as WorkspaceSnapshot;
+      if (!detail.id) throw new Error(`workspace "${oldName}" has no id`);
+      const putRes = await apiFetch(`/api/workspaces/${detail.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...detail, name: newName }),
+      });
+      const saved = (await putRes.json()) as { name?: string };
+      if (this.activeWorkspace() === oldName) {
+        this.activeWorkspace.set(saved.name ?? newName);
+        if (this.cachedSnapshot) {
+          this.cachedSnapshot = { ...this.cachedSnapshot, name: saved.name ?? newName };
+        }
+        this.syncUrl('replace');
+      }
+      await this.refreshList();
     } catch (err) {
       console.error(`[workspaces] failed to rename workspace "${oldName}":`, err);
-      return;
     }
-    this.syncUrl('replace');
-    await this.refreshList();
   }
 
   async restore(): Promise<void> {

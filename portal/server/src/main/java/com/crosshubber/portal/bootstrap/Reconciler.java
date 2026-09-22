@@ -37,17 +37,16 @@ import tools.jackson.databind.node.ObjectNode;
 /**
  * Reconciles DB state with embedded catalog and tenant config at boot.
  *
- * <p>Mirrors {@code portal/src/bootstrap/reconcile.ts} — upserts builtin modules/entry points,
- * seeds AI Hub providers, instance settings, i18n languages/labels, and tenant_meta. All steps are
- * idempotent and non-destructive (user data is never touched). Fails fast: any seeding error aborts
- * boot instead of serving an empty portal.
+ * <p>Upserts builtin modules/entry points, seeds AI Hub providers, instance settings, i18n
+ * languages/labels, and tenant_meta. All steps are idempotent and non-destructive (user data is
+ * never touched). Fails fast: any seeding error aborts boot instead of serving an empty portal.
  */
 @Component
 public class Reconciler implements ApplicationRunner {
 
   private static final Logger log = LoggerFactory.getLogger(Reconciler.class);
 
-  /** Code-owned provider catalog — mirrors {@code providers.repository.ts} SEED_PROVIDERS. */
+  /** Code-owned provider catalog, seeded idempotently at boot. */
   static final List<String[]> SEED_PROVIDERS =
       List.of(
           new String[] {"anthropic", "Anthropic", "https://api.anthropic.com"},
@@ -243,7 +242,7 @@ public class Reconciler implements ApplicationRunner {
       upserted++;
     }
     log.info("[reconcile] upserted {} builtin modules", upserted);
-    // Remove retired builtins (guard: builtin=true only — mirrors reconcile.ts removeBuiltin)
+    // Remove retired builtins (guard: builtin=true only removeBuiltin)
     for (String retired : new String[] {"llm-providers", "ai-assistant"}) {
       moduleRepo
           .findById(retired)
@@ -277,7 +276,7 @@ public class Reconciler implements ApplicationRunner {
     }
   }
 
-  /** Mirrors {@code fetchManifestWithRetry(url, attempts=6, delayMs=3000)}. */
+  /** Fetches an external manifest with 6 attempts, 3s apart; fail-fast after the last attempt. */
   private JsonNode fetchManifestWithRetry(String url) {
     int attempts = 6;
     long delayMs = 3000;
@@ -337,7 +336,7 @@ public class Reconciler implements ApplicationRunner {
                   s.setSettings("{}");
                   return s;
                 });
-    // Merge tenant settings over current JSON (tenant overlay wins, matches reconcile.ts)
+    // Merge tenant settings over current JSON (tenant overlay wins)
     ObjectNode merged;
     try {
       JsonNode current =
@@ -347,7 +346,7 @@ public class Reconciler implements ApplicationRunner {
       merged = objectMapper.createObjectNode();
     }
     if (merged.isEmpty()) {
-      // Defaults mirror Node settings.repository.ts DEFAULT_SETTINGS
+      // Default instance settings (first boot only)
       merged.put("homeApp", "portal-navigation:portal");
       merged.put("pinnedAppsEnabled", true);
       merged.put("workspacesEnabled", true);
@@ -377,11 +376,14 @@ public class Reconciler implements ApplicationRunner {
         e.setSeeded(lang.seeded());
         e.setSortOrder(lang.sortOrder());
         languageRepo.save(e);
+        // Track the fresh insert: the label pass below filters on this set, so
+        // without it a first-ever boot would seed languages but zero labels.
+        existingLanguages.add(lang.code());
       }
     }
     // Seed labels (insert-if-absent ≙ ON CONFLICT DO NOTHING); bump content_version
     // so clients invalidate their label cache when new seed labels appear on an
-    // EXISTING install — fresh installs skip the bump (mirrors i18n.repository.ts).
+    // EXISTING install — fresh installs skip the bump.
     boolean existed = i18nSettingsRepo.findById(1).isPresent();
     I18nSettingsEntity s =
         i18nSettingsRepo

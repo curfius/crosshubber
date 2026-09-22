@@ -90,8 +90,10 @@
   <button
     type="button"
     (click)="openSettings()"
-    [title]="i18n.t('shell.toolbar.settings')"
-    [attr.aria-label]="i18n.t('shell.toolbar.settings')"
+    [disabled]="!settingsAvailable()"
+    [attr.aria-disabled]="!settingsAvailable()"
+    [title]="settingsAvailable() ? i18n.t('shell.toolbar.settings') : i18n.t('shell.toolbar.settingsUnavailable')"
+    [attr.aria-label]="settingsAvailable() ? i18n.t('shell.toolbar.settings') : i18n.t('shell.toolbar.settingsUnavailable')"
     class="ds-btn ds-btn-ghost ds-btn-icon">
     <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"></circle>

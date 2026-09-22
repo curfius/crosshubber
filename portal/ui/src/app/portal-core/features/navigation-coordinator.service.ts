@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { Bridge } from '../../core/bridge/bridge.service';
 import { UrlSyncService, type NavRead } from '../../core/history/url-sync.service';
 import { tabKeyOf } from '../../core/history/nav-state';
+import { I18nService } from '../../core/i18n/i18n.service';
+import { ToastService } from '../../core/toast/toast.service';
 import { entryPointId, type Tab } from '../../core/models';
 import { WorkbenchService } from './workspaces/workspaces.store';
 
@@ -23,7 +25,8 @@ interface TabLocation {
  *   - cold load -> normalize the URL (structured history.state) with replace
  *
  * Deep links (D5): an `app` param naming a known but closed entry point is
- * auto-opened only on cold load; unknown keys are warned about and ignored.
+ * auto-opened only on cold load; unknown keys are warned about, toasted to the
+ * user and ignored.
  * A cold-load `app` matching the home-app ref activates the Home tab fixture
  * instead of opening a duplicate tab (the fixture is created by restore()
  * before applyApp runs).
@@ -36,6 +39,8 @@ export class NavigationCoordinator {
   private readonly urlSync = inject(UrlSyncService);
   private readonly wb = inject(WorkbenchService);
   private readonly bridge = inject(Bridge);
+  private readonly i18n = inject(I18nService);
+  private readonly toast = inject(ToastService);
 
   /** moduleKey -> module path awaiting the module's mount (restore-before-ready, D11). */
   private readonly pendingPaths = new Map<string, string>();
@@ -138,6 +143,7 @@ export class NavigationCoordinator {
     const ep = this.wb.findEntryPointByAppKey(app);
     if (!ep || ep.type === 'link') {
       console.warn(`[nav] unknown app "${app}" in URL — ignored`);
+      this.toast.show(this.i18n.t('nav.unknownApp', { app }));
       return;
     }
     this.wb.openApp(ep);

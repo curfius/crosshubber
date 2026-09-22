@@ -6,10 +6,13 @@
     [workspaces]="workspaces()"
     [activeWorkspace]="activeWorkspace()"
     [activeAppKey]="activeAppKey()"
+    [homeTabActive]="homeTabActive()"
     [workspacesEnabled]="nav.features().workspacesEnabled"
     (homeClick)="onHomeClick()"
     (entryPointClick)="openApp($event)"
     (workspaceClick)="onWorkspaceClick($event)"
+    (workspaceRename)="onWorkspaceRename($event)"
+    (workspaceDelete)="onWorkspaceDelete($event)"
     (chatClick)="toggleQuickChat()"
     />
 
@@ -27,6 +30,17 @@
     </div>
   </main>
 </div>
+
+<!-- Toast — transient shell feedback (e.g. unknown deep-link apps). -->
+@if (toast.message(); as toastMsg) {
+<button
+  type="button"
+  role="status"
+  (click)="toast.dismiss()"
+  class="fixed right-4 top-14 z-[70] max-w-md cursor-pointer rounded-lg border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] px-4 py-2.5 text-left text-sm shadow-xl">
+  <span class="text-[var(--portal-text-primary)]">{{ toastMsg }}</span>
+</button>
+}
 
 <!-- Quick Chat Modal — @defer keeps the chat surface out of the initial bundle
      (it is also registered as a lazy embedded module). -->

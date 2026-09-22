@@ -39,6 +39,11 @@ export class WorkspaceToolbar {
     !!this.wb.findEntryPoint('user-settings', 'user-settings-shell'),
   );
 
+  /** Disabled gear instead of a silent no-op when the settings module is gone. */
+  protected readonly settingsAvailable = computed(() =>
+    !!this.wb.findEntryPoint('settings', 'settings-shell'),
+  );
+
   protected openSaveDialog(): void {
     this.saveName.set(this.active() ?? 'Workspace');
     this.saveDescription.set(this.wsDescription());
@@ -124,10 +129,7 @@ export class WorkspaceToolbar {
   }
 
   protected openSettings(): void {
-    const eps = this.wb.getEntryPoints();
-    const settingsEp = eps.find(
-      (ep) => ep.category === 'features' && ep.entryKey === 'settings-shell',
-    );
+    const settingsEp = this.wb.findEntryPoint('settings', 'settings-shell');
     if (settingsEp) {
       this.wb.openApp(settingsEp);
     }

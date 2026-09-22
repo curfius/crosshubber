@@ -50,7 +50,7 @@
       <button
         (click)="homeClick.emit()"
         class="ds-sidebar-item w-full"
-        [class.ds-sidebar-item-active]="activeWorkspace() === null && activeAppKey() === null"
+        [class.ds-sidebar-item-active]="homeActive()"
         [attr.title]="i18n.t('sidebar.home')">
         <span class="ds-sidebar-item-icon">
           <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -64,8 +64,29 @@
       </button>
     </nav>
 
+    <!-- Fresh-user hint: rail has no personalized apps yet. -->
+    @if (expanded() && showEmptyHint()) {
+    <div class="px-3 pt-2">
+      <button
+        (click)="homeClick.emit()"
+        class="ds-sidebar-item w-full text-[var(--portal-text-muted)]"
+        [attr.title]="i18n.t('sidebar.emptyApps')"
+        [attr.aria-label]="i18n.t('sidebar.emptyApps')">
+        <span class="ds-sidebar-item-icon">
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+          </svg>
+        </span>
+        <span class="ds-sidebar-item-label font-normal">{{ i18n.t('sidebar.emptyApps') }}</span>
+      </button>
+    </div>
+    }
+
     <!-- Pinned apps tree (managed content) -->
-    @if (features().pinnedAppsEnabled && sidebarSettings().showPinned && nav.pinnedTree().length > 0) {
+    @if (pinnedVisible()) {
     <div class="ds-sidebar-divider"></div>
 
     <div class="ds-sidebar-section-label">{{ i18n.t('sidebar.pinnedApps') }}</div>
@@ -150,22 +171,67 @@
     <div class="ds-sidebar-section-label">{{ i18n.t('sidebar.myWorkspaces') }}</div>
     <nav class="flex flex-col gap-1 px-3">
       @for (ws of workspaces(); track ws.name) {
-      <button
-        (click)="workspaceClick.emit(ws.name)"
+      @if (renamingWs() === ws.name && expanded()) {
+      <div
+        class="ds-sidebar-item w-full"
+        [class.ds-sidebar-item-active]="activeWorkspace() === ws.name"
+        (click)="$event.stopPropagation()">
+        <input
+          #renameInput
+          [value]="renameValue()"
+          (input)="renameValue.set($any($event.target).value)"
+          (keydown.enter)="commitRename()"
+          (keydown.escape)="cancelRename()"
+          (blur)="cancelRename()"
+          [attr.aria-label]="i18n.t('sidebar.rename')"
+          class="ds-input h-7 w-full min-w-0 text-xs" />
+        </div>
+      } @else {
+      <div
         class="ds-sidebar-item w-full"
         [class.ds-sidebar-item-active]="activeWorkspace() === ws.name"
         [attr.title]="ws.name">
-        <span class="ds-sidebar-item-icon">
-          <span
-            class="flex size-8 shrink-0 items-center justify-center rounded-md text-base font-bold text-white"
-            [style.background]="ws.color || 'var(--portal-gradient-primary)'">
-            {{ ws.name[0] }}
+        <button
+          type="button"
+          (click)="workspaceClick.emit(ws.name)"
+          [class]="expanded() ? 'flex min-w-0 flex-1 items-center gap-3 text-left' : 'flex min-w-0 flex-1 items-center justify-center gap-3 text-left'">
+          <span class="ds-sidebar-item-icon">
+            <span
+              class="flex size-8 shrink-0 items-center justify-center rounded-md text-base font-bold text-white"
+              [style.background]="ws.color || 'var(--portal-gradient-primary)'">
+              {{ ws.name[0] }}
+            </span>
           </span>
-        </span>
+          @if (expanded()) {
+          <span class="ds-sidebar-item-label">{{ ws.name }}</span>
+          }
+        </button>
         @if (expanded()) {
-        <span class="ds-sidebar-item-label">{{ ws.name }}</span>
+        <span class="flex shrink-0 items-center gap-0.5">
+          <button
+            type="button"
+            (click)="$event.stopPropagation(); startRename(ws.name)"
+            [attr.title]="i18n.t('sidebar.rename')"
+            [attr.aria-label]="i18n.t('sidebar.rename')"
+            class="flex size-6 cursor-pointer items-center justify-center rounded text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-sidebar-hover)] hover:text-[var(--portal-sidebar-text-hover)]">
+            <svg class="size-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 2l3 3-7.5 7.5H3v-3.5z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            (click)="$event.stopPropagation(); workspaceDelete.emit(ws.name)"
+            [attr.title]="i18n.t('shell.toolbar.deleteWorkspace')"
+            [attr.aria-label]="i18n.t('shell.toolbar.deleteWorkspace')"
+            class="flex size-6 cursor-pointer items-center justify-center rounded text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-sidebar-hover)] hover:text-[var(--portal-status-danger)]">
+            <svg class="size-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 4h12M6 4V2h4v2M4 4l1 10h6l1-10" />
+            </svg>
+          </button>
+        </span>
         }
-      </button>
+      </div>
+      }
       }
     </nav>
     }

@@ -20,6 +20,7 @@ import { AiHubService } from '../../core/ai-hub/ai-hub.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { I18nAdminService } from '../../core/i18n/i18n-admin.service';
 import { ThemeService } from '../../core/theme/theme.service';
+import { ToastService } from '../../core/toast/toast.service';
 
 @Component({
   selector: 'app-shell',
@@ -50,6 +51,7 @@ export class Shell implements OnDestroy {
   protected readonly i18n = inject(I18nService);
   private readonly i18nAdmin = inject(I18nAdminService);
   private readonly theme = inject(ThemeService);
+  protected readonly toast = inject(ToastService);
   protected readonly showQuickChat = signal(false);
 
   protected readonly appEntryPoints = computed(() =>
@@ -62,6 +64,15 @@ export class Shell implements OnDestroy {
     if (!gid || !groups[gid] || groups[gid].activeId == null) return null;
     const tab = groups[gid].tabs.find((t) => t.id === groups[gid].activeId);
     return tab ? entryPointId(tab.entryPoint) : null;
+  });
+
+  /** True when the focused tab is the unclosable Home fixture (sidebar highlight). */
+  protected readonly homeTabActive = computed(() => {
+    const gid = this.wb.focusedGroupId();
+    const groups = this.wb.groups();
+    if (!gid || !groups[gid] || groups[gid].activeId == null) return false;
+    const tab = groups[gid].tabs.find((t) => t.id === groups[gid].activeId);
+    return !!tab && this.wb.isHomeTab(tab);
   });
 
   constructor() {

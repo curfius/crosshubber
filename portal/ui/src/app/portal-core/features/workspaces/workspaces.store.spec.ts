@@ -85,6 +85,48 @@ describe('WorkbenchService workspace persistence', () => {
     expect(localStorage.getItem('portal.activeWorkspace')).toBeNull();
   });
 
+  it('renameWorkspace renames a non-active workspace via GET+PUT without touching local state', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        okResponse({ id: 'id-b', name: 'b', layout: null, groups: {}, savedAt: 1 }),
+      )
+      .mockResolvedValueOnce(okResponse({ ok: true, id: 'id-b', name: 'c' }))
+      .mockResolvedValueOnce(okResponse({ workspaces: [{ id: 'id-b', name: 'c', savedAt: 1 }] }));
+    await wb.renameWorkspace('b', 'c');
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/workspaces/b');
+    const putCall = fetchMock.mock.calls[1];
+    expect(putCall[0]).toBe('/api/workspaces/id-b');
+    expect((putCall[1] as RequestInit).method).toBe('PUT');
+    expect(String((putCall[1] as RequestInit).body)).toContain('"name":"c"');
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/workspaces');
+    expect(wb.activeWorkspace()).toBeNull();
+  });
+
+  it('renameWorkspace of the active workspace updates the active name and URL', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okResponse({ workspaces: [{ id: 'ws-1', name: 'w1', savedAt: 1 }] }))
+      .mockResolvedValueOnce(okResponse({ id: 'ws-1', name: 'w1', layout: null, groups: {}, savedAt: 1 }))
+      .mockResolvedValueOnce(okResponse({ id: 'ws-1', name: 'w1', layout: null, groups: {}, savedAt: 1 }))
+      .mockResolvedValueOnce(okResponse({ ok: true, id: 'ws-1', name: 'w2' }))
+      .mockResolvedValueOnce(okResponse({ workspaces: [{ id: 'ws-1', name: 'w2', savedAt: 1 }] }));
+    await wb.restore();
+    await wb.loadWorkspace('w1');
+    expect(wb.activeWorkspace()).toBe('w1');
+    await wb.renameWorkspace('w1', 'w2');
+    expect(wb.activeWorkspace()).toBe('w2');
+    expect(location.pathname).toBe('/w/w2');
+  });
+
+  it('renameWorkspace leaves state unchanged when the lookup fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    fetchMock.mockResolvedValueOnce(failResponse(404, { error: 'not found' }));
+    await wb.renameWorkspace('ghost', 'x');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(wb.activeWorkspace()).toBeNull();
+    expect(errorSpy).toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
   it('saveSessionSnapshot persists home state to sessionStorage', () => {
     wb.setEntryPoints([]);
     wb.openApp({

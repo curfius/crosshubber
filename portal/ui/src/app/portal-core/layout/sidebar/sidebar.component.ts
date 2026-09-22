@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, input, output, signal, viewChild } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import type { PortalEntryPoint, WorkspaceMeta } from '../../../core/models';
@@ -22,8 +22,11 @@ export class Sidebar {
   readonly homeClick = output<void>();
   readonly entryPointClick = output<PortalEntryPoint>();
   readonly workspaceClick = output<string>();
+  readonly workspaceRename = output<{ old: string; newName: string }>();
+  readonly workspaceDelete = output<string>();
 
   readonly activeAppKey = input<string | null>(null);
+  readonly homeTabActive = input(false);
   readonly workspacesEnabled = input(true);
   readonly chatClick = output<void>();
 
@@ -51,6 +54,55 @@ export class Sidebar {
         this.expandedFolders.set(new Set(settings.sidebarExpanded));
       }
     });
+    // Inline rename only exists in the expanded rail — collapse abandons it.
+    effect(() => {
+      if (!this.expanded() && this.renamingWs() !== null) {
+        this.renamingWs.set(null);
+      }
+    });
+  }
+
+  /** Home row active: the Home tab is focused, or the plain no-workspace/no-app view. */
+  protected readonly homeActive = computed(
+    () =>
+      this.homeTabActive() ||
+      (this.activeWorkspace() === null && this.activeAppKey() === null),
+  );
+
+  /** Pinned-apps section renders only when enabled, shown, and non-empty. */
+  protected readonly pinnedVisible = computed(
+    () =>
+      this.features().pinnedAppsEnabled &&
+      this.sidebarSettings().showPinned &&
+      this.nav.pinnedTree().length > 0,
+  );
+
+  /** Fresh-user hint: nothing personalized in the rail yet → point at Home. */
+  protected readonly showEmptyHint = computed(
+    () => !this.pinnedVisible() && this.pickedApps().length === 0,
+  );
+
+  protected readonly renamingWs = signal<string | null>(null);
+  protected readonly renameValue = signal('');
+  private readonly renameInput = viewChild<ElementRef<HTMLInputElement>>('renameInput');
+
+  protected startRename(name: string): void {
+    this.renamingWs.set(name);
+    this.renameValue.set(name);
+    setTimeout(() => this.renameInput()?.nativeElement.focus(), 0);
+  }
+
+  protected commitRename(): void {
+    const oldName = this.renamingWs();
+    const newName = this.renameValue().trim();
+    this.renamingWs.set(null);
+    if (oldName && newName && newName !== oldName) {
+      this.workspaceRename.emit({ old: oldName, newName });
+    }
+  }
+
+  protected cancelRename(): void {
+    this.renamingWs.set(null);
   }
 
   /** Picked quick-access apps, refs resolved to visible entry points. */
