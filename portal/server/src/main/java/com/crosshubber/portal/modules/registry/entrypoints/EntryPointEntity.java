@@ -3,6 +3,7 @@ package com.crosshubber.portal.modules.registry.entrypoints;
 import java.time.Instant;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -30,8 +31,9 @@ public class EntryPointEntity {
   @Column(name = "entry_key", nullable = false)
   private String entryKey;
 
+  @Convert(converter = EntryPointCategory.DbConverter.class)
   @Column(name = "category", nullable = false)
-  private String category;
+  private EntryPointCategory category;
 
   @Column(name = "name", nullable = false)
   private String name;
@@ -39,8 +41,9 @@ public class EntryPointEntity {
   @Column(name = "description")
   private String description;
 
+  @Convert(converter = EntryPointType.DbConverter.class)
   @Column(name = "type", nullable = false)
-  private String type;
+  private EntryPointType type;
 
   @Column(name = "url")
   private String url;
@@ -143,11 +146,11 @@ public class EntryPointEntity {
     this.entryKey = entryKey;
   }
 
-  public String getCategory() {
+  public EntryPointCategory getCategory() {
     return category;
   }
 
-  public void setCategory(String category) {
+  public void setCategory(EntryPointCategory category) {
     this.category = category;
   }
 
@@ -167,11 +170,11 @@ public class EntryPointEntity {
     this.description = description;
   }
 
-  public String getType() {
+  public EntryPointType getType() {
     return type;
   }
 
-  public void setType(String type) {
+  public void setType(EntryPointType type) {
     this.type = type;
   }
 

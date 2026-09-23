@@ -11,7 +11,9 @@ import java.util.Map;
 import java.util.Set;
 
 import com.crosshubber.portal.common.Keys;
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointType;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ArrayNode;
@@ -344,8 +346,8 @@ public final class NavigationValidationService {
   // ── Computed defaults (D5 / D12) ─────────────────────────────────────
 
   public static boolean isDefaultSidebarApp(EntryPointEntity ep) {
-    return "applications".equals(ep.getCategory())
-        && !"link".equals(ep.getType())
+    return ep.getCategory() == EntryPointCategory.APPLICATIONS
+        && ep.getType() != EntryPointType.LINK
         && Boolean.TRUE.equals(ep.getActive());
   }
 

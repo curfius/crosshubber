@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointType;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
@@ -46,7 +47,7 @@ public class ProxyService {
             moduleKey,
             key ->
                 entryPointRepo.findByModuleKey(key).stream()
-                    .filter(ep -> "mfe".equals(ep.getType()))
+                    .filter(ep -> ep.getType() == EntryPointType.MFE)
                     .findFirst())
         .orElse(null);
   }

@@ -36,7 +36,7 @@ class InstallServiceVersionsTest {
     row.setManifest("{}");
     row.setInstalledAt(Instant.parse("2026-09-21T10:15:30.123Z"));
     row.setInstalledBy("tenant/alice (sub-1)");
-    row.setStatus("active");
+    row.setStatus(VersionStatus.ACTIVE);
     Mockito.when(versionRepo.findByModuleKeyOrderByInstalledAtDesc("m")).thenReturn(List.of(row));
 
     List<ModuleVersionDto> versions = svc.listVersions("m");

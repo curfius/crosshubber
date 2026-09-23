@@ -161,6 +161,8 @@ Intentional API/storage decisions (several date back to the original port):
 | 8 | Response payloads are typed records with per-field inclusion (2026-09) | Optional fields omit when null/blank; keys that must exist even when null (`parentKey`, workspace `layout`/`focusedGroupId`, services `url`, `{"manifest": null}`) carry per-field overrides; schemaless JSONB blobs (settings scopes, i18n overrides, nav layout) intentionally stay untyped |
 | 9 | Bean validation (`@Valid`) on clean single-body endpoints (2026-09) | 400 wording for those endpoints is now `"<field> <constraint>"` joined with `; `; cross-field rules and free-form/partial-update bodies (user-settings, module-settings, i18n settings/languages, manifest draft/install, nav features, JsonNode trees) stay programmatic by design |
 | 10 | Shell-config group `icon` unified with the registry omit-blank rule (2026-09) | Blank-string icons are no longer emitted in `/api/config` groups — one shared `EntryPointGroupDto` |
+| 11 | Constrained columns map to enums via nested lowercase `DbConverter`s (2026-09) | `@Enumerated(STRING)` stores UPPERCASE names, but CHECK values are lowercase/hyphenated — converters keep DB + API values byte-identical (no data migration); unknown DB values fail loudly |
+| 12 | Invalid `category` query filter on `/api/registry/entry-point-groups` → 400 `{"error":"list.category must be …"}` (was a silent empty list) | Declarative `@Pattern` + method validation; consistent with the `{"error"}` envelope convention |
 
 ## Development
 

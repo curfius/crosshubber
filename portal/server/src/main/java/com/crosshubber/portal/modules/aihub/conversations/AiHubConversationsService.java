@@ -39,7 +39,9 @@ public class AiHubConversationsService {
   /** Returns all portal-origin conversations for the given user, most recently updated first. */
   @Transactional(readOnly = true)
   public List<ConversationDto> listConversations(String userId) {
-    return conversationRepo.findByUserIdAndOriginOrderByUpdatedAtDesc(userId, "portal").stream()
+    return conversationRepo
+        .findByUserIdAndOriginOrderByUpdatedAtDesc(userId, ConversationOrigin.PORTAL)
+        .stream()
         .map(this::toConversationDto)
         .toList();
   }
@@ -53,7 +55,7 @@ public class AiHubConversationsService {
     AiHubConversationEntity conversation = new AiHubConversationEntity();
     conversation.setId("conv_" + UUID.randomUUID());
     conversation.setUserId(userId);
-    conversation.setOrigin("portal");
+    conversation.setOrigin(ConversationOrigin.PORTAL);
     conversation.setTitle(title);
     conversation = conversationRepo.saveAndFlush(conversation);
     return toConversationDto(conversation);
@@ -107,7 +109,7 @@ public class AiHubConversationsService {
     return new ConversationDto(
         c.getId(),
         c.getUserId(),
-        c.getOrigin(),
+        c.getOrigin() == null ? null : c.getOrigin().value(),
         c.getTitle(),
         NodeDates.format(c.getCreatedAt()),
         NodeDates.format(c.getUpdatedAt()));

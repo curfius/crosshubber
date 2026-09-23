@@ -20,6 +20,7 @@ import com.crosshubber.portal.modules.registry.dto.EntryPointGroupDto;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupEntity;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupRepository;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupsService;
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointsService;
@@ -46,11 +47,15 @@ public class ShellTreeService {
   @Transactional(readOnly = true)
   public ShellTreePayload shellTreePayload(String category) {
     List<EntryPointGroupDto> groups =
-        groupRepo.findByCategoryOrderBySortOrderAscNameAsc(category).stream()
+        groupRepo
+            .findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.parse(category))
+            .stream()
             .map(EntryPointGroupsService::toOutput)
             .toList();
     List<EntryPointDto> items =
-        entryPointRepo.findByCategoryOrderBySortOrderAscNameAsc(category).stream()
+        entryPointRepo
+            .findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.parse(category))
+            .stream()
             .filter(ep -> Boolean.TRUE.equals(ep.getActive()))
             .map(EntryPointsService::toOutput)
             .toList();
@@ -127,7 +132,7 @@ public class ShellTreeService {
     // Resolve group keys: client keys win; missing keys are slugified (unique
     // across ALL groups, mirroring the route helper).
     List<EntryPointGroupEntity> existingGroups =
-        groupRepo.findByCategoryOrderBySortOrderAscNameAsc(category);
+        groupRepo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.parse(category));
     Set<String> allGroupKeys = new LinkedHashSet<>();
     Map<String, EntryPointGroupEntity> byGlobalKey = new LinkedHashMap<>();
     groupRepo
@@ -192,7 +197,7 @@ public class ShellTreeService {
 
     // Items must belong to this category
     List<EntryPointEntity> categoryRows =
-        entryPointRepo.findByCategoryOrderBySortOrderAscNameAsc(category);
+        entryPointRepo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.parse(category));
     Set<String> categoryKeys = new HashSet<>();
     for (EntryPointEntity row : categoryRows) {
       categoryKeys.add(row.getModuleKey() + ":" + row.getEntryKey());
@@ -220,7 +225,7 @@ public class ShellTreeService {
         entity.setRoles("");
       }
       if (entity.getCategory() == null) {
-        entity.setCategory(category);
+        entity.setCategory(EntryPointCategory.parse(category));
       }
       entity.setName(g.name());
       entity.setParentKey(g.parentKey());

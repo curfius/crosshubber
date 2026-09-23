@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Persistable;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PostLoad;
@@ -33,8 +34,9 @@ public class NavigationPinnedAppEntity implements Persistable<UUID> {
   @Column(name = "parent_id", columnDefinition = "uuid")
   private UUID parentId;
 
+  @Convert(converter = PinnedNodeType.DbConverter.class)
   @Column(name = "node_type", nullable = false)
-  private String nodeType;
+  private PinnedNodeType nodeType;
 
   @Column(name = "name")
   private String name;
@@ -97,11 +99,11 @@ public class NavigationPinnedAppEntity implements Persistable<UUID> {
     this.parentId = parentId;
   }
 
-  public String getNodeType() {
+  public PinnedNodeType getNodeType() {
     return nodeType;
   }
 
-  public void setNodeType(String nodeType) {
+  public void setNodeType(PinnedNodeType nodeType) {
     this.nodeType = nodeType;
   }
 

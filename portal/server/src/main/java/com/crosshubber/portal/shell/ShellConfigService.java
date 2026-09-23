@@ -161,7 +161,7 @@ public class ShellConfigService {
       if (Boolean.TRUE.equals(ep.getHidden())) {
         continue;
       }
-      if (!CATEGORY_ORDER.contains(ep.getCategory())) {
+      if (ep.getCategory() == null || !CATEGORY_ORDER.contains(ep.getCategory().value())) {
         continue;
       }
       if (!Roles.hasAnyRole(userRoles, Roles.parse(ep.getRoles()))) {

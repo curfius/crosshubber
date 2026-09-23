@@ -6,6 +6,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -42,8 +43,9 @@ public class ModuleVersionEntity {
   @Column(name = "installed_by", nullable = false)
   private String installedBy;
 
+  @Convert(converter = VersionStatus.DbConverter.class)
   @Column(name = "status", nullable = false)
-  private String status;
+  private VersionStatus status;
 
   @PrePersist
   void prePersist() {
@@ -51,7 +53,7 @@ public class ModuleVersionEntity {
       installedAt = Instant.now();
     }
     if (status == null) {
-      status = "active";
+      status = VersionStatus.ACTIVE;
     }
   }
 
@@ -111,11 +113,11 @@ public class ModuleVersionEntity {
     this.installedBy = installedBy;
   }
 
-  public String getStatus() {
+  public VersionStatus getStatus() {
     return status;
   }
 
-  public void setStatus(String status) {
+  public void setStatus(VersionStatus status) {
     this.status = status;
   }
 }

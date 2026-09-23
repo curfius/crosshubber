@@ -52,7 +52,7 @@ public class EntryPointsService {
   public List<EntryPointEntity> listByCategory(List<String> categories, boolean activeOnly) {
     List<EntryPointEntity> out = new java.util.ArrayList<>();
     for (String category : categories) {
-      out.addAll(repo.findByCategory(category, activeOnly));
+      out.addAll(repo.findByCategory(EntryPointCategory.parse(category), activeOnly));
     }
     return out;
   }
@@ -135,10 +135,13 @@ public class EntryPointsService {
       ep.setModuleKey(input.moduleKey());
       ep.setEntryKey(input.entryKey());
     }
-    ep.setCategory(input.category() != null ? input.category() : "applications");
+    ep.setCategory(
+        input.category() != null
+            ? EntryPointCategory.parse(input.category())
+            : EntryPointCategory.APPLICATIONS);
     ep.setName(input.name() != null ? input.name() : input.entryKey());
     ep.setDescription(input.description());
-    ep.setType(input.type() != null ? input.type() : "embedded");
+    ep.setType(input.type() != null ? EntryPointType.parse(input.type()) : EntryPointType.EMBEDDED);
     ep.setUrl(input.url());
     ep.setSandbox(Texts.joinComma(input.sandbox()));
     ep.setAllow(input.allow());

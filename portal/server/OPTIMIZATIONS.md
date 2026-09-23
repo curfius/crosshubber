@@ -242,22 +242,24 @@ also lost its unused `badRequest()` helper.
 
 ### 11. Add `@Enumerated(EnumType.STRING)` to String Fields
 
-**Impact:** Type safety — 8+ fields with DB CHECK constraints mapped as raw String
+**Status:** ✅ DONE (2026-09-23) — implemented with per-enum nested `DbConverter`s instead of raw
+`EnumType.STRING`: DB values are lowercase (some hyphenated: `admin-settings`), which
+`EnumType.STRING` cannot express (it stores UPPERCASE names and would trip every CHECK). Enums +
+converters keep stored/API values byte-identical — no data migration needed.
 
-| Entity | Field | DB CHECK constraint |
+| Entity | Field | Enum |
 |---|---|---|
-| `EntryPointEntity` | `category` | `'applications','settings','features','admin-settings','user-settings'` |
-| `EntryPointEntity` | `type` | `'iframe','embedded','mfe','link'` |
-| `AiHubChannelEntity` | `type` | `'telegram','whatsapp'` |
-| `AiHubChannelEntity` | `deliveryMode` | `'webhook','polling'` |
-| `AiHubConversationEntity` | `origin` | `'portal','telegram','whatsapp'` |
-| `AiHubMessageEntity` | `role` | `'user','assistant'` |
-| `ModuleVersionEntity` | `status` | `'active','inactive'` |
+| `EntryPointEntity` | `category` | `EntryPointCategory` (5 values) |
+| `EntryPointEntity` | `type` | `EntryPointType` |
+| `EntryPointGroupEntity` | `category` | `EntryPointCategory` (shared; DB CHECK allows the 3-value subset) |
+| `ModuleVersionEntity` | `status` | `VersionStatus` (active/superseded/draft/archived — no CHECK; enum is the value-set authority) |
+| `AiHubConversationEntity` | `origin` | `ConversationOrigin` (portal/telegram/whatsapp — no CHECK; dev data verified empty) |
+| `NavigationPinnedAppEntity` | `nodeType` | `PinnedNodeType` (folder/item) |
 
-**Approach:**
-1. Create Java enums matching DB CHECK constraints
-2. Add `@Enumerated(EnumType.STRING)` to entity fields
-3. Update services to use enum types instead of strings
+Obsolete rows in the original table: `AiHubChannelEntity`/`AiHubMessageEntity` — those tables were
+dropped by V12/V15. `user_settings.category` / `favorites.item_type` have no live entity fields
+(deferred). Repository query params (category/status/origin/nodeType) take the enums too; JSON
+boundaries stay lowercase strings via `enum.value()` / `parse()` (README design notes #11–#12).
 
 ---
 
@@ -499,6 +501,10 @@ public interface ModuleSummary {
   rewrites legacy JSON-array-text rows.
 - **`KEY_RE` is permissive at the tail** — `^[a-z0-9][a-z0-9-]{0,63}$` accepts trailing hyphens
   (`abc-`); tightening it would need a data audit first (KeysTest documents the behavior).
+- **`EntryPointGroupUpsertRequest` allows `user-settings` but the DB CHECK only admits
+  `applications|settings|features`** — a user-settings group POST parses fine then dies on the
+  CHECK (500). Pre-existing: narrow the request pattern to the 3-value subset (or widen the CHECK
+  if user-settings groups are actually wanted).
 
 ---
 

@@ -8,7 +8,9 @@ import org.junit.jupiter.api.Test;
 
 import com.crosshubber.portal.config.JacksonConfig;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupEntity;
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointType;
 import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
 
 import tools.jackson.databind.JsonNode;
@@ -29,9 +31,9 @@ class RegistryDtosTest {
     EntryPointEntity ep = new EntryPointEntity();
     ep.setModuleKey("m");
     ep.setEntryKey("main");
-    ep.setCategory("applications");
+    ep.setCategory(EntryPointCategory.APPLICATIONS);
     ep.setName("Main");
-    ep.setType("embedded");
+    ep.setType(EntryPointType.EMBEDDED);
     ep.setSortOrder(10);
     ep.setActive(true);
     ep.setMulti(false);
@@ -62,9 +64,9 @@ class RegistryDtosTest {
     EntryPointEntity ep = new EntryPointEntity();
     ep.setModuleKey("m");
     ep.setEntryKey("main");
-    ep.setCategory("applications");
+    ep.setCategory(EntryPointCategory.APPLICATIONS);
     ep.setName("Main");
-    ep.setType("iframe");
+    ep.setType(EntryPointType.IFRAME);
     ep.setRoles("admin,editor");
     ep.setSandbox("allow-scripts,allow-forms");
     ep.setHidden(true);
@@ -85,7 +87,7 @@ class RegistryDtosTest {
   void groupDtoAlwaysEmitsParentKeyEvenWhenNull() {
     EntryPointGroupEntity g = new EntryPointGroupEntity();
     g.setGroupKey("nav-a");
-    g.setCategory("settings");
+    g.setCategory(EntryPointCategory.SETTINGS);
     g.setName("A");
     g.setParentKey(null);
     g.setSortOrder(0);

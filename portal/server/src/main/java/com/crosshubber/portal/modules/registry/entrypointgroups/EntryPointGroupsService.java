@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.crosshubber.portal.common.Texts;
 import com.crosshubber.portal.modules.registry.dto.EntryPointGroupDto;
 import com.crosshubber.portal.modules.registry.dto.EntryPointGroupUpsertRequest;
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
 
 /** Entry point groups domain service. */
 @Service
@@ -28,7 +29,7 @@ public class EntryPointGroupsService {
   @Transactional(readOnly = true)
   public List<EntryPointGroupEntity> list(String category) {
     if (category != null) {
-      return repo.findByCategoryOrderBySortOrderAscNameAsc(category);
+      return repo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.parse(category));
     }
     return repo.findAll(Sort.by(Sort.Order.asc("sortOrder"), Sort.Order.asc("name")));
   }
@@ -49,7 +50,7 @@ public class EntryPointGroupsService {
                   created.setGroupKey(input.groupKey());
                   return created;
                 });
-    group.setCategory(input.category());
+    group.setCategory(EntryPointCategory.parse(input.category()));
     group.setName(input.name());
     group.setParentKey(input.parentKey());
     group.setSortOrder(input.sortOrder() != null ? input.sortOrder() : 0);

@@ -16,8 +16,10 @@ import org.mockito.ArgumentCaptor;
 import com.crosshubber.portal.config.JacksonConfig;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupEntity;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupRepository;
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointType;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -33,9 +35,9 @@ class ShellTreeServiceTest {
     EntryPointEntity e = new EntryPointEntity();
     e.setModuleKey(moduleKey);
     e.setEntryKey(entryKey);
-    e.setCategory("settings");
+    e.setCategory(EntryPointCategory.SETTINGS);
     e.setName(entryKey);
-    e.setType("embedded");
+    e.setType(EntryPointType.EMBEDDED);
     e.setActive(true);
     e.setMulti(false);
     return e;
@@ -45,10 +47,10 @@ class ShellTreeServiceTest {
   void savePersistsHiddenFlagsAndRoundTripsThem() {
     EntryPointEntity general = ep("settings", "general");
     List<EntryPointEntity> rows = new ArrayList<>(List.of(general));
-    when(groupRepo.findByCategoryOrderBySortOrderAscNameAsc("settings"))
+    when(groupRepo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.SETTINGS))
         .thenAnswer(inv -> new ArrayList<>(savedGroups));
     when(groupRepo.findAll()).thenReturn(List.of());
-    when(entryPointRepo.findByCategoryOrderBySortOrderAscNameAsc("settings"))
+    when(entryPointRepo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.SETTINGS))
         .thenAnswer(inv -> new ArrayList<>(rows));
     when(groupRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
     when(entryPointRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -94,17 +96,17 @@ class ShellTreeServiceTest {
   void visibleRowsOmitTheHiddenKey() {
     EntryPointGroupEntity existing = new EntryPointGroupEntity();
     existing.setGroupKey("nav-a");
-    existing.setCategory("settings");
+    existing.setCategory(EntryPointCategory.SETTINGS);
     existing.setName("A");
     existing.setSortOrder(0);
     existing.setRoles("");
     savedGroups.add(existing);
     EntryPointEntity item = ep("settings", "general");
     List<EntryPointEntity> rows = new ArrayList<>(List.of(item));
-    when(groupRepo.findByCategoryOrderBySortOrderAscNameAsc("settings"))
+    when(groupRepo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.SETTINGS))
         .thenAnswer(inv -> new ArrayList<>(savedGroups));
     when(groupRepo.findAll()).thenReturn(List.of(existing));
-    when(entryPointRepo.findByCategoryOrderBySortOrderAscNameAsc("settings"))
+    when(entryPointRepo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.SETTINGS))
         .thenAnswer(inv -> new ArrayList<>(rows));
     when(entryPointRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -126,9 +128,11 @@ class ShellTreeServiceTest {
 
   @Test
   void rejectsNonBooleanHidden() {
-    when(groupRepo.findByCategoryOrderBySortOrderAscNameAsc("settings")).thenReturn(List.of());
+    when(groupRepo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.SETTINGS))
+        .thenReturn(List.of());
     when(groupRepo.findAll()).thenReturn(List.of());
-    when(entryPointRepo.findByCategoryOrderBySortOrderAscNameAsc("settings")).thenReturn(List.of());
+    when(entryPointRepo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.SETTINGS))
+        .thenReturn(List.of());
 
     JsonNode body =
         mapper.readTree(
@@ -147,11 +151,12 @@ class ShellTreeServiceTest {
 
   @Test
   void shellTreePayloadFiltersInactiveItems() {
-    when(groupRepo.findByCategoryOrderBySortOrderAscNameAsc("settings")).thenReturn(List.of());
+    when(groupRepo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.SETTINGS))
+        .thenReturn(List.of());
     EntryPointEntity active = ep("settings", "general");
     EntryPointEntity inactive = ep("settings", "retired");
     inactive.setActive(false);
-    when(entryPointRepo.findByCategoryOrderBySortOrderAscNameAsc("settings"))
+    when(entryPointRepo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.SETTINGS))
         .thenReturn(List.of(active, inactive));
 
     var payload = svc.shellTreePayload("settings");

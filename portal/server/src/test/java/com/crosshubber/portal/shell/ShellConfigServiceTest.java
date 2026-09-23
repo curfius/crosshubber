@@ -13,8 +13,10 @@ import com.crosshubber.portal.common.JsonUtils;
 import com.crosshubber.portal.config.JacksonConfig;
 import com.crosshubber.portal.config.PortalProperties;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupRepository;
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointType;
 import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
 import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
 import com.crosshubber.portal.modules.usersettings.scopes.UserSettingsRepository;
@@ -55,13 +57,14 @@ class ShellConfigServiceTest {
     return m;
   }
 
-  private static EntryPointEntity ep(String moduleKey, String entryKey, String category) {
+  private static EntryPointEntity ep(
+      String moduleKey, String entryKey, EntryPointCategory category) {
     EntryPointEntity e = new EntryPointEntity();
     e.setModuleKey(moduleKey);
     e.setEntryKey(entryKey);
     e.setCategory(category);
     e.setName(entryKey);
-    e.setType("embedded");
+    e.setType(EntryPointType.EMBEDDED);
     e.setSortOrder(0);
     e.setActive(true);
     e.setMulti(false);
@@ -76,9 +79,9 @@ class ShellConfigServiceTest {
     Mockito.when(entryPointRepo.findAll())
         .thenReturn(
             List.of(
-                ep("visible", "a", "applications"),
-                ep("other", "b", "applications"),
-                ep("visible", "c", "admin-settings")));
+                ep("visible", "a", EntryPointCategory.APPLICATIONS),
+                ep("other", "b", EntryPointCategory.APPLICATIONS),
+                ep("visible", "c", EntryPointCategory.ADMIN_SETTINGS)));
     Mockito.when(userSettingsRepo.findByUserId("sub-1")).thenReturn(List.of());
 
     ShellConfigDto config = svc.buildConfig(user());
@@ -96,11 +99,11 @@ class ShellConfigServiceTest {
   void buildConfigSortsEntryPointsByCategoryOrderThenSortOrderThenName() {
     Mockito.when(moduleRepo.findAll()).thenReturn(List.of(module("m", true, "")));
     Mockito.when(groupRepo.findAll()).thenReturn(List.of());
-    EntryPointEntity zFirst = ep("m", "z", "settings");
+    EntryPointEntity zFirst = ep("m", "z", EntryPointCategory.SETTINGS);
     zFirst.setSortOrder(10);
-    EntryPointEntity aSecond = ep("m", "a", "settings");
+    EntryPointEntity aSecond = ep("m", "a", EntryPointCategory.SETTINGS);
     aSecond.setSortOrder(20);
-    EntryPointEntity app = ep("m", "app", "applications");
+    EntryPointEntity app = ep("m", "app", EntryPointCategory.APPLICATIONS);
     Mockito.when(entryPointRepo.findAll()).thenReturn(List.of(zFirst, aSecond, app));
     Mockito.when(userSettingsRepo.findByUserId("sub-1")).thenReturn(List.of());
 

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import com.crosshubber.portal.modules.aihub.common.BaseEntity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Id;
@@ -25,8 +26,9 @@ public class AiHubConversationEntity extends BaseEntity {
   @Column(name = "title", nullable = false)
   private String title;
 
+  @Convert(converter = ConversationOrigin.DbConverter.class)
   @Column(name = "origin", nullable = false)
-  private String origin;
+  private ConversationOrigin origin;
 
   public String getId() {
     return id;
@@ -52,11 +54,11 @@ public class AiHubConversationEntity extends BaseEntity {
     this.title = title;
   }
 
-  public String getOrigin() {
+  public ConversationOrigin getOrigin() {
     return origin;
   }
 
-  public void setOrigin(String origin) {
+  public void setOrigin(ConversationOrigin origin) {
     this.origin = origin;
   }
 }

@@ -15,12 +15,12 @@ public interface ModuleVersionRepository extends JpaRepository<ModuleVersionEnti
   Optional<ModuleVersionEntity> findByModuleKeyAndId(String moduleKey, Long id);
 
   Optional<ModuleVersionEntity> findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(
-      String moduleKey, String status);
+      String moduleKey, VersionStatus status);
 
-  List<ModuleVersionEntity> findByModuleKeyAndStatus(String moduleKey, String status);
+  List<ModuleVersionEntity> findByModuleKeyAndStatus(String moduleKey, VersionStatus status);
 
-  boolean existsByModuleKeyAndStatus(String moduleKey, String status);
+  boolean existsByModuleKeyAndStatus(String moduleKey, VersionStatus status);
 
   long countByModuleKeyAndStatusInAndVersionEndingWith(
-      String moduleKey, List<String> statuses, String suffix);
+      String moduleKey, List<VersionStatus> statuses, String suffix);
 }

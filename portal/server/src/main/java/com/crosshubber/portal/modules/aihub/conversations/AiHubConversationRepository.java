@@ -12,7 +12,7 @@ public interface AiHubConversationRepository
     extends JpaRepository<AiHubConversationEntity, String> {
 
   List<AiHubConversationEntity> findByUserIdAndOriginOrderByUpdatedAtDesc(
-      String userId, String origin);
+      String userId, ConversationOrigin origin);
 
   Optional<AiHubConversationEntity> findByIdAndUserId(String id, String userId);
 }

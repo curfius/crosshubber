@@ -55,11 +55,11 @@ public class PinnedAppsService {
     Map<UUID, PinnedNodeDto> byId = new LinkedHashMap<>();
     List<PinnedNodeDto> roots = new ArrayList<>();
     for (NavigationPinnedAppEntity row : rows) {
-      boolean folder = "folder".equals(row.getNodeType());
+      boolean folder = row.getNodeType() == PinnedNodeType.FOLDER;
       PinnedNodeDto node =
           new PinnedNodeDto(
               row.getId().toString(),
-              row.getNodeType(),
+              row.getNodeType() == null ? null : row.getNodeType().value(),
               folder ? (row.getName() != null ? row.getName() : "") : "",
               !folder ? (row.getRef() != null ? row.getRef() : "") : "",
               new ArrayList<>());
@@ -103,7 +103,7 @@ public class PinnedAppsService {
               : UUID.randomUUID());
       entity.setUserId(userId);
       entity.setParentId(parentId);
-      entity.setNodeType(isFolder ? "folder" : "item");
+      entity.setNodeType(isFolder ? PinnedNodeType.FOLDER : PinnedNodeType.ITEM);
       entity.setName(isFolder ? node.path("name").asText(null) : null);
       entity.setRef(isFolder ? null : node.path("ref").asText(null));
       entity.setSortOrder(order * 10);
@@ -119,14 +119,14 @@ public class PinnedAppsService {
   /** Star-toggle: idempotent root item insert for the given ref. */
   @Transactional
   public void pinRef(String userId, String ref) {
-    boolean exists = repo.existsByUserIdAndNodeTypeAndRef(userId, "item", ref);
+    boolean exists = repo.existsByUserIdAndNodeTypeAndRef(userId, PinnedNodeType.ITEM, ref);
     if (exists) {
       return;
     }
     NavigationPinnedAppEntity entity = new NavigationPinnedAppEntity();
     entity.setId(UUID.randomUUID());
     entity.setUserId(userId);
-    entity.setNodeType("item");
+    entity.setNodeType(PinnedNodeType.ITEM);
     entity.setRef(ref);
     entity.setSortOrder(repo.findMaxSortOrder(userId).orElse(0) + 10);
     repo.save(entity);
@@ -134,6 +134,6 @@ public class PinnedAppsService {
 
   @Transactional
   public void unpinRef(String userId, String ref) {
-    repo.deleteByUserIdAndNodeTypeAndRef(userId, "item", ref);
+    repo.deleteByUserIdAndNodeTypeAndRef(userId, PinnedNodeType.ITEM, ref);
   }
 }

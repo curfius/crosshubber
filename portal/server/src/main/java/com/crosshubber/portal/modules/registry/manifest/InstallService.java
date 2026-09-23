@@ -15,8 +15,10 @@ import com.crosshubber.portal.auth.kcadmin.KcAdminClient;
 import com.crosshubber.portal.common.NodeDates;
 import com.crosshubber.portal.modules.registry.dto.ModuleVersionDto;
 import com.crosshubber.portal.modules.registry.dto.SecurityRoleDto;
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointType;
 import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
 import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
 
@@ -113,11 +115,11 @@ public class InstallService {
         ep.setActive(true);
         ep.setMulti(entry.has("multi") && entry.get("multi").asBoolean());
       }
-      ep.setCategory(flat.category());
+      ep.setCategory(EntryPointCategory.parse(flat.category()));
       ep.setName(entry.path("name").asString());
       ep.setDescription(
           entry.hasNonNull("description") ? entry.get("description").asString() : null);
-      ep.setType(entry.path("type").asString());
+      ep.setType(EntryPointType.parse(entry.path("type").asString()));
       ep.setUrl(validator.resolveUrl(entry, baseUrl));
       ep.setSandbox(joinStringArray(entry.get("sandbox")));
       ep.setAllow(entry.hasNonNull("allow") ? entry.get("allow").asString() : null);
@@ -136,10 +138,11 @@ public class InstallService {
 
     // 3. Version snapshot — mark previous active as superseded
     Optional<ModuleVersionEntity> previousActive =
-        versionRepo.findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, "active");
+        versionRepo.findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(
+            moduleKey, VersionStatus.ACTIVE);
     previousActive.ifPresent(
         v -> {
-          v.setStatus("superseded");
+          v.setStatus(VersionStatus.SUPERSEDED);
           versionRepo.save(v);
         });
     ModuleVersionEntity versionRow = new ModuleVersionEntity();
@@ -148,7 +151,7 @@ public class InstallService {
     versionRow.setDigest(digest);
     versionRow.setManifest(writeJson(manifest));
     versionRow.setInstalledBy(installedBy);
-    versionRow.setStatus("active");
+    versionRow.setStatus(VersionStatus.ACTIVE);
     versionRepo.save(versionRow);
 
     log.info(
@@ -190,14 +193,14 @@ public class InstallService {
                     v.getDigest(),
                     NodeDates.format(v.getInstalledAt()),
                     v.getInstalledBy(),
-                    v.getStatus()))
+                    v.getStatus() == null ? null : v.getStatus().value()))
         .toList();
   }
 
   @Transactional(readOnly = true)
   public JsonNode activeManifest(String moduleKey) {
     return versionRepo
-        .findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, "active")
+        .findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, VersionStatus.ACTIVE)
         .map(v -> readJson(v.getManifest()))
         .orElse(null);
   }
@@ -232,7 +235,7 @@ public class InstallService {
     }
     int activeMajor =
         versionRepo
-            .findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, "active")
+            .findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, VersionStatus.ACTIVE)
             .map(v -> majorOf(v.getVersion()))
             .orElse(majorOf(target.getVersion()));
     String draftVersion = nextDraftVersion(moduleKey, activeMajor);
@@ -248,11 +251,12 @@ public class InstallService {
 
   @Transactional
   public DraftOutcome createDraft(String moduleKey, String createdBy) {
-    if (versionRepo.existsByModuleKeyAndStatus(moduleKey, "draft")) {
+    if (versionRepo.existsByModuleKeyAndStatus(moduleKey, VersionStatus.DRAFT)) {
       return DraftOutcome.fail("draft already exists");
     }
     Optional<ModuleVersionEntity> active =
-        versionRepo.findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, "active");
+        versionRepo.findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(
+            moduleKey, VersionStatus.ACTIVE);
     JsonNode manifest;
     String activeVersion;
     if (active.isPresent()) {
@@ -287,7 +291,8 @@ public class InstallService {
   /** Saves a draft as a new minor version (history preserved). */
   @Transactional
   public DraftOutcome saveDraft(String moduleKey, JsonNode manifest, String savedBy) {
-    List<ModuleVersionEntity> drafts = versionRepo.findByModuleKeyAndStatus(moduleKey, "draft");
+    List<ModuleVersionEntity> drafts =
+        versionRepo.findByModuleKeyAndStatus(moduleKey, VersionStatus.DRAFT);
     if (drafts.isEmpty()) {
       return DraftOutcome.fail("no draft found — call createDraft first");
     }
@@ -311,7 +316,8 @@ public class InstallService {
       manifest = parsed.manifest();
     } else {
       Optional<ModuleVersionEntity> latestDraft =
-          versionRepo.findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, "draft");
+          versionRepo.findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(
+              moduleKey, VersionStatus.DRAFT);
       if (latestDraft.isEmpty()) {
         return ApplyOutcome.fail("no draft found");
       }
@@ -329,7 +335,7 @@ public class InstallService {
     if (incoming != null) {
       int baseMajor =
           versionRepo
-              .findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, "active")
+              .findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, VersionStatus.ACTIVE)
               .map(v -> majorOf(v.getVersion()))
               .orElse(1);
       String archivedVersion = nextDraftVersion(moduleKey, baseMajor);
@@ -339,16 +345,17 @@ public class InstallService {
       archived.setDigest(digest(manifest));
       archived.setManifest(writeJson(manifest));
       archived.setInstalledBy(appliedBy);
-      archived.setStatus("superseded");
+      archived.setStatus(VersionStatus.SUPERSEDED);
       versionRepo.save(archived);
     }
 
     InstallResult result = applyInstall(manifest, appliedBy);
 
     // Archive remaining drafts as superseded (history instead of delete)
-    List<ModuleVersionEntity> drafts = versionRepo.findByModuleKeyAndStatus(moduleKey, "draft");
+    List<ModuleVersionEntity> drafts =
+        versionRepo.findByModuleKeyAndStatus(moduleKey, VersionStatus.DRAFT);
     for (ModuleVersionEntity draft : drafts) {
-      draft.setStatus("superseded");
+      draft.setStatus(VersionStatus.SUPERSEDED);
       versionRepo.save(draft);
     }
     log.info(
@@ -361,7 +368,8 @@ public class InstallService {
   @Transactional
   public boolean discardDraft(String moduleKey) {
     Optional<ModuleVersionEntity> latest =
-        versionRepo.findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, "draft");
+        versionRepo.findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(
+            moduleKey, VersionStatus.DRAFT);
     if (latest.isEmpty()) {
       return false;
     }
@@ -388,7 +396,7 @@ public class InstallService {
     JsonNode manifest = readJson(target.getManifest());
     int activeMajor =
         versionRepo
-            .findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, "active")
+            .findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, VersionStatus.ACTIVE)
             .map(v -> majorOf(v.getVersion()))
             .orElse(majorOf(target.getVersion()));
     String draftVersion = nextDraftVersion(moduleKey, activeMajor);
@@ -405,7 +413,7 @@ public class InstallService {
   @Transactional(readOnly = true)
   public JsonNode latestDraftManifest(String moduleKey) {
     return versionRepo
-        .findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, "draft")
+        .findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(moduleKey, VersionStatus.DRAFT)
         .map(v -> readJson(v.getManifest()))
         .orElse(null);
   }
@@ -449,12 +457,13 @@ public class InstallService {
   private String nextMajorVersion(String moduleKey) {
     long majors =
         versionRepo.countByModuleKeyAndStatusInAndVersionEndingWith(
-            moduleKey, List.of("active", "superseded"), ".0");
+            moduleKey, List.of(VersionStatus.ACTIVE, VersionStatus.SUPERSEDED), ".0");
     return (majors + 1) + ".0";
   }
 
   private String nextDraftVersion(String moduleKey, int baseMajor) {
-    List<ModuleVersionEntity> drafts = versionRepo.findByModuleKeyAndStatus(moduleKey, "draft");
+    List<ModuleVersionEntity> drafts =
+        versionRepo.findByModuleKeyAndStatus(moduleKey, VersionStatus.DRAFT);
     int maxMinor = 0;
     for (ModuleVersionEntity draft : drafts) {
       String version = draft.getVersion();
@@ -476,7 +485,7 @@ public class InstallService {
     draft.setDigest(digest(manifest));
     draft.setManifest(writeJson(manifest));
     draft.setInstalledBy(by);
-    draft.setStatus("draft");
+    draft.setStatus(VersionStatus.DRAFT);
     return versionRepo.save(draft).getId();
   }
 

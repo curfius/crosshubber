@@ -28,7 +28,7 @@ public record EntryPointGroupDto(
     List<String> roles = Roles.parse(g.getRoles());
     return new EntryPointGroupDto(
         g.getGroupKey(),
-        g.getCategory(),
+        g.getCategory() == null ? null : g.getCategory().value(),
         g.getName(),
         g.getParentKey(),
         g.getSortOrder(),

@@ -21,7 +21,7 @@ public interface NavigationPinnedAppRepository
 
   List<NavigationPinnedAppEntity> findByUserIdAndParentIdIsNull(String userId);
 
-  boolean existsByUserIdAndNodeTypeAndRef(String userId, String nodeType, String ref);
+  boolean existsByUserIdAndNodeTypeAndRef(String userId, PinnedNodeType nodeType, String ref);
 
   /**
    * Bulk delete for the tree replace path. MUST be a single statement: the per-entity derived
@@ -32,7 +32,7 @@ public interface NavigationPinnedAppRepository
   @Query("DELETE FROM NavigationPinnedAppEntity p WHERE p.userId = :userId")
   void deleteAllForUser(@Param("userId") String userId);
 
-  void deleteByUserIdAndNodeTypeAndRef(String userId, String nodeType, String ref);
+  void deleteByUserIdAndNodeTypeAndRef(String userId, PinnedNodeType nodeType, String ref);
 
   @Query("SELECT max(p.sortOrder) FROM NavigationPinnedAppEntity p WHERE p.userId = :userId")
   Optional<Integer> findMaxSortOrder(@Param("userId") String userId);

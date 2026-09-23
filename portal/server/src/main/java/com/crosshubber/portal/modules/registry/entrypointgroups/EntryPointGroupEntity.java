@@ -2,7 +2,10 @@ package com.crosshubber.portal.modules.registry.entrypointgroups;
 
 import java.time.Instant;
 
+import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
+
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -24,8 +27,9 @@ public class EntryPointGroupEntity {
   @Column(name = "group_key", nullable = false, unique = true)
   private String groupKey;
 
+  @Convert(converter = EntryPointCategory.DbConverter.class)
   @Column(name = "category", nullable = false)
-  private String category;
+  private EntryPointCategory category;
 
   @Column(name = "name", nullable = false)
   private String name;
@@ -87,11 +91,11 @@ public class EntryPointGroupEntity {
     this.groupKey = groupKey;
   }
 
-  public String getCategory() {
+  public EntryPointCategory getCategory() {
     return category;
   }
 
-  public void setCategory(String category) {
+  public void setCategory(EntryPointCategory category) {
     this.category = category;
   }
 

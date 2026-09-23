@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,9 +20,11 @@ import com.crosshubber.portal.modules.registry.dto.EntryPointGroupDto;
 import com.crosshubber.portal.modules.registry.dto.EntryPointGroupUpsertRequest;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 
 /** Entry point groups routes. */
 @RestController
+@Validated
 @RequestMapping("/api/registry/entry-point-groups")
 public class EntryPointGroupsController {
 
@@ -32,7 +35,12 @@ public class EntryPointGroupsController {
   }
 
   @GetMapping
-  public ResponseEntity<Map<String, Object>> list(@RequestParam(required = false) String category) {
+  public ResponseEntity<Map<String, Object>> list(
+      @RequestParam(required = false)
+          @Pattern(
+              regexp = "applications|settings|features|admin-settings|user-settings",
+              message = "must be applications|settings|features|admin-settings|user-settings")
+          String category) {
     List<EntryPointGroupDto> groups =
         groupsService.list(category).stream().map(EntryPointGroupsService::toOutput).toList();
     return ResponseEntity.ok(Map.of("groups", groups));

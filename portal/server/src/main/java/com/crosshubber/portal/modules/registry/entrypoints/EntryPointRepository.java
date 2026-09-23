@@ -12,7 +12,7 @@ public interface EntryPointRepository extends JpaRepository<EntryPointEntity, Lo
 
   List<EntryPointEntity> findByModuleKey(String moduleKey);
 
-  List<EntryPointEntity> findByCategoryOrderBySortOrderAscNameAsc(String category);
+  List<EntryPointEntity> findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory category);
 
   List<EntryPointEntity> findByModuleKeyOrderBySortOrderAscNameAsc(String moduleKey);
 
@@ -20,7 +20,7 @@ public interface EntryPointRepository extends JpaRepository<EntryPointEntity, Lo
 
   List<EntryPointEntity> findByGroupKey(String groupKey);
 
-  default List<EntryPointEntity> findByCategory(String category, boolean activeOnly) {
+  default List<EntryPointEntity> findByCategory(EntryPointCategory category, boolean activeOnly) {
     List<EntryPointEntity> rows = findByCategoryOrderBySortOrderAscNameAsc(category);
     return activeOnly ? rows.stream().filter(EntryPointEntity::getActive).toList() : rows;
   }
