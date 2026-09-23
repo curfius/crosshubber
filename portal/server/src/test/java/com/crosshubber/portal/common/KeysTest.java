@@ -82,9 +82,7 @@ class KeysTest {
   // --- vocabularies ---
 
   @Test
-  void categoryAndTypeVocabulariesMatchApiContract() {
-    assertEquals(4, Keys.CATEGORIES.size());
-    assertTrue(Keys.CATEGORIES.contains("user-settings"));
+  void typeVocabularyMatchesApiContract() {
     assertEquals(4, Keys.TYPES.size());
     assertTrue(Keys.TYPES.contains("mfe"));
   }

@@ -4,7 +4,7 @@ import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -19,7 +19,8 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * User settings routes: 16 KB payload cap, {@code general} scope restricted to {@code theme}/{@code
- * language}.
+ * language}. Authentication is enforced by {@code @PreAuthorize} + the filter chain (401 envelope
+ * comes from the security entry point, not this controller).
  */
 @RestController
 @RequestMapping("/api/user-settings")
@@ -41,21 +42,14 @@ public class UserSettingsController {
 
   @GetMapping
   @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<Map<String, Object>> getAll(Authentication auth) {
-    PortalUser user = user(auth);
-    if (user == null) {
-      return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
-    }
+  public ResponseEntity<Map<String, Object>> getAll(@AuthenticationPrincipal PortalUser user) {
     return ResponseEntity.ok(Map.of("settings", settingsService.getAll(user.sub())));
   }
 
   @GetMapping("/{scope}")
   @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<?> get(@PathVariable String scope, Authentication auth) {
-    PortalUser user = user(auth);
-    if (user == null) {
-      return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
-    }
+  public ResponseEntity<?> get(
+      @PathVariable String scope, @AuthenticationPrincipal PortalUser user) {
     if (!scope.matches(Keys.KEY_RE)) {
       return ResponseEntity.badRequest()
           .body(Map.of("error", "scope must match [a-z0-9][a-z0-9-]{0,63}"));
@@ -66,11 +60,9 @@ public class UserSettingsController {
   @PutMapping("/{scope}")
   @PreAuthorize("isAuthenticated()")
   public ResponseEntity<?> put(
-      @PathVariable String scope, @RequestBody Map<String, Object> body, Authentication auth) {
-    PortalUser user = user(auth);
-    if (user == null) {
-      return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
-    }
+      @PathVariable String scope,
+      @RequestBody Map<String, Object> body,
+      @AuthenticationPrincipal PortalUser user) {
     if (!scope.matches(Keys.KEY_RE)) {
       return ResponseEntity.badRequest()
           .body(Map.of("error", "scope must match [a-z0-9][a-z0-9-]{0,63}"));
@@ -112,12 +104,5 @@ public class UserSettingsController {
     } catch (Exception e) {
       return Integer.MAX_VALUE;
     }
-  }
-
-  private static PortalUser user(Authentication auth) {
-    if (auth != null && auth.getPrincipal() instanceof PortalUser user) {
-      return user;
-    }
-    return null;
   }
 }

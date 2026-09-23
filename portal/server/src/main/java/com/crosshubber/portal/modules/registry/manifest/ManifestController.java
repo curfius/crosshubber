@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.crosshubber.portal.common.SecurityUtils;
 import com.crosshubber.portal.common.Texts;
 import com.crosshubber.portal.config.PortalProperties;
-import com.crosshubber.portal.modules.registry.dto.ModuleVersionDto;
 import com.crosshubber.portal.security.PortalUser;
 
 import tools.jackson.databind.JsonNode;
@@ -218,13 +217,8 @@ public class ManifestController {
     if (manifest == null) {
       return ResponseEntity.status(404).body(Map.of("error", "version not found"));
     }
-    String version =
-        installService.listVersions(moduleKey).stream()
-            .filter(v -> v.id() != null && v.id() == versionId)
-            .map(ModuleVersionDto::version)
-            .findFirst()
-            .orElse("unknown");
-    String filename = moduleKey + "-v" + version + ".json";
+    String version = installService.versionLabel(moduleKey, versionId);
+    String filename = moduleKey + "-v" + (version != null ? version : "unknown") + ".json";
     return ResponseEntity.ok()
         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
         .contentType(MediaType.APPLICATION_JSON)

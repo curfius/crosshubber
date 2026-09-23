@@ -163,6 +163,8 @@ Intentional API/storage decisions (several date back to the original port):
 | 10 | Shell-config group `icon` unified with the registry omit-blank rule (2026-09) | Blank-string icons are no longer emitted in `/api/config` groups — one shared `EntryPointGroupDto` |
 | 11 | Constrained columns map to enums via nested lowercase `DbConverter`s (2026-09) | `@Enumerated(STRING)` stores UPPERCASE names, but CHECK values are lowercase/hyphenated — converters keep DB + API values byte-identical (no data migration); unknown DB values fail loudly |
 | 12 | Invalid `category` query filter on `/api/registry/entry-point-groups` → 400 `{"error":"list.category must be …"}` (was a silent empty list) | Declarative `@Pattern` + method validation; consistent with the `{"error"}` envelope convention |
+| 13 | Concurrent write to a versioned resource → 409 `{"error":"conflict: resource changed concurrently - reload and retry"}` (2026-09) | `@Version` optimistic locking on instance/module settings, nav layout, and workspaces (OPTIMIZATIONS #12); the `version` columns are internal — DTOs never expose them |
+| 14 | Non-convertible path/query param → 400 `{"error":"<param> has an invalid value"}` (was hardcoded `invalid versionId`, 2026-09) | One type-mismatch handler covers every endpoint; the old message misreported e.g. entry-point `{id}` failures as versionId |
 
 ## Development
 

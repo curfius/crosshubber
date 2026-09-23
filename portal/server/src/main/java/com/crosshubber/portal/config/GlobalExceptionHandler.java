@@ -4,6 +4,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -84,11 +85,21 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "forbidden"));
   }
 
+  /** {@code @Version} mismatch — the resource changed since the client loaded it (409). */
+  @ExceptionHandler(OptimisticLockingFailureException.class)
+  public ResponseEntity<Map<String, String>> handleOptimisticLock(
+      OptimisticLockingFailureException ex) {
+    log.warn("[portal] 409 conflict: {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(Map.of("error", "conflict: resource changed concurrently - reload and retry"));
+  }
+
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   public ResponseEntity<Map<String, String>> handleTypeMismatch(
       MethodArgumentTypeMismatchException ex) {
-    log.warn("[portal] 400 invalid versionId");
-    return ResponseEntity.badRequest().body(Map.of("error", "invalid versionId"));
+    String msg = ex.getName() + " has an invalid value";
+    log.warn("[portal] 400 {}", msg);
+    return ResponseEntity.badRequest().body(Map.of("error", msg));
   }
 
   @ExceptionHandler(Exception.class)

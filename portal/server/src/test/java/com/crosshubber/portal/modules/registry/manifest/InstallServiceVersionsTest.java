@@ -50,4 +50,23 @@ class InstallServiceVersionsTest {
     assertEquals("tenant/alice (sub-1)", dto.installedBy());
     assertEquals("active", dto.status());
   }
+
+  @Test
+  void versionLabelLooksUpSingleRow() {
+    ModuleVersionEntity row = new ModuleVersionEntity();
+    row.setModuleKey("m");
+    row.setVersion("2.0");
+    Mockito.when(versionRepo.findByModuleKeyAndId("m", 7L)).thenReturn(java.util.Optional.of(row));
+
+    assertEquals("2.0", svc.versionLabel("m", 7L));
+    Mockito.verify(versionRepo, Mockito.never())
+        .findByModuleKeyOrderByInstalledAtDesc(Mockito.any());
+  }
+
+  @Test
+  void versionLabelReturnsNullWhenAbsent() {
+    Mockito.when(versionRepo.findByModuleKeyAndId("m", 9L)).thenReturn(java.util.Optional.empty());
+
+    assertEquals(null, svc.versionLabel("m", 9L));
+  }
 }

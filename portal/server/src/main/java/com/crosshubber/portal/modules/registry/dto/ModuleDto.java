@@ -36,7 +36,7 @@ public record ModuleDto(
         m.getActive(),
         m.getBuiltin(),
         m.getManagedBy(),
-        Texts.notBlank(m.getIcon()) ? m.getIcon() : null,
+        Texts.blankToNull(m.getIcon()),
         roles.isEmpty() ? null : roles,
         m.getVersion(),
         m.getManifestDigest(),

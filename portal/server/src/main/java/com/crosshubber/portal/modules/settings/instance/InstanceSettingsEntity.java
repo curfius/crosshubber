@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 /** JPA entity for {@code instance_settings} table (singleton row id=1). */
 @Entity
@@ -27,6 +28,11 @@ public class InstanceSettingsEntity {
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  /** Optimistic-lock version — concurrent singleton writes fail with 409 (OPTIMIZATIONS #12). */
+  @Version
+  @Column(name = "version", nullable = false)
+  private Integer version;
 
   @PrePersist
   void prePersist() {
@@ -62,5 +68,13 @@ public class InstanceSettingsEntity {
 
   public void setUpdatedAt(Instant updatedAt) {
     this.updatedAt = updatedAt;
+  }
+
+  public Integer getVersion() {
+    return version;
+  }
+
+  public void setVersion(Integer version) {
+    this.version = version;
   }
 }

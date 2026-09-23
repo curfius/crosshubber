@@ -214,6 +214,18 @@ public class InstallService {
         .orElse(null);
   }
 
+  /**
+   * Version label for a single row (download filename) — one-row lookup instead of hydrating every
+   * stored manifest JSONB via {@link #listVersions}. Null when the row is absent.
+   */
+  @Transactional(readOnly = true)
+  public String versionLabel(String moduleKey, long versionId) {
+    return versionRepo
+        .findByModuleKeyAndId(moduleKey, versionId)
+        .map(ModuleVersionEntity::getVersion)
+        .orElse(null);
+  }
+
   // ── Rollback / drafts ────────────────────────────────────────────────
 
   /** Rollback creates a DRAFT from an older version — never activates directly. */

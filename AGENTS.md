@@ -31,7 +31,7 @@ portal/
       auth/ security/ config/ common/ bootstrap/ shell/ workspaces/ proxy/
     src/main/resources/
       application.yml         portal.* config; env-driven, dev defaults insecure-by-design
-      db/migration/           Flyway V1..V24 (DDL only here)
+      db/migration/           Flyway V1..V26 (DDL only here)
       i18n-catalog.json       GENERATED seed catalog (~227 KB, 8 languages) — don't hand-edit
   ui/                         Angular 22 workspace shell
     src/app/core/             Platform services (bridge, i18n, theme, auth, config...)
@@ -156,10 +156,12 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
   knowledge retrieval).
 - `plan/UX_PLAN.md` — portal navigation/UX optimization roadmap (journey-based
   Phases 1–3; Phase 1 quick wins implemented 2026-09-22).
-- `portal/server/OPTIMIZATIONS.md` — the running backend optimization plan (items #1
-  typed DTOs, #9 @Valid, #10 shared constants, #11 enums, #12 optimistic locking,
-  #16 @Cacheable, #26 projections were open as of 2026-09; #27 Reconciler TX was fixed
-  in Step 9 — see the Step 9 section).
+- `portal/server/OPTIMIZATIONS.md` — backend optimization plan, **topic closed in
+  Step 13 (2026-09)**: #1 typed DTOs, #9 @Valid, #10 shared constants, #11 enums,
+  #12 optimistic locking (409), #3 buildConfig, #16/#17/#18/#26 resolved with
+  rationale. Remaining work moved to that file's "Deferred to future topics" section
+  (domain-exception mapping #8, KEY_RE tail, ProxyService streaming, InstallService
+  split, token-mask column, Spring Session until multi-instance HA).
 - UI backlog (tracked here until a UI plan file exists): enable `"strict"` +
   `strictTemplates` in `portal/ui/tsconfig.json`; lazy-load non-default themes (18
   theme files ship in global CSS today); merge `chat`/`quick-chat` duplicated logic;

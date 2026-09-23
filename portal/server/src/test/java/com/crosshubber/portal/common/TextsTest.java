@@ -37,27 +37,15 @@ class TextsTest {
     assertEquals("a", Texts.orEmpty("a"));
   }
 
-  // --- scalar coercions ---
+  // --- blankToNull ---
 
   @Test
-  void stringOrFallsBackOnNonString() {
-    assertEquals("a", Texts.stringOr("a", "b"));
-    assertEquals("b", Texts.stringOr(1, "b"));
-    assertEquals("b", Texts.stringOr(null, "b"));
-  }
-
-  @Test
-  void intOrTruncatesDoubles() {
-    assertEquals(3, Texts.intOr(3.9, 0));
-    assertEquals(7, Texts.intOr(7, 0));
-    assertEquals(5, Texts.intOr("nope", 5));
-  }
-
-  @Test
-  void boolOrFallsBackOnNonBoolean() {
-    assertTrue(Texts.boolOr(true, false));
-    assertFalse(Texts.boolOr("true", false));
-    assertTrue(Texts.boolOr(null, true));
+  void blankToNullCollapsesNullAndBlanks() {
+    assertNull(Texts.blankToNull(null));
+    assertNull(Texts.blankToNull(""));
+    assertNull(Texts.blankToNull("   "));
+    assertEquals("x", Texts.blankToNull("x"));
+    assertEquals(" x ", Texts.blankToNull(" x "));
   }
 
   // --- joinComma ---

@@ -7,8 +7,8 @@ import jakarta.persistence.Converter;
 
 /**
  * Entry point / group categories (DB CHECK on {@code entry_points.category} and {@code
- * entry_point_groups.category}). Stored as lowercase-hyphen values; groups accept only the
- * three-value subset, enforced by DB CHECK + request validation.
+ * entry_point_groups.category}). Stored as lowercase-hyphen values; groups accept all values except
+ * {@code admin-settings} (4-value subset, V6+), enforced by DB CHECK + request validation.
  */
 public enum EntryPointCategory {
   APPLICATIONS,

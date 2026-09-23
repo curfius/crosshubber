@@ -27,11 +27,9 @@ public final class Keys {
           "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
           Pattern.CASE_INSENSITIVE);
 
-  /** Entry point / entry point group categories. */
-  public static final List<String> CATEGORIES =
-      List.of("applications", "settings", "features", "user-settings");
-
-  /** Entry point types. */
+  /**
+   * Entry point types. Categories live on the {@code EntryPointCategory} enum (value authority).
+   */
   public static final List<String> TYPES = List.of("iframe", "embedded", "mfe", "link");
 
   private Keys() {}

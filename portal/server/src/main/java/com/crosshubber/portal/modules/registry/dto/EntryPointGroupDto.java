@@ -32,7 +32,7 @@ public record EntryPointGroupDto(
         g.getName(),
         g.getParentKey(),
         g.getSortOrder(),
-        Texts.notBlank(g.getIcon()) ? g.getIcon() : null,
+        Texts.blankToNull(g.getIcon()),
         roles.isEmpty() ? null : roles,
         Boolean.TRUE.equals(g.getHidden()) ? Boolean.TRUE : null);
   }

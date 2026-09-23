@@ -1,5 +1,8 @@
 # Portal Server — Java/Spring Optimization Plan
 
+> **Topic closed — Step 13 (2026-09-23).** All numbered items carry a final status below;
+> anything intentionally not done is parked under **Deferred to future topics**.
+
 ## Executive Summary
 
 The codebase is a well-structured **Spring Boot 4.1.1 / Java 21 modular monolith**. While architecturally sound, it carries some legacy patterns and misses many Spring abstractions. This document outlines all identified optimizations organized by priority and category.
@@ -24,6 +27,22 @@ i18n labels, settings homeApp, pinned-apps pin, aihub provider/token create), ne
 `HandlerMethodValidationException` + `ConstraintViolationException` handlers, and shared
 `common/Keys`, `common/Texts`, `common/SecurityUtils` replacing the regex/helper duplication.
 See README "Design notes" #8–#10 for the deliberate response-shape decisions.
+
+**Completed in Step 13 (2026-09-23) — topic CLOSED:** #12 optimistic locking (`@Version` on
+instance/module settings, nav layout, workspaces + 409 handler + `V26` version columns), #3
+(buildConfig already decomposed; SQL role pushdown closed as won't-do), #13 (shared
+`HttpClientConfig`; 2 raw `HttpClient` sites are deliberate streaming/SSRF exemptions), #16
+(won't-do — conditional caching semantics), #17 (last manual 401s removed), #18 (won't-do until
+multi-instance HA), #26 (superseded by typed DTOs), plus schema hygiene in `V26`
+(`entry_point_groups` category CHECK re-asserted at its V6 4-value shape — the Step 11
+"3-value CHECK" audit read V1 only and was wrong, live DB verified; legacy `favorites` dropped —
+`chat_*` no longer exist, renamed/dropped by V8/V15) and a dead-code sweep
+(`EntryPointsService.listByCategory` + `EntryPointRepository.findByCategory`,
+`Keys.CATEGORIES`, `Texts.stringOr/intOr/boolOr`). `ManifestController.download` now uses the
+one-row `InstallService.versionLabel` lookup; `UserSettingsController` uses
+`@AuthenticationPrincipal`; the type-mismatch 400 message is generic
+(README "Design notes" #13–#14). Everything not done is listed under **Deferred to future
+topics** below.
 
 ---
 
@@ -109,10 +128,13 @@ public class JsonUtils {
 
 ### 3. Fix `ShellConfigService.buildConfig()` — Duplicate DB Queries + God Method
 
-**Status:** 🔶 MOSTLY DONE — the duplicate `moduleRepo.findAll()` and the O(n²) `noneMatch` group
-filter were already gone before Step 11; Step 11 converted the output to `ShellConfigDto` records
-and typed comparators. Still open: pushing role-based filtering to repository `@Query` methods and
-decomposing the triple-filter pipeline into smaller methods.
+**Status:** ✅ DONE (closed Step 13) — duplicate `findAll` and the O(n²) group filter were gone
+before Step 11; Step 11 converted the output to `ShellConfigDto` records; the pipeline already
+decomposes into `visibleModuleKeys` / `allowedGroups` / `visibleEntryPoints` / `usedGroupsDto` /
+`loadPreferences` / `services`. **Won't-do:** pushing role filtering into repository `@Query`
+methods — roles are comma-joined text (README design note #5), so SQL would need `LIKE`/
+`string_to_array` matching that duplicates `Roles.parse` semantics in two languages; the
+Java-side set filter over one `findAll` is correct and cheap at current scale.
 
 ### 4. ~~Call `validate()` in `EntryPointsService.upsert()`~~
 
@@ -198,7 +220,10 @@ CREATE INDEX IF NOT EXISTS idx_module_versions_module_installed
 
 ### 8. Remove Web-Layer Exceptions from Service Layer
 
-**Impact:** Architecture — services should not depend on Spring MVC exceptions
+**Status:** ⬜ OPEN — deferred (see **Deferred to future topics**). Services still throw
+`ResponseStatusException` (`ModulesService`, `AiHubProvidersService`, `AiHubChatService`,
+`SsrfGuard`); runtime impact is low because `GlobalExceptionHandler` already maps it to the
+`{"error"}` envelope. A domain-exception sweep would touch many tests for stylistic gain.
 
 **Issue:** Services throw `ResponseStatusException` directly:
 - `ModulesService.java` — lines 79, 83, 109, 120, 122
@@ -251,27 +276,28 @@ converters keep stored/API values byte-identical — no data migration needed.
 |---|---|---|
 | `EntryPointEntity` | `category` | `EntryPointCategory` (5 values) |
 | `EntryPointEntity` | `type` | `EntryPointType` |
-| `EntryPointGroupEntity` | `category` | `EntryPointCategory` (shared; DB CHECK allows the 3-value subset) |
+| `EntryPointGroupEntity` | `category` | `EntryPointCategory` (shared; DB CHECK allows the 4-value subset incl. `user-settings` since V6) |
 | `ModuleVersionEntity` | `status` | `VersionStatus` (active/superseded/draft/archived — no CHECK; enum is the value-set authority) |
 | `AiHubConversationEntity` | `origin` | `ConversationOrigin` (portal/telegram/whatsapp — no CHECK; dev data verified empty) |
 | `NavigationPinnedAppEntity` | `nodeType` | `PinnedNodeType` (folder/item) |
 
 Obsolete rows in the original table: `AiHubChannelEntity`/`AiHubMessageEntity` — those tables were
-dropped by V12/V15. `user_settings.category` / `favorites.item_type` have no live entity fields
-(deferred). Repository query params (category/status/origin/nodeType) take the enums too; JSON
-boundaries stay lowercase strings via `enum.value()` / `parse()` (README design notes #11–#12).
+dropped by V12/V15. `user_settings.category` has no live entity field; `favorites` (and its
+`item_type`) was dropped by V26 (deferred). Repository query params (category/status/origin/nodeType)
+take the enums too; JSON boundaries stay lowercase strings via `enum.value()` / `parse()` (README
+design notes #11–#12).
 
 ---
 
 ### 12. Add Optimistic Locking (`@Version`) on Singleton Entities
 
-**Impact:** Data integrity — concurrent updates can cause lost updates
-
-**Affected entities:**
-- `InstanceSettingsEntity` (singleton row id=1)
-- `NavigationLayoutEntity` (singleton row id=1)
-- `ModuleSettingsEntity` (per-module singleton)
-- `WorkspaceEntity` (concurrent saves from same user)
+**Status:** ✅ DONE (Step 13) — `@Version` + `version INT NOT NULL DEFAULT 0` (`V26`) on
+`InstanceSettingsEntity`, `NavigationLayoutEntity`, `ModuleSettingsEntity`, `WorkspaceEntity`;
+`OptimisticLockingFailureException` → 409 `{"error":"conflict: resource changed concurrently -
+reload and retry"}` in `GlobalExceptionHandler` (README design note #13); workspace rename
+replacements/restores insert as fresh rows (version not copied by `copyRow`), and the versioned
+DELETE is the conflict point for concurrent renames. `GlobalExceptionHandlerConflictTest` covers
+the envelope + annotation presence.
 
 **Approach:**
 1. Add `@Version` field to affected entities
@@ -282,12 +308,13 @@ boundaries stay lowercase strings via `enum.value()` / `parse()` (README design 
 
 ### 13. Use Spring Abstractions for HTTP Clients
 
-**Impact:** Connection pooling, metrics, consistency
+**Status:** ✅ DONE (closed Step 13) — shared `RestClient` customization with connect/read
+timeouts lives in `config/HttpClientConfig`; `RestClient.create()` call sites were migrated
+(see that class's Javadoc). Two raw `HttpClient` remain **by design**: `ProxyService` (streaming
+upstream asset relay) and `ManifestFetcher` (SSRF-guarded manifest fetch with redirect
+control) — both need per-request redirect/timeout semantics a shared `RestClient` doesn't give.
 
-**Issue:** Three places create raw `HttpClient` or `RestClient` manually:
-- `ChatCompletionService.java` — line 42: `HttpClient.newBuilder().connectTimeout(...).build()`
-- `ProxyService.java` — lines 34-38: `HttpClient.newBuilder().build()`
-- `KcAdminClient.java` — line 35: `RestClient.create()` without base URL or timeouts
+**Issue:** Three places created raw `HttpClient` or `RestClient` manually (historical).
 
 **Approach:**
 1. Create a `RestClient` bean with configured timeouts and connection pooling
@@ -321,40 +348,32 @@ boundaries stay lowercase strings via `enum.value()` / `parse()` (README design 
 
 ### 16. Use `@Cacheable` Instead of Manual Caffeine Cache
 
-**Impact:** Declarative caching, testability
-
-**Issue:** `ProxyService` manually manages a `Caffeine.newBuilder()` cache (lines 28-33).
-
-**Approach:**
-1. Configure Spring Cache with Caffeine cache manager
-2. Replace manual cache with `@Cacheable("entryPoints")` on the lookup method
-3. Use `@CacheEvict` for cache invalidation
-4. Configure TTL via `application.yml`
+**Status:** ✅ WON'T-DO (closed Step 13) — the two manual caches encode conditional semantics
+`@Cacheable` can't express without extra config: `ProxyService.epCache` (entry-point → upstream
+resolution with conditional put / reload behavior) and `AiHubChatService` (provider model list
+with on-demand refresh). Declarative conversion would need `cacheManager` config + evict hooks
+for identical behavior — churn, not an optimization.
 
 ---
 
 ### 17. Use `@PreAuthorize` Consistently
 
-**Impact:** Security consistency — mixed auth patterns
-
-**Issue:** Manual `user == null` checks in:
-- `UserSettingsController.java` — lines 44, 53, 67 (manual 401)
-- `ShellConfigController.java` — lines 24-25 (manual 401)
-- `AiHubChatController.java` — **no auth annotation at all** (security gap)
-
-While other controllers correctly use `@PreAuthorize`.
-
-**Approach:**
-1. Add `@PreAuthorize("isAuthenticated()")` to all protected endpoints
-2. Remove manual `user == null` checks — Spring Security handles this
-3. Ensure `AiHubChatController` has proper authentication
-4. Use `@AuthenticationPrincipal PortalUser user` parameter injection consistently
+**Status:** ✅ DONE (closed Step 13) — every protected controller carries `@PreAuthorize`
+(`AiHubChatController` and `ShellConfigController` were already annotated; Step 13 removed the
+redundant manual `user == null` → 401 branches in `UserSettingsController` and switched it to
+`@AuthenticationPrincipal PortalUser`, matching `WorkspacesController`. Unauthenticated requests
+never reach controllers: the security filter chain emits the 401 `{"error":"unauthorized"}`
+envelope (covered by `PortalSmokeTest.unauthenticatedApiReturns401JsonContract`).
 
 ---
 
 ## 🟢 LOW PRIORITY
 
 ### 18. Replace In-Memory `ConcurrentHashMap` Sessions with Spring Session
+
+**Status:** ✅ WON'T-DO for now (closed Step 13) — the portal deploys single-node (docker
+compose); `SessionService`'s `ConcurrentHashMap` is correct there. Revisit only as part of a
+multi-instance HA effort, where sticky sessions or Spring Session JDBC become a real requirement.
 
 **Issue:** `SessionService` (line 21) uses plain `ConcurrentHashMap`:
 - Sessions lost on restart
@@ -460,6 +479,10 @@ private String credentialsEncrypted;
 
 ### 26. Add Projections for List Endpoints
 
+**Status:** ✅ SUPERSEDED (closed Step 13) — Step 11's typed DTOs (#1) already shape every list
+payload via explicit `entity → record` mapping with per-field inclusion; interface projections
+would only skip that cheap step. Revisit only if profiling shows mapping cost on a hot list.
+
 **Issue:** All queries return full entities even when only a few fields are needed.
 
 **Approach:** Create interface-based projections for read-heavy list endpoints:
@@ -488,11 +511,16 @@ public interface ModuleSummary {
 
 ## Newly identified (Step 9 audit, 2026-09-21)
 
-- **`ManifestController.download`** — calls `installService.listVersions(moduleKey)` which hydrates every stored manifest JSONB just to find one version. Add a `findByModuleKeyAndId` repository lookup.
-- **`ProxyService`** — buffers the whole upstream asset in memory (no size cap, own raw `HttpClient`); consider streaming with a size cap and reusing the shared `RestClient` customization.
-- **`InstallService` (579 lines)** — split install/versions/drafts into focused collaborators.
-- **Token masking** (see Step 9 note) — stored-mask column + backfill would remove the per-token decrypt on list.
-- **Legacy tables** — `favorites`, `chat_conversations`, `chat_messages` (V1) have no Java entities; drop in a future cleanup migration after confirming no external consumers.
+- **`ManifestController.download`** — ✅ FIXED (Step 13): one-row `InstallService.versionLabel`
+  (`findByModuleKeyAndId`) instead of hydrating every stored manifest JSONB.
+- **`ProxyService`** — buffers the whole upstream asset in memory (no size cap, own raw
+  `HttpClient`); streaming with a size cap → **Deferred to future topics**.
+- **`InstallService` (579 lines)** — split install/versions/drafts into focused collaborators →
+  **Deferred to future topics**.
+- **Token masking** (see Step 9 note) — stored-mask column + backfill would remove the per-token
+  decrypt on list → **Deferred to future topics**.
+- **Legacy tables** — ✅ RESOLVED (Step 13): `favorites` dropped by `V26`; `chat_conversations` /
+  `chat_messages` no longer exist (renamed to `ai_hub_*` by V8, messages dropped by V15).
 
 ## Newly identified (Step 11 audit, 2026-09-23)
 
@@ -500,11 +528,31 @@ public interface ModuleSummary {
   comma-joins via `joinStringArray` (shared with roles); `V25__normalize_entry_point_sandbox`
   rewrites legacy JSON-array-text rows.
 - **`KEY_RE` is permissive at the tail** — `^[a-z0-9][a-z0-9-]{0,63}$` accepts trailing hyphens
-  (`abc-`); tightening it would need a data audit first (KeysTest documents the behavior).
-- **`EntryPointGroupUpsertRequest` allows `user-settings` but the DB CHECK only admits
-  `applications|settings|features`** — a user-settings group POST parses fine then dies on the
-  CHECK (500). Pre-existing: narrow the request pattern to the 3-value subset (or widen the CHECK
-  if user-settings groups are actually wanted).
+  (`abc-`); tightening it would need a data audit first (KeysTest documents the behavior) →
+  **Deferred to future topics**.
+- **`EntryPointGroupUpsertRequest` allows `user-settings` but the DB CHECK only admits the
+  3-value subset** — ✅ NOT A BUG (Step 13): the audit read V1 only. V6 already widened the
+  CHECK to `applications|settings|features|user-settings` (live DB verified). `V26` re-asserts
+  that 4-value invariant; no behavioral change.
+
+---
+
+## Deferred to future topics
+
+Carried out of the numbered list when the topic was closed (Step 13, 2026-09-23). Each entry is
+intentional, documented, and safe to leave as-is:
+
+1. **#8 domain exceptions** — services may keep throwing `ResponseStatusException`; the global
+   handler already produces the envelope. Convert only if a test/typing need appears.
+2. **`KEY_RE` tail tightening** — needs a data audit of existing keys first.
+3. **`ProxyService` streaming + size cap** — replace whole-asset buffering; also the place to
+   reconsider sharing `HttpClientConfig` (streaming semantics differ).
+4. **`InstallService` split** — install/versions/drafts collaborators; pure refactor with tests.
+5. **Token-mask column + backfill** — removes per-token decrypt on provider list (tracked also
+   in `AiHubProvidersService` comment).
+6. **Spring Session / multi-instance sessions (#18)** — only with an HA deployment decision.
+7. **Pre-decommission behavioral cleanups** (see AGENTS.md): i18n empty-patch no-op, navigation
+   ICU/`localeCompare` tiebreak emulation.
 
 ---
 

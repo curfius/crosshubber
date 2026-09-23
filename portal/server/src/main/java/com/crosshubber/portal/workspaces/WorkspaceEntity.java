@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 /** JPA entity for {@code workspaces} table (PK userId+name, extra uuid id). */
 @Entity
@@ -58,6 +59,15 @@ public class WorkspaceEntity {
 
   @Column(name = "saved_at", nullable = false)
   private Instant savedAt;
+
+  /**
+   * Optimistic-lock version — guards concurrent rename/delete against a stale row (the rename path
+   * is delete+insert, so the versioned DELETE is the conflict point) — OPTIMIZATIONS #12. Rename
+   * replacements and restores are inserted as fresh rows and start at 0 (version not copied).
+   */
+  @Version
+  @Column(name = "version", nullable = false)
+  private Integer version;
 
   @PrePersist
   void prePersist() {
@@ -181,5 +191,13 @@ public class WorkspaceEntity {
 
   public void setSavedAt(Instant savedAt) {
     this.savedAt = savedAt;
+  }
+
+  public Integer getVersion() {
+    return version;
+  }
+
+  public void setVersion(Integer version) {
+    this.version = version;
   }
 }

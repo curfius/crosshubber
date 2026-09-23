@@ -48,15 +48,6 @@ public class EntryPointsService {
     return repo.findAll(Sort.by(Sort.Order.asc("sortOrder"), Sort.Order.asc("name")));
   }
 
-  @Transactional(readOnly = true)
-  public List<EntryPointEntity> listByCategory(List<String> categories, boolean activeOnly) {
-    List<EntryPointEntity> out = new java.util.ArrayList<>();
-    for (String category : categories) {
-      out.addAll(repo.findByCategory(EntryPointCategory.parse(category), activeOnly));
-    }
-    return out;
-  }
-
   // ── Validation (mirrors validateEntryPoint) ──────────────────────────
 
   /**

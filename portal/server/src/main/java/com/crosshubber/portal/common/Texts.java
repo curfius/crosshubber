@@ -18,17 +18,9 @@ public final class Texts {
     return value == null ? "" : value;
   }
 
-  /** The value as a String, or the fallback when absent/not a string. */
-  public static String stringOr(Object value, String fallback) {
-    return value instanceof String s ? s : fallback;
-  }
-
-  public static int intOr(Object value, int fallback) {
-    return value instanceof Number n ? n.intValue() : fallback;
-  }
-
-  public static boolean boolOr(Object value, boolean fallback) {
-    return value instanceof Boolean b ? b : fallback;
+  /** The value when non-blank, otherwise null — optional DTO field mapping. */
+  public static String blankToNull(String value) {
+    return notBlank(value) ? value : null;
   }
 
   /**
