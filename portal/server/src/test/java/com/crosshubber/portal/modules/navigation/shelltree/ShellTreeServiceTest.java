@@ -1,7 +1,6 @@
 package com.crosshubber.portal.modules.navigation.shelltree;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -85,14 +84,8 @@ class ShellTreeServiceTest {
     // Round-trip: hidden=true surfaces in the payload, visible rows omit the key.
     savedGroups.add(groupCap.getValue());
     var payload = svc.shellTreePayload("settings");
-    @SuppressWarnings("unchecked")
-    List<java.util.Map<String, Object>> groups =
-        (List<java.util.Map<String, Object>>) payload.get("groups");
-    assertEquals(true, groups.get(0).get("hidden"));
-    @SuppressWarnings("unchecked")
-    List<java.util.Map<String, Object>> items =
-        (List<java.util.Map<String, Object>>) payload.get("items");
-    assertEquals(true, items.get(0).get("hidden"));
+    assertEquals(true, payload.groups().get(0).hidden());
+    assertEquals(true, payload.items().get(0).hidden());
   }
 
   private final List<EntryPointGroupEntity> savedGroups = new ArrayList<>();
@@ -127,14 +120,8 @@ class ShellTreeServiceTest {
     svc.saveShellTree("settings", body);
 
     var payload = svc.shellTreePayload("settings");
-    @SuppressWarnings("unchecked")
-    List<java.util.Map<String, Object>> groups =
-        (List<java.util.Map<String, Object>>) payload.get("groups");
-    assertFalse(groups.get(0).containsKey("hidden"));
-    @SuppressWarnings("unchecked")
-    List<java.util.Map<String, Object>> items =
-        (List<java.util.Map<String, Object>>) payload.get("items");
-    assertFalse(items.get(0).containsKey("hidden"));
+    assertNull(payload.groups().get(0).hidden());
+    assertNull(payload.items().get(0).hidden());
   }
 
   @Test
@@ -168,11 +155,8 @@ class ShellTreeServiceTest {
         .thenReturn(List.of(active, inactive));
 
     var payload = svc.shellTreePayload("settings");
-    @SuppressWarnings("unchecked")
-    List<java.util.Map<String, Object>> items =
-        (List<java.util.Map<String, Object>>) payload.get("items");
-    assertEquals(1, items.size());
-    assertNull(items.get(0).get("hidden"));
-    assertEquals("general", items.get(0).get("entryKey"));
+    assertEquals(1, payload.items().size());
+    assertNull(payload.items().get(0).hidden());
+    assertEquals("general", payload.items().get(0).entryKey());
   }
 }

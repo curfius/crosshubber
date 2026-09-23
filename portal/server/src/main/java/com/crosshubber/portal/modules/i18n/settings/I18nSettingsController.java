@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.crosshubber.portal.common.Keys;
 import com.crosshubber.portal.modules.i18n.I18nService;
 
 /**
@@ -17,9 +18,6 @@ import com.crosshubber.portal.modules.i18n.I18nService;
  */
 @RestController
 public class I18nSettingsController {
-
-  // (?i) LANG_CODE_RE.
-  private static final String LANG_CODE_RE = "(?i)^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$";
 
   private final I18nService i18nService;
 
@@ -38,7 +36,7 @@ public class I18nSettingsController {
     Map<String, Object> overrides = null;
 
     if (body.containsKey("defaultLanguage")) {
-      if (!(body.get("defaultLanguage") instanceof String s) || !s.matches(LANG_CODE_RE)) {
+      if (!(body.get("defaultLanguage") instanceof String s) || !s.matches(Keys.LANG_CODE_RE)) {
         return ResponseEntity.badRequest()
             .body(Map.of("error", "defaultLanguage must be a valid language code"));
       }
@@ -50,7 +48,7 @@ public class I18nSettingsController {
       defaultLanguage = s;
     }
     if (body.containsKey("fallbackLanguage")) {
-      if (!(body.get("fallbackLanguage") instanceof String s) || !s.matches(LANG_CODE_RE)) {
+      if (!(body.get("fallbackLanguage") instanceof String s) || !s.matches(Keys.LANG_CODE_RE)) {
         return ResponseEntity.badRequest()
             .body(Map.of("error", "fallbackLanguage must be a valid language code"));
       }

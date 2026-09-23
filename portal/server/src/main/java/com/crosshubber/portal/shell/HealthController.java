@@ -1,12 +1,11 @@
 package com.crosshubber.portal.shell;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.crosshubber.portal.shell.dto.HealthDto;
 
 /** Public health endpoint — {@code ok}/{@code db} status with 200 or 503. */
 @RestController
@@ -19,12 +18,9 @@ public class HealthController {
   }
 
   @GetMapping("/healthz")
-  public ResponseEntity<Map<String, Object>> healthz() {
+  public ResponseEntity<HealthDto> healthz() {
     boolean up = healthService.dbStatus();
-    Map<String, Object> response = new LinkedHashMap<>();
-    response.put("ok", up);
-    response.put("app", "portal");
-    response.put("db", up ? "up" : "down");
+    HealthDto response = new HealthDto(up, "portal", up ? "up" : "down");
     return ResponseEntity.status(up ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE)
         .body(response);
   }

@@ -12,8 +12,10 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.crosshubber.portal.common.Keys;
 import com.crosshubber.portal.modules.navigation.NavigationValidationService;
 
+import jakarta.validation.Valid;
 import tools.jackson.databind.JsonNode;
 
 /** Pinned apps routes. */
@@ -54,17 +56,13 @@ public class PinnedAppsController {
   public ResponseEntity<?> pin(
       @org.springframework.security.core.annotation.AuthenticationPrincipal
           com.crosshubber.portal.security.PortalUser user,
-      @RequestBody Map<String, Object> body) {
-    Object ref = body == null ? null : body.get("ref");
-    if (!(ref instanceof String r) || !r.matches(NavigationValidationService.REF_RE)) {
-      return ResponseEntity.badRequest()
-          .body(Map.of("error", "ref must be of the form \"moduleKey:entryKey\""));
-    }
+      @Valid @RequestBody PinRequest body) {
+    String ref = body.ref();
     Set<String> known = pinnedAppsService.knownAppRefs();
-    if (!known.contains(r)) {
-      return ResponseEntity.badRequest().body(Map.of("error", "unknown app ref \"" + r + "\""));
+    if (!known.contains(ref)) {
+      return ResponseEntity.badRequest().body(Map.of("error", "unknown app ref \"" + ref + "\""));
     }
-    pinnedAppsService.pinRef(user.sub(), r);
+    pinnedAppsService.pinRef(user.sub(), ref);
     return ResponseEntity.ok(Map.of("ok", true));
   }
 
@@ -74,7 +72,7 @@ public class PinnedAppsController {
           com.crosshubber.portal.security.PortalUser user,
       @PathVariable String ref) {
     String decoded = java.net.URLDecoder.decode(ref, java.nio.charset.StandardCharsets.UTF_8);
-    if (!decoded.matches(NavigationValidationService.REF_RE)) {
+    if (!decoded.matches(Keys.REF_RE)) {
       return ResponseEntity.badRequest()
           .body(Map.of("error", "ref must be of the form \"moduleKey:entryKey\""));
     }

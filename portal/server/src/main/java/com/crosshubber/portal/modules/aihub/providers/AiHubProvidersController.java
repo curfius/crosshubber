@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -15,7 +14,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.crosshubber.portal.modules.aihub.dto.CreateProviderRequest;
 import com.crosshubber.portal.modules.aihub.dto.CreateTokenRequest;
@@ -24,6 +22,8 @@ import com.crosshubber.portal.modules.aihub.dto.ProviderDto;
 import com.crosshubber.portal.modules.aihub.dto.TokenDto;
 import com.crosshubber.portal.modules.aihub.dto.UpdateProviderRequest;
 import com.crosshubber.portal.modules.aihub.dto.UpdateTokenRequest;
+
+import jakarta.validation.Valid;
 
 @RestController
 public class AiHubProvidersController {
@@ -50,10 +50,8 @@ public class AiHubProvidersController {
 
   @PostMapping("/api/ai-hub/providers/{id}/tokens")
   @PreAuthorize("hasRole('portal-ai-hub-edit')")
-  public ResponseEntity<?> addToken(@PathVariable String id, @RequestBody CreateTokenRequest body) {
-    if (body.name() == null || body.name().isBlank()) {
-      return ResponseEntity.badRequest().body(Map.of("error", "name is required"));
-    }
+  public ResponseEntity<?> addToken(
+      @PathVariable String id, @Valid @RequestBody CreateTokenRequest body) {
     if (providersService.findProvider(id) == null) {
       return ResponseEntity.status(404).body(Map.of("error", "provider not found"));
     }
@@ -132,13 +130,7 @@ public class AiHubProvidersController {
 
   @PostMapping({"/api/ai-hub/providers"})
   @PreAuthorize("hasRole('portal-ai-hub-edit')")
-  public ResponseEntity<?> create(@RequestBody CreateProviderRequest body) {
-    if (body.id() == null
-        || body.name() == null
-        || !body.id().matches("^[a-z0-9][a-z0-9-]{0,63}$")) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "id and name are required, id must be kebab-case");
-    }
+  public ResponseEntity<?> create(@Valid @RequestBody CreateProviderRequest body) {
     return ResponseEntity.status(201)
         .body(
             providersService.addProvider(

@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 import com.crosshubber.portal.common.JsonUtils;
 import com.crosshubber.portal.common.Roles;
 import com.crosshubber.portal.config.PortalProperties;
+import com.crosshubber.portal.modules.registry.dto.EntryPointDto;
+import com.crosshubber.portal.modules.registry.dto.EntryPointGroupDto;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupEntity;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupRepository;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
@@ -27,6 +29,9 @@ import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
 import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
 import com.crosshubber.portal.modules.usersettings.scopes.UserSettingsRepository;
 import com.crosshubber.portal.security.PortalUser;
+import com.crosshubber.portal.shell.dto.ShellConfigDto;
+import com.crosshubber.portal.shell.dto.ShellServiceDto;
+import com.crosshubber.portal.shell.dto.ShellUserDto;
 
 /**
  * Aggregates the authenticated user's shell config for {@code GET /api/config} triple filtering:
@@ -69,30 +74,22 @@ public class ShellConfigService {
   }
 
   /** Builds the full config payload for the given user. */
-  public Map<String, Object> buildConfig(PortalUser user) {
+  public ShellConfigDto buildConfig(PortalUser user) {
     List<String> userRoles = user.roles();
     log.info("[portal] /api/config for user={} roles={}", user.name(), userRoles);
 
     Set<String> visibleModuleKeys = visibleModuleKeys(userRoles);
     Map<String, EntryPointGroupEntity> allowedGroups = allowedGroups(userRoles);
-    List<Map<String, Object>> visibleEps =
+    List<EntryPointDto> visibleEps =
         visibleEntryPoints(userRoles, visibleModuleKeys, allowedGroups);
-    List<Map<String, Object>> usedGroups = usedGroupsDto(visibleEps, allowedGroups);
+    List<EntryPointGroupDto> usedGroups = usedGroupsDto(visibleEps, allowedGroups);
 
-    Map<String, Object> body = new LinkedHashMap<>();
-    Map<String, Object> userDto = new LinkedHashMap<>();
-    userDto.put("sub", user.sub());
-    userDto.put("name", user.name());
-    if (user.email() != null) {
-      userDto.put("email", user.email());
-    }
-    userDto.put("roles", userRoles);
-    body.put("user", userDto);
-    body.put("preferences", loadPreferences(user.sub()));
-    body.put("entryPoints", visibleEps);
-    body.put("entryPointGroups", usedGroups);
-    body.put("services", services());
-    return body;
+    return new ShellConfigDto(
+        new ShellUserDto(user.sub(), user.name(), user.email(), userRoles),
+        loadPreferences(user.sub()),
+        visibleEps,
+        usedGroups,
+        services());
   }
 
   /** Active modules whose role list matches the user — single {@code findAll}, key set result. */
@@ -147,11 +144,11 @@ public class ShellConfigService {
    * allowed (or no group). Category filter excludes admin-settings (admin settings are reachable
    * only via their own routes). Sorted by category order, then sort_order, then name.
    */
-  private List<Map<String, Object>> visibleEntryPoints(
+  private List<EntryPointDto> visibleEntryPoints(
       List<String> userRoles,
       Set<String> visibleModuleKeys,
       Map<String, EntryPointGroupEntity> allowedGroups) {
-    List<Map<String, Object>> visible = new ArrayList<>();
+    List<EntryPointDto> visible = new ArrayList<>();
     for (EntryPointEntity ep : entryPointRepo.findAll()) {
       if (!visibleModuleKeys.contains(ep.getModuleKey())) {
         continue;
@@ -180,63 +177,28 @@ public class ShellConfigService {
   }
 
   /** Group DTOs actually referenced by the visible entry points, sorted by sort_order, name. */
-  private List<Map<String, Object>> usedGroupsDto(
-      List<Map<String, Object>> visibleEps, Map<String, EntryPointGroupEntity> allowedGroups) {
+  private List<EntryPointGroupDto> usedGroupsDto(
+      List<EntryPointDto> visibleEps, Map<String, EntryPointGroupEntity> allowedGroups) {
     Set<String> referencedKeys =
         visibleEps.stream()
-            .map(ep -> (String) ep.get("groupKey"))
+            .map(EntryPointDto::groupKey)
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
     return allowedGroups.values().stream()
         .filter(g -> referencedKeys.contains(g.getGroupKey()))
-        .map(ShellConfigService::toGroupDto)
+        .map(EntryPointGroupDto::fromEntity)
         .sorted(BY_ORDER_THEN_NAME)
         .toList();
   }
 
-  private static Map<String, Object> toGroupDto(EntryPointGroupEntity g) {
-    Map<String, Object> dto = new LinkedHashMap<>();
-    dto.put("groupKey", g.getGroupKey());
-    dto.put("category", g.getCategory());
-    dto.put("name", g.getName());
-    dto.put("parentKey", g.getParentKey());
-    dto.put("sortOrder", g.getSortOrder());
-    if (g.getIcon() != null) {
-      dto.put("icon", g.getIcon());
-    }
-    List<String> roles = Roles.parse(g.getRoles());
-    if (!roles.isEmpty()) {
-      dto.put("roles", roles);
-    }
-    return dto;
-  }
+  private static final Comparator<EntryPointDto> BY_CATEGORY_THEN_ORDER_THEN_NAME =
+      Comparator.comparingInt((EntryPointDto ep) -> CATEGORY_ORDER.indexOf(ep.category()))
+          .thenComparingInt(EntryPointDto::orderOf)
+          .thenComparing(ep -> ep.name(), String.CASE_INSENSITIVE_ORDER);
 
-  private static int orderOf(Map<String, Object> dto) {
-    return dto.get("sortOrder") instanceof Number n ? n.intValue() : 0;
-  }
-
-  private static int compareByName(Map<String, Object> a, Map<String, Object> b) {
-    String nameA = (String) a.get("name");
-    String nameB = (String) b.get("name");
-    return nameA != null ? nameA.compareToIgnoreCase(nameB) : 0;
-  }
-
-  private static final Comparator<Map<String, Object>> BY_CATEGORY_THEN_ORDER_THEN_NAME =
-      (a, b) -> {
-        int catA = CATEGORY_ORDER.indexOf(a.get("category"));
-        int catB = CATEGORY_ORDER.indexOf(b.get("category"));
-        if (catA != catB) {
-          return Integer.compare(catA, catB);
-        }
-        int byOrder = Integer.compare(orderOf(a), orderOf(b));
-        return byOrder != 0 ? byOrder : compareByName(a, b);
-      };
-
-  private static final Comparator<Map<String, Object>> BY_ORDER_THEN_NAME =
-      (a, b) -> {
-        int byOrder = Integer.compare(orderOf(a), orderOf(b));
-        return byOrder != 0 ? byOrder : compareByName(a, b);
-      };
+  private static final Comparator<EntryPointGroupDto> BY_ORDER_THEN_NAME =
+      Comparator.comparingInt(EntryPointGroupDto::orderOf)
+          .thenComparing(g -> g.name(), String.CASE_INSENSITIVE_ORDER);
 
   /** User settings {@code general} scope as a JSON object (or empty). */
   private Map<String, Object> loadPreferences(String userId) {
@@ -248,29 +210,14 @@ public class ShellConfigService {
   }
 
   /** Service hints for the dashboard, mirrors the services[] in portal.routes.ts. */
-  private List<Map<String, Object>> services() {
-    List<Map<String, Object>> services = new ArrayList<>();
+  private List<ShellServiceDto> services() {
+    List<ShellServiceDto> services = new ArrayList<>();
     if (natsHttpUrl != null && !natsHttpUrl.isBlank()) {
-      Map<String, Object> nats = new LinkedHashMap<>();
-      nats.put("key", "nats");
-      nats.put("name", "NATS");
-      nats.put("url", natsHttpUrl);
-      nats.put("color", "#22d3ee");
-      services.add(nats);
+      services.add(new ShellServiceDto("nats", "NATS", natsHttpUrl, "#22d3ee", null));
     }
     if (keycloakPublicUrl != null && !keycloakPublicUrl.isBlank()) {
-      Map<String, Object> kc = new LinkedHashMap<>();
-      kc.put("key", "keycloak");
-      kc.put("name", "Keycloak");
-      kc.put("url", keycloakPublicUrl);
-      kc.put("color", "#34d399");
-      services.add(kc);
+      services.add(new ShellServiceDto("keycloak", "Keycloak", keycloakPublicUrl, "#34d399", null));
     }
-    Map<String, Object> pg = new LinkedHashMap<>();
-    pg.put("key", "postgres");
-    pg.put("name", "PostgreSQL");
-    pg.put("url", null);
-    pg.put("color", "#60a5fa");
     // Build hint from PortalProperties.db user/database (fallback to "portal")
     String dbUser = "portal";
     String dbDatabase = "portal";
@@ -282,13 +229,16 @@ public class ShellConfigService {
         dbDatabase = props.getDb().getDatabase();
       }
     }
-    pg.put(
-        "hint",
-        "No web UI \u2014 connect via psql: docker compose exec postgres psql -U "
-            + dbUser
-            + " -d "
-            + dbDatabase);
-    services.add(pg);
+    services.add(
+        new ShellServiceDto(
+            "postgres",
+            "PostgreSQL",
+            null,
+            "#60a5fa",
+            "No web UI \u2014 connect via psql: docker compose exec postgres psql -U "
+                + dbUser
+                + " -d "
+                + dbDatabase));
     return services;
   }
 }

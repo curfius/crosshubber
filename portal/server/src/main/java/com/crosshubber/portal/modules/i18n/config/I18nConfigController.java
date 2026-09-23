@@ -1,11 +1,10 @@
 package com.crosshubber.portal.modules.i18n.config;
 
-import java.util.Map;
-
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.portal.modules.i18n.I18nService;
+import com.crosshubber.portal.modules.i18n.dto.I18nConfigDto;
 
 /** GET /api/i18n/config — public. */
 @RestController
@@ -18,7 +17,7 @@ public class I18nConfigController {
   }
 
   @GetMapping("/api/i18n/config")
-  public Map<String, Object> config() {
+  public I18nConfigDto config() {
     return i18nService.getConfig();
   }
 }

@@ -2,7 +2,6 @@ package com.crosshubber.portal.modules.registry.manifest;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -10,7 +9,9 @@ import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
+import com.crosshubber.portal.common.Keys;
 import com.crosshubber.portal.config.PortalProperties;
+import com.crosshubber.portal.modules.registry.dto.SecurityRoleDto;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -25,9 +26,6 @@ import tools.jackson.databind.node.ObjectNode;
 @Service
 public class ManifestValidator {
 
-  private static final String KEY_RE = "^[a-z0-9][a-z0-9-]{0,63}$";
-  private static final String ELEMENT_RE = "^[a-z][a-z0-9-]*$";
-  private static final List<String> ENTRY_TYPES = List.of("iframe", "embedded", "mfe", "link");
   private static final List<String> TOP_LEVEL_KEYS =
       List.of(
           "manifestVersion",
@@ -71,7 +69,7 @@ public class ManifestValidator {
     if (!manifest.has("manifestVersion") || manifest.get("manifestVersion").asInt(-1) != 1) {
       issues.add("manifestVersion: must be 1");
     }
-    if (!matches(manifest.path("key"), KEY_RE)) {
+    if (!matches(manifest.path("key"), Keys.KEY_RE)) {
       issues.add("key: must match [a-z0-9][a-z0-9-]{0,63}");
     }
     if (!nonEmptyString(manifest.path("name"))) {
@@ -163,7 +161,7 @@ public class ManifestValidator {
       ArrayNode roles = (ArrayNode) security.get("roles");
       for (int i = 0; i < roles.size(); i++) {
         JsonNode role = roles.get(i);
-        if (!matches(role.path("key"), KEY_RE)) {
+        if (!matches(role.path("key"), Keys.KEY_RE)) {
           issues.add("security.roles[" + i + "].key: must match [a-z0-9][a-z0-9-]{0,63}");
         }
         if (!nonEmptyString(role.path("name"))) {
@@ -183,14 +181,14 @@ public class ManifestValidator {
       issues.add(prefix + ": must be an object");
       return;
     }
-    if (!matches(entry.path("key"), KEY_RE)) {
+    if (!matches(entry.path("key"), Keys.KEY_RE)) {
       issues.add(prefix + ".key: must match [a-z0-9][a-z0-9-]{0,63}");
     }
     if (!nonEmptyString(entry.path("name"))) {
       issues.add(prefix + ".name: required");
     }
     String type = entry.path("type").asText(null);
-    if (type == null || !ENTRY_TYPES.contains(type)) {
+    if (type == null || !Keys.TYPES.contains(type)) {
       issues.add(prefix + ".type: must be iframe|embedded|mfe|link");
       return;
     }
@@ -209,7 +207,7 @@ public class ManifestValidator {
         }
       }
       case "mfe" -> {
-        if (!matches(entry.path("element"), ELEMENT_RE)) {
+        if (!matches(entry.path("element"), Keys.ELEMENT_RE)) {
           issues.add(prefix + ".mfe requires \"element\"");
         }
         if (!hasEntryUrl && !hasPath) {
@@ -372,19 +370,17 @@ public class ManifestValidator {
     return String.join("; ", issues);
   }
 
-  /** Linked map of declared roles (key/name/description). */
-  public List<Map<String, Object>> declaredRoles(JsonNode manifest) {
-    List<Map<String, Object>> roles = new ArrayList<>();
+  /** Declared roles ({@code security.roles[]}) of a manifest. */
+  public List<SecurityRoleDto> declaredRoles(JsonNode manifest) {
+    List<SecurityRoleDto> roles = new ArrayList<>();
     JsonNode array = manifest.path("security").path("roles");
     if (array.isArray()) {
       for (JsonNode role : array) {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("key", role.path("key").asString());
-        map.put("name", role.path("name").asString());
-        if (role.hasNonNull("description")) {
-          map.put("description", role.path("description").asString());
-        }
-        roles.add(map);
+        roles.add(
+            new SecurityRoleDto(
+                role.path("key").asString(),
+                role.path("name").asString(),
+                role.hasNonNull("description") ? role.get("description").asString() : null));
       }
     }
     return roles;

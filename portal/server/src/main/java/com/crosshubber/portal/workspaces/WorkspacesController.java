@@ -1,7 +1,6 @@
 package com.crosshubber.portal.workspaces;
 
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -21,6 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.portal.common.JsonUtils;
 import com.crosshubber.portal.security.PortalUser;
+import com.crosshubber.portal.workspaces.dto.WorkspaceDetailDto;
+import com.crosshubber.portal.workspaces.dto.WorkspaceSummaryDto;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -44,7 +45,7 @@ public class WorkspacesController {
 
   @GetMapping("/api/workspaces")
   public Map<String, Object> list(@AuthenticationPrincipal PortalUser user) {
-    List<Map<String, Object>> workspaces =
+    List<WorkspaceSummaryDto> workspaces =
         repo.findByUserIdOrderBySavedAtDesc(user.sub()).stream()
             .map(WorkspacesController::listItem)
             .toList();
@@ -210,34 +211,32 @@ public class WorkspacesController {
     return false;
   }
 
-  private static Map<String, Object> listItem(WorkspaceEntity w) {
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("id", w.getId().toString());
-    out.put("name", w.getName());
-    out.put("description", w.getDescription() != null ? w.getDescription() : "");
-    out.put("color", w.getColor() != null ? w.getColor() : "");
-    out.put("status", w.getStatus() != null ? w.getStatus() : "");
-    out.put("savedAt", w.getSavedAt().toEpochMilli());
-    return out;
+  private static WorkspaceSummaryDto listItem(WorkspaceEntity w) {
+    return new WorkspaceSummaryDto(
+        w.getId().toString(),
+        w.getName(),
+        w.getDescription() != null ? w.getDescription() : "",
+        w.getColor() != null ? w.getColor() : "",
+        w.getStatus() != null ? w.getStatus() : "",
+        w.getSavedAt().toEpochMilli());
   }
 
-  private Map<String, Object> detail(WorkspaceEntity w) {
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("id", w.getId().toString());
-    out.put("name", w.getName());
-    out.put("description", w.getDescription() != null ? w.getDescription() : "");
-    out.put("layout", parseJsonSafe(w.getLayout()));
-    out.put("groups", parseJsonSafe(w.getGroups()));
-    out.put("focusedGroupId", w.getFocusedGroupId());
-    out.put("hideSingleTabToolbar", Boolean.TRUE.equals(w.getHideSingleTabToolbar()));
-    out.put("locked", Boolean.TRUE.equals(w.getLocked()));
-    out.put("color", w.getColor() != null ? w.getColor() : "");
-    out.put("status", w.getStatus() != null ? w.getStatus() : "");
-    out.put("savedAt", w.getSavedAt().toEpochMilli());
-    return out;
+  private WorkspaceDetailDto detail(WorkspaceEntity w) {
+    return new WorkspaceDetailDto(
+        w.getId().toString(),
+        w.getName(),
+        w.getDescription() != null ? w.getDescription() : "",
+        parseJsonSafe(w.getLayout()),
+        parseJsonSafe(w.getGroups()),
+        w.getFocusedGroupId(),
+        Boolean.TRUE.equals(w.getHideSingleTabToolbar()),
+        Boolean.TRUE.equals(w.getLocked()),
+        w.getColor() != null ? w.getColor() : "",
+        w.getStatus() != null ? w.getStatus() : "",
+        w.getSavedAt().toEpochMilli());
   }
 
-  private Object parseJsonSafe(String raw) {
+  private tools.jackson.databind.JsonNode parseJsonSafe(String raw) {
     return jsonUtils.parseTreeOrNull(raw);
   }
 

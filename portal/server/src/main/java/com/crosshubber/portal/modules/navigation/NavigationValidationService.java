@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import com.crosshubber.portal.common.Keys;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 
 import tools.jackson.databind.JsonNode;
@@ -33,9 +34,6 @@ public final class NavigationValidationService {
    * default locales.
    */
   private static final Collator NAME_COLLATOR = Collator.getInstance(Locale.ROOT);
-
-  /** Reference format {@code moduleKey:entryKey}, both sides kebab-case. */
-  public static final String REF_RE = "^[a-z0-9][a-z0-9-]{0,63}:[a-z0-9][a-z0-9-]{0,63}$";
 
   public record Validation(boolean success, String error) {
 
@@ -111,7 +109,7 @@ public final class NavigationValidationService {
         }
       } else {
         String ref = node.path("ref").asText(null);
-        if (ref == null || !ref.matches(REF_RE)) {
+        if (ref == null || !ref.matches(Keys.REF_RE)) {
           return Validation.fail("items require a ref of the form \"moduleKey:entryKey\"");
         }
         if (ref.length() > 255) {
@@ -249,7 +247,7 @@ public final class NavigationValidationService {
       }
       if ("item".equals(node.path("type").asText(null))) {
         String ref = node.path("ref").asText(null);
-        if (ref == null || !ref.matches(REF_RE)) {
+        if (ref == null || !ref.matches(Keys.REF_RE)) {
           return Validation.fail("layout items require a ref of the form \"moduleKey:entryKey\"");
         }
         if (ref.length() > 255) {

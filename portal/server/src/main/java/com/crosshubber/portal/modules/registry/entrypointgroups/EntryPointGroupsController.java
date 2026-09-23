@@ -15,6 +15,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.crosshubber.portal.modules.registry.dto.EntryPointGroupDto;
+import com.crosshubber.portal.modules.registry.dto.EntryPointGroupUpsertRequest;
+
+import jakarta.validation.Valid;
+
 /** Entry point groups routes. */
 @RestController
 @RequestMapping("/api/registry/entry-point-groups")
@@ -28,18 +33,14 @@ public class EntryPointGroupsController {
 
   @GetMapping
   public ResponseEntity<Map<String, Object>> list(@RequestParam(required = false) String category) {
-    List<Map<String, Object>> groups =
+    List<EntryPointGroupDto> groups =
         groupsService.list(category).stream().map(EntryPointGroupsService::toOutput).toList();
     return ResponseEntity.ok(Map.of("groups", groups));
   }
 
   @PostMapping
   @PreAuthorize("hasRole('portal-registry-edit')")
-  public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
-    String error = groupsService.validate(body);
-    if (error != null) {
-      return ResponseEntity.badRequest().body(Map.of("error", error));
-    }
+  public ResponseEntity<?> create(@Valid @RequestBody EntryPointGroupUpsertRequest body) {
     EntryPointGroupEntity group = groupsService.upsert(body);
     return ResponseEntity.status(201)
         .body(Map.of("ok", true, "group", EntryPointGroupsService.toOutput(group)));
@@ -47,13 +48,18 @@ public class EntryPointGroupsController {
 
   @PutMapping("/{key}")
   @PreAuthorize("hasRole('portal-registry-edit')")
-  public ResponseEntity<?> update(@PathVariable String key, @RequestBody Map<String, Object> body) {
-    Map<String, Object> input = new java.util.LinkedHashMap<>(body == null ? Map.of() : body);
-    input.put("groupKey", key);
-    String error = groupsService.validate(input);
-    if (error != null) {
-      return ResponseEntity.badRequest().body(Map.of("error", error));
-    }
+  public ResponseEntity<?> update(
+      @PathVariable String key, @Valid @RequestBody EntryPointGroupUpsertRequest body) {
+    // Path wins over body: the group key is the resource identity.
+    EntryPointGroupUpsertRequest input =
+        new EntryPointGroupUpsertRequest(
+            key,
+            body.category(),
+            body.name(),
+            body.parentKey(),
+            body.sortOrder(),
+            body.icon(),
+            body.roles());
     EntryPointGroupEntity group = groupsService.upsert(input);
     return ResponseEntity.ok(Map.of("ok", true, "group", EntryPointGroupsService.toOutput(group)));
   }

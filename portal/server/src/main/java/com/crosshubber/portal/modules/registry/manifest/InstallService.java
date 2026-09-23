@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.crosshubber.portal.auth.kcadmin.KcAdminClient;
 import com.crosshubber.portal.common.NodeDates;
+import com.crosshubber.portal.modules.registry.dto.ModuleVersionDto;
+import com.crosshubber.portal.modules.registry.dto.SecurityRoleDto;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
 import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
@@ -59,7 +61,7 @@ public class InstallService {
    * transaction so blocking HTTP never holds a pooled connection.
    */
   @Transactional
-  public Map<String, Object> applyInstall(JsonNode manifest, String installedBy) {
+  public InstallResult applyInstall(JsonNode manifest, String installedBy) {
     List<String> errors = validator.validateDomain(manifest);
     if (!errors.isEmpty()) {
       throw new IllegalArgumentException(ManifestValidator.formatIssues(errors));
@@ -155,11 +157,7 @@ public class InstallService {
         version,
         digest.substring(0, Math.min(8, digest.length())));
 
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("ok", true);
-    result.put("moduleKey", moduleKey);
-    result.put("version", version);
-    return result;
+    return new InstallResult(true, moduleKey, version);
   }
 
   /**
@@ -168,7 +166,7 @@ public class InstallService {
    * a DB transaction. Failures are logged, never propagated.
    */
   public void syncRealmRoles(JsonNode manifest) {
-    List<Map<String, Object>> roles = validator.declaredRoles(manifest);
+    List<SecurityRoleDto> roles = validator.declaredRoles(manifest);
     if (roles.isEmpty() || !kcAdminClient.isConfigured()) {
       return;
     }
@@ -182,19 +180,17 @@ public class InstallService {
   // ── Versions ─────────────────────────────────────────────────────────
 
   @Transactional(readOnly = true)
-  public List<Map<String, Object>> listVersions(String moduleKey) {
+  public List<ModuleVersionDto> listVersions(String moduleKey) {
     return versionRepo.findByModuleKeyOrderByInstalledAtDesc(moduleKey).stream()
         .map(
-            v -> {
-              Map<String, Object> dto = new LinkedHashMap<>();
-              dto.put("id", v.getId());
-              dto.put("version", v.getVersion());
-              dto.put("digest", v.getDigest());
-              dto.put("installedAt", NodeDates.format(v.getInstalledAt()));
-              dto.put("installedBy", v.getInstalledBy());
-              dto.put("status", v.getStatus());
-              return dto;
-            })
+            v ->
+                new ModuleVersionDto(
+                    v.getId(),
+                    v.getVersion(),
+                    v.getDigest(),
+                    NodeDates.format(v.getInstalledAt()),
+                    v.getInstalledBy(),
+                    v.getStatus()))
         .toList();
   }
 
@@ -347,7 +343,7 @@ public class InstallService {
       versionRepo.save(archived);
     }
 
-    Map<String, Object> result = applyInstall(manifest, appliedBy);
+    InstallResult result = applyInstall(manifest, appliedBy);
 
     // Archive remaining drafts as superseded (history instead of delete)
     List<ModuleVersionEntity> drafts = versionRepo.findByModuleKeyAndStatus(moduleKey, "draft");
@@ -358,11 +354,7 @@ public class InstallService {
     log.info(
         "[install] drafts archived after apply for \"{}\" ({} rows)", moduleKey, drafts.size());
 
-    return ApplyOutcome.ok(
-        String.valueOf(result.get("moduleKey")),
-        String.valueOf(result.get("version")),
-        shouldActivate,
-        manifest);
+    return ApplyOutcome.ok(result.moduleKey(), result.version(), shouldActivate, manifest);
   }
 
   /** Deletes only the most recent draft (history preserved). */
@@ -419,6 +411,9 @@ public class InstallService {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────
+
+  /** Install response payload ({@code POST /api/registry/manifests/install}). */
+  public record InstallResult(boolean ok, String moduleKey, String version) {}
 
   public record DraftOutcome(
       boolean ok, Long draftId, JsonNode manifest, String version, String error) {

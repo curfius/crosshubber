@@ -11,6 +11,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.crosshubber.portal.common.Keys;
 import com.crosshubber.portal.modules.navigation.NavigationValidationService;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
 import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
@@ -23,11 +24,6 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Service
 public class PinnedAppsService {
-
-  private static final java.util.regex.Pattern UUID_RE =
-      java.util.regex.Pattern.compile(
-          "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-          java.util.regex.Pattern.CASE_INSENSITIVE);
 
   private final NavigationPinnedAppRepository repo;
   private final EntryPointRepository entryPointRepo;
@@ -54,29 +50,26 @@ public class PinnedAppsService {
 
   /** Pinned tree for the user, ordered by sort_order. */
   @Transactional(readOnly = true)
-  public List<Map<String, Object>> getPinnedTree(String userId) {
+  public List<PinnedNodeDto> getPinnedTree(String userId) {
     List<NavigationPinnedAppEntity> rows = repo.findByUserIdOrderBySortOrderAscCreatedAtAsc(userId);
-    Map<UUID, Map<String, Object>> byId = new LinkedHashMap<>();
-    List<Map<String, Object>> roots = new ArrayList<>();
+    Map<UUID, PinnedNodeDto> byId = new LinkedHashMap<>();
+    List<PinnedNodeDto> roots = new ArrayList<>();
     for (NavigationPinnedAppEntity row : rows) {
-      Map<String, Object> node = new LinkedHashMap<>();
-      node.put("id", row.getId().toString());
-      node.put("nodeType", row.getNodeType());
-      if ("folder".equals(row.getNodeType())) {
-        node.put("name", row.getName() != null ? row.getName() : "");
-      } else {
-        node.put("ref", row.getRef() != null ? row.getRef() : "");
-      }
-      node.put("children", new ArrayList<Map<String, Object>>());
+      boolean folder = "folder".equals(row.getNodeType());
+      PinnedNodeDto node =
+          new PinnedNodeDto(
+              row.getId().toString(),
+              row.getNodeType(),
+              folder ? (row.getName() != null ? row.getName() : "") : "",
+              !folder ? (row.getRef() != null ? row.getRef() : "") : "",
+              new ArrayList<>());
       byId.put(row.getId(), node);
     }
     for (NavigationPinnedAppEntity row : rows) {
-      Map<String, Object> node = byId.get(row.getId());
-      Map<String, Object> parent = row.getParentId() != null ? byId.get(row.getParentId()) : null;
+      PinnedNodeDto node = byId.get(row.getId());
+      PinnedNodeDto parent = row.getParentId() != null ? byId.get(row.getParentId()) : null;
       if (parent != null) {
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> children = (List<Map<String, Object>>) parent.get("children");
-        children.add(node);
+        parent.children().add(node);
       } else {
         roots.add(node);
       }
@@ -105,7 +98,7 @@ public class PinnedAppsService {
       String clientId = node.path("id").asText(null);
       NavigationPinnedAppEntity entity = new NavigationPinnedAppEntity();
       entity.setId(
-          clientId != null && UUID_RE.matcher(clientId).matches()
+          clientId != null && Keys.UUID_PATTERN.matcher(clientId).matches()
               ? UUID.fromString(clientId)
               : UUID.randomUUID());
       entity.setUserId(userId);

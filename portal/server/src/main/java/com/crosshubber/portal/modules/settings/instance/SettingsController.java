@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 /**
  * Instance settings routes.
  *
@@ -19,9 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/settings")
 public class SettingsController {
-
-  /** Ref pattern used by the navigation settings API: {@code module:entry}. */
-  private static final String REF_RE = "^[a-z0-9][a-z0-9-]{0,63}:[a-z0-9][a-z0-9-]{0,63}$";
 
   private final InstanceSettingsService settingsService;
 
@@ -36,18 +35,10 @@ public class SettingsController {
 
   @PutMapping
   @PreAuthorize("hasRole('portal-settings-edit')")
-  public ResponseEntity<?> update(@RequestBody Map<String, Object> body) {
-    if (body == null || body instanceof java.util.Collection) {
-      return ResponseEntity.badRequest().body(Map.of("error", "invalid request body"));
-    }
+  public ResponseEntity<?> update(@Valid @RequestBody HomeAppRequest body) {
     Map<String, Object> allowed = new java.util.LinkedHashMap<>();
-    if (body.containsKey("homeApp")) {
-      Object homeApp = body.get("homeApp");
-      if (!(homeApp instanceof String s) || !s.matches(REF_RE)) {
-        return ResponseEntity.badRequest()
-            .body(Map.of("error", "homeApp must be a ref of the form \"moduleKey:entryKey\""));
-      }
-      allowed.put("homeApp", s);
+    if (body.homeApp() != null) {
+      allowed.put("homeApp", body.homeApp());
     }
     return ResponseEntity.ok(settingsService.update(allowed));
   }

@@ -17,7 +17,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.crosshubber.portal.common.SecurityUtils;
+import com.crosshubber.portal.common.Texts;
 import com.crosshubber.portal.config.PortalProperties;
+import com.crosshubber.portal.modules.registry.dto.ModuleVersionDto;
 import com.crosshubber.portal.security.PortalUser;
 
 import tools.jackson.databind.JsonNode;
@@ -50,7 +53,7 @@ public class ManifestController {
 
   @GetMapping("/active-manifest/{moduleKey}")
   @PreAuthorize("hasRole('portal-registry-edit')")
-  public Map<String, Object> activeManifest(@PathVariable String moduleKey) {
+  public ManifestPayload activeManifest(@PathVariable String moduleKey) {
     return manifestPayload(installService.activeManifest(moduleKey));
   }
 
@@ -59,21 +62,14 @@ public class ManifestController {
   public ResponseEntity<?> versionManifest(
       @PathVariable String moduleKey, @PathVariable long versionId) {
     validateVersionId(versionId);
-    JsonNode manifest = installService.versionManifest(moduleKey, versionId);
-    if (manifest == null) {
-      // Node: 200 {"manifest": null} — LinkedHashMap, Map.of cannot hold a null value.
-      Map<String, Object> body = new java.util.LinkedHashMap<>();
-      body.put("manifest", null);
-      return ResponseEntity.ok(body);
-    }
-    return ResponseEntity.ok(manifestPayload(manifest));
+    return ResponseEntity.ok(manifestPayload(installService.versionManifest(moduleKey, versionId)));
   }
 
   @PostMapping("/fetch")
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> fetch(@RequestBody Map<String, Object> body) {
-    String url = string(body.get("url"));
-    String baseUrl = string(body.get("baseUrl"));
+    String url = Texts.string(body.get("url"));
+    String baseUrl = Texts.string(body.get("baseUrl"));
     if (url == null && baseUrl == null) {
       return ResponseEntity.badRequest().body(Map.of("error", "url or baseUrl is required"));
     }
@@ -130,13 +126,8 @@ public class ManifestController {
     if (!result.ok()) {
       return ResponseEntity.badRequest().body(Map.of("error", result.error()));
     }
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("ok", true);
-    out.put("moduleKey", moduleKey);
-    out.put("versionId", versionId);
-    out.put("draftId", result.draftId());
-    out.put("version", result.version());
-    return ResponseEntity.ok(out);
+    return ResponseEntity.ok(
+        new RollbackPayload(true, moduleKey, versionId, result.draftId(), result.version()));
   }
 
   // ── Draft lifecycle ──────────────────────────────────────────────────
@@ -187,12 +178,8 @@ public class ManifestController {
       return ResponseEntity.badRequest().body(Map.of("error", result.error()));
     }
     installService.syncRealmRoles(result.manifest());
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("ok", true);
-    out.put("moduleKey", result.moduleKey());
-    out.put("version", result.version());
-    out.put("shouldActivate", result.shouldActivate());
-    return ResponseEntity.ok(out);
+    return ResponseEntity.ok(
+        new ApplyPayload(true, result.moduleKey(), result.version(), result.shouldActivate()));
   }
 
   @DeleteMapping("/draft/{moduleKey}")
@@ -219,7 +206,7 @@ public class ManifestController {
 
   @GetMapping("/draft/{moduleKey}")
   @PreAuthorize("hasRole('portal-registry-edit')")
-  public Map<String, Object> getDraft(@PathVariable String moduleKey) {
+  public ManifestPayload getDraft(@PathVariable String moduleKey) {
     return manifestPayload(installService.latestDraftManifest(moduleKey));
   }
 
@@ -233,8 +220,8 @@ public class ManifestController {
     }
     String version =
         installService.listVersions(moduleKey).stream()
-            .filter(v -> ((Number) v.get("id")).longValue() == versionId)
-            .map(v -> String.valueOf(v.get("version")))
+            .filter(v -> v.id() != null && v.id() == versionId)
+            .map(ModuleVersionDto::version)
             .findFirst()
             .orElse("unknown");
     String filename = moduleKey + "-v" + version + ".json";
@@ -246,23 +233,29 @@ public class ManifestController {
 
   // ── Helpers ──────────────────────────────────────────────────────────
 
-  private Map<String, Object> manifestPayload(JsonNode manifest) {
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("manifest", manifest);
-    return out;
+  private ManifestPayload manifestPayload(JsonNode manifest) {
+    return new ManifestPayload(manifest);
   }
 
-  private ResponseEntity<Map<String, Object>> draftResponse(
+  private ResponseEntity<DraftPayload> draftResponse(
       InstallService.DraftOutcome result, boolean includeVersion) {
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("ok", true);
-    out.put("draftId", result.draftId());
-    out.put("manifest", result.manifest());
-    if (includeVersion && result.version() != null) {
-      out.put("version", result.version());
-    }
-    return ResponseEntity.ok(out);
+    return ResponseEntity.ok(
+        new DraftPayload(
+            true, result.draftId(), result.manifest(), includeVersion ? result.version() : null));
   }
+
+  /** {@code {"manifest": <JsonNode>}} wrapper — null manifest serializes as {@code null}. */
+  record ManifestPayload(JsonNode manifest) {}
+
+  /** Draft lifecycle success payload; {@code version} omitted unless requested. */
+  @com.fasterxml.jackson.annotation.JsonInclude(
+      com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+  record DraftPayload(boolean ok, Long draftId, JsonNode manifest, String version) {}
+
+  record RollbackPayload(
+      boolean ok, String moduleKey, long versionId, Long draftId, String version) {}
+
+  record ApplyPayload(boolean ok, String moduleKey, String version, boolean shouldActivate) {}
 
   private ResponseEntity<Map<String, Object>> unprocessable(java.util.List<String> issues) {
     Map<String, Object> out = new LinkedHashMap<>();
@@ -271,9 +264,10 @@ public class ManifestController {
     return ResponseEntity.unprocessableEntity().body(out);
   }
 
-  /** Audit actor actor(). */
+  /** Audit actor for install/rollback bookkeeping. */
   private String actor(Authentication auth) {
-    if (auth != null && auth.getPrincipal() instanceof PortalUser user) {
+    PortalUser user = SecurityUtils.principal(auth);
+    if (user != null) {
       return props.getTenantSlug() + "/" + user.name() + " (" + user.sub() + ")";
     }
     return props.getTenantSlug() + "/unknown";
@@ -285,10 +279,6 @@ public class ManifestController {
     } catch (Exception e) {
       return manifest.toString();
     }
-  }
-
-  private static String string(Object value) {
-    return value instanceof String s ? s : null;
   }
 
   private static void validateVersionId(long versionId) {

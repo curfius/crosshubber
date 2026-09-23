@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.crosshubber.portal.bootstrap.I18nCatalog;
 import com.crosshubber.portal.common.JsonUtils;
+import com.crosshubber.portal.modules.i18n.dto.I18nConfigDto;
+import com.crosshubber.portal.modules.i18n.dto.LanguageDto;
 import com.crosshubber.portal.modules.i18n.labels.I18nLabelEntity;
 import com.crosshubber.portal.modules.i18n.labels.I18nLabelId;
 import com.crosshubber.portal.modules.i18n.labels.I18nLabelRepository;
@@ -76,15 +78,14 @@ public class I18nService {
 
   /** Mirrors i18nRepo.getConfig(). */
   @Transactional(readOnly = true)
-  public Map<String, Object> getConfig() {
+  public I18nConfigDto getConfig() {
     I18nSettingsEntity settings = getSettingsRow();
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("languages", listLanguages().stream().map(I18nService::languageDto).toList());
-    out.put("defaultLanguage", settings.getDefaultLanguage());
-    out.put("fallbackLanguage", settings.getFallbackLanguage());
-    out.put("overrides", parseJson(settings.getOverrides()));
-    out.put("contentVersion", settings.getContentVersion());
-    return out;
+    return new I18nConfigDto(
+        listLanguages().stream().map(I18nService::languageDto).toList(),
+        settings.getDefaultLanguage(),
+        settings.getFallbackLanguage(),
+        parseJson(settings.getOverrides()),
+        settings.getContentVersion());
   }
 
   /** Label bundle for a language; null when the language is unknown. */
@@ -103,7 +104,7 @@ public class I18nService {
   // ── Writes (all bump content_version) ────────────────────────────────
 
   @Transactional
-  public Map<String, Object> updateSettings(
+  public I18nConfigDto updateSettings(
       String defaultLanguage, String fallbackLanguage, Map<String, Object> overrides) {
     I18nSettingsEntity settings = getSettingsRow();
     if (defaultLanguage != null) {
@@ -177,15 +178,14 @@ public class I18nService {
   // ── Helpers ──────────────────────────────────────────────────────────
 
   /** Language DTO — mirrors rowToLanguageConfig. */
-  public static Map<String, Object> languageDto(I18nLanguageEntity language) {
-    Map<String, Object> dto = new LinkedHashMap<>();
-    dto.put("code", language.getCode());
-    dto.put("name", language.getName());
-    dto.put("nativeName", language.getNativeName());
-    dto.put("enabled", language.getEnabled());
-    dto.put("seeded", language.getSeeded());
-    dto.put("sortOrder", language.getSortOrder());
-    return dto;
+  public static LanguageDto languageDto(I18nLanguageEntity language) {
+    return new LanguageDto(
+        language.getCode(),
+        language.getName(),
+        language.getNativeName(),
+        Boolean.TRUE.equals(language.getEnabled()),
+        Boolean.TRUE.equals(language.getSeeded()),
+        language.getSortOrder() != null ? language.getSortOrder() : 0);
   }
 
   private Map<String, Object> parseJson(String raw) {

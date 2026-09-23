@@ -11,7 +11,12 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.crosshubber.portal.common.Keys;
+import com.crosshubber.portal.common.Texts;
 import com.crosshubber.portal.modules.navigation.NavigationValidationService;
+import com.crosshubber.portal.modules.navigation.shelltree.dto.ShellTreePayload;
+import com.crosshubber.portal.modules.registry.dto.EntryPointDto;
+import com.crosshubber.portal.modules.registry.dto.EntryPointGroupDto;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupEntity;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupRepository;
 import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupsService;
@@ -29,8 +34,6 @@ import tools.jackson.databind.JsonNode;
 @Service
 public class ShellTreeService {
 
-  private static final String KEY_RE = "^[a-z0-9][a-z0-9-]{0,63}$";
-
   private final EntryPointGroupRepository groupRepo;
   private final EntryPointRepository entryPointRepo;
 
@@ -41,26 +44,22 @@ public class ShellTreeService {
   }
 
   @Transactional(readOnly = true)
-  public Map<String, Object> shellTreePayload(String category) {
-    List<Map<String, Object>> groups =
+  public ShellTreePayload shellTreePayload(String category) {
+    List<EntryPointGroupDto> groups =
         groupRepo.findByCategoryOrderBySortOrderAscNameAsc(category).stream()
             .map(EntryPointGroupsService::toOutput)
             .toList();
-    List<Map<String, Object>> items =
+    List<EntryPointDto> items =
         entryPointRepo.findByCategoryOrderBySortOrderAscNameAsc(category).stream()
             .filter(ep -> Boolean.TRUE.equals(ep.getActive()))
             .map(EntryPointsService::toOutput)
             .toList();
-    Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("category", category);
-    payload.put("groups", groups);
-    payload.put("items", items);
-    return payload;
+    return new ShellTreePayload(category, groups, items);
   }
 
   /** Applies the full settings-shell tree save. */
   @Transactional
-  public Map<String, Object> saveShellTree(String category, JsonNode body) {
+  public ShellTreePayload saveShellTree(String category, JsonNode body) {
     JsonNode groupInputs = body.path("groups");
     JsonNode itemInputs = body.path("items");
 
@@ -75,12 +74,12 @@ public class ShellTreeService {
     for (int i = 0; i < groupInputs.size(); i++) {
       JsonNode g = groupInputs.get(i);
       String groupKey = g.path("groupKey").asText(null);
-      if (groupKey != null && !groupKey.isEmpty() && !groupKey.matches(KEY_RE)) {
+      if (groupKey != null && !groupKey.isEmpty() && !groupKey.matches(Keys.KEY_RE)) {
         throw new IllegalArgumentException(
             "groups[" + i + "].groupKey: must match [a-z0-9][a-z0-9-]{0,63}");
       }
       String parentKey = g.path("parentKey").asText(null);
-      if (parentKey != null && !parentKey.isEmpty() && !parentKey.matches(KEY_RE)) {
+      if (parentKey != null && !parentKey.isEmpty() && !parentKey.matches(Keys.KEY_RE)) {
         throw new IllegalArgumentException(
             "groups[" + i + "].parentKey: must match [a-z0-9][a-z0-9-]{0,63}");
       }
@@ -108,7 +107,7 @@ public class ShellTreeService {
       if (moduleKey == null || moduleKey.isEmpty()) {
         throw new IllegalArgumentException("items[" + i + "].moduleKey: Required");
       }
-      if (!moduleKey.matches(KEY_RE)) {
+      if (!moduleKey.matches(Keys.KEY_RE)) {
         throw new IllegalArgumentException(
             "items[" + i + "].moduleKey: must match [a-z0-9][a-z0-9-]{0,63}");
       }
@@ -116,7 +115,7 @@ public class ShellTreeService {
       if (entryKey == null || entryKey.isEmpty()) {
         throw new IllegalArgumentException("items[" + i + "].entryKey: Required");
       }
-      if (!entryKey.matches(KEY_RE)) {
+      if (!entryKey.matches(Keys.KEY_RE)) {
         throw new IllegalArgumentException(
             "items[" + i + "].entryKey: must match [a-z0-9][a-z0-9-]{0,63}");
       }
@@ -170,7 +169,7 @@ public class ShellTreeService {
               g.path("parentKey").isTextual() ? g.get("parentKey").asString() : null,
               g.path("icon").isTextual() ? g.get("icon").asString() : null,
               g.path("hidden").asBoolean(false),
-              isNew ? "" : orEmpty(byExistingKey.get(key).getRoles())));
+              isNew ? "" : Texts.orEmpty(byExistingKey.get(key).getRoles())));
     }
 
     List<NavigationValidationService.ShellGroup> groupsForValidation =
@@ -313,9 +312,5 @@ public class ShellTreeService {
 
   private static boolean isNullish(JsonNode node) {
     return node == null || node.isNull() || node.isMissingNode();
-  }
-
-  private static String orEmpty(String value) {
-    return value == null ? "" : value;
   }
 }

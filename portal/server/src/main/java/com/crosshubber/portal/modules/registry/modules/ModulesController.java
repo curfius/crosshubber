@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.crosshubber.portal.modules.registry.dto.ModuleUpsertRequest;
+
+import jakarta.validation.Valid;
+
 /** Module registry routes. */
 @RestController
 @RequestMapping("/api/registry/modules")
@@ -33,7 +37,7 @@ public class ModulesController {
 
   @PostMapping
   @PreAuthorize("hasRole('portal-registry-edit')")
-  public ResponseEntity<?> upsert(@RequestBody Map<String, Object> body) {
+  public ResponseEntity<?> upsert(@Valid @RequestBody ModuleUpsertRequest body) {
     ModuleEntity module = modulesService.upsert(body);
     return ResponseEntity.status(201)
         .body(Map.of("ok", true, "module", modulesService.toOutput(module)));

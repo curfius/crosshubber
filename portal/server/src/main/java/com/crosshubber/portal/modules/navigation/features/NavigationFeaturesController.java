@@ -27,7 +27,7 @@ public class NavigationFeaturesController {
   }
 
   @GetMapping("/api/navigation/features")
-  public Map<String, Object> get(@AuthenticationPrincipal PortalUser user) {
+  public FeatureFlagsDto get(@AuthenticationPrincipal PortalUser user) {
     return featurePayload(settingsService.get());
   }
 
@@ -56,11 +56,9 @@ public class NavigationFeaturesController {
     return ResponseEntity.ok(featurePayload(settingsService.update(allowed)));
   }
 
-  private static Map<String, Object> featurePayload(Map<String, Object> settings) {
-    // LinkedHashMap: Map.of iteration order is unspecified — key order must match Node.
-    Map<String, Object> out = new java.util.LinkedHashMap<>();
-    out.put("pinnedAppsEnabled", Boolean.TRUE.equals(settings.get("pinnedAppsEnabled")));
-    out.put("workspacesEnabled", Boolean.TRUE.equals(settings.get("workspacesEnabled")));
-    return out;
+  private static FeatureFlagsDto featurePayload(Map<String, Object> settings) {
+    return new FeatureFlagsDto(
+        Boolean.TRUE.equals(settings.get("pinnedAppsEnabled")),
+        Boolean.TRUE.equals(settings.get("workspacesEnabled")));
   }
 }

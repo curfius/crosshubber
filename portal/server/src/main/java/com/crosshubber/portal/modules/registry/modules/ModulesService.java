@@ -1,8 +1,6 @@
 package com.crosshubber.portal.modules.registry.modules;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,14 +11,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.crosshubber.portal.common.JsonUtils;
+import com.crosshubber.portal.modules.registry.dto.ModuleDto;
+import com.crosshubber.portal.modules.registry.dto.ModuleUpsertRequest;
+import com.crosshubber.portal.modules.registry.dto.SecurityRoleDto;
 
 /** Module registry CRUD. */
 @Service
 public class ModulesService {
 
   private static final Logger log = LoggerFactory.getLogger(ModulesService.class);
-
-  private static final String KEY_RE = "^[a-z0-9][a-z0-9-]{0,63}$";
 
   private final ModuleRepository repo;
   private final JsonUtils jsonUtils;
@@ -38,53 +37,14 @@ public class ModulesService {
   }
 
   /** Output DTO. */
-  public Map<String, Object> toOutput(ModuleEntity m) {
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("key", m.getKey());
-    out.put("name", m.getName());
-    out.put("active", m.getActive());
-    out.put("builtin", m.getBuiltin());
-    out.put("managedBy", m.getManagedBy());
-    if (notBlank(m.getIcon())) {
-      out.put("icon", m.getIcon());
-    }
-    List<String> roles = com.crosshubber.portal.common.Roles.parse(m.getRoles());
-    if (!roles.isEmpty()) {
-      out.put("roles", roles);
-    }
-    if (m.getVersion() != null) {
-      out.put("version", m.getVersion());
-    }
-    if (m.getManifestDigest() != null) {
-      out.put("manifestDigest", m.getManifestDigest());
-    }
-    if (m.getSourceUrl() != null) {
-      out.put("sourceUrl", m.getSourceUrl());
-    }
-    List<Map<String, Object>> securityRoles = parseSecurityRolesObjects(m.getSecurityRoles());
-    if (!securityRoles.isEmpty()) {
-      out.put("securityRoles", securityRoles);
-    }
-    if (m.getBaseUrl() != null) {
-      out.put("baseUrl", m.getBaseUrl());
-    }
-    if (m.getHealth() != null) {
-      out.put("health", m.getHealth());
-    }
-    return out;
+  public ModuleDto toOutput(ModuleEntity m) {
+    return ModuleDto.fromEntity(m, parseSecurityRoleDtos(m.getSecurityRoles()));
   }
 
   @Transactional
-  public ModuleEntity upsert(Map<String, Object> input) {
-    String key = string(input.get("key"));
-    String name = string(input.get("name"));
-    if (key == null || !key.matches(KEY_RE)) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "key must match [a-z0-9][a-z0-9-]{0,63}");
-    }
-    if (name == null || name.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name is required");
-    }
+  public ModuleEntity upsert(ModuleUpsertRequest input) {
+    String key = input.key();
+    String name = input.name();
     boolean isNew = !repo.existsById(key);
     ModuleEntity entity =
         repo.findById(key)
@@ -96,50 +56,49 @@ public class ModulesService {
                 });
     // COALESCE semantics: set from input if present, else preserve existing
     entity.setName(name);
-    if (input.get("icon") instanceof String icon) {
-      entity.setIcon(icon);
+    if (input.icon() != null) {
+      entity.setIcon(input.icon());
     }
-    if (input.get("roles") instanceof String roles) {
-      entity.setRoles(roles);
+    if (input.roles() != null) {
+      entity.setRoles(input.roles());
     } else if (isNew) {
       entity.setRoles("");
     }
-    if (input.get("active") instanceof Boolean active) {
-      entity.setActive(active);
+    if (input.active() != null) {
+      entity.setActive(input.active());
     } else if (isNew) {
       entity.setActive(true);
     }
     // builtin: sticky — never un-set
-    if (input.get("builtin") instanceof Boolean builtin) {
-      entity.setBuiltin(Boolean.TRUE.equals(entity.getBuiltin()) || builtin);
+    if (input.builtin() != null) {
+      entity.setBuiltin(Boolean.TRUE.equals(entity.getBuiltin()) || input.builtin());
     } else if (isNew) {
       entity.setBuiltin(false);
     }
-    if (input.get("version") instanceof String version) {
-      entity.setVersion(version);
+    if (input.version() != null) {
+      entity.setVersion(input.version());
     }
-    if (input.get("manifestDigest") instanceof String digest) {
-      entity.setManifestDigest(digest);
+    if (input.manifestDigest() != null) {
+      entity.setManifestDigest(input.manifestDigest());
     }
-    if (input.get("managedBy") instanceof String managedBy) {
-      entity.setManagedBy(managedBy);
+    if (input.managedBy() != null) {
+      entity.setManagedBy(input.managedBy());
     } else if (isNew) {
       entity.setManagedBy("manual");
     }
-    if (input.get("sourceUrl") instanceof String sourceUrl) {
-      entity.setSourceUrl(sourceUrl);
+    if (input.sourceUrl() != null) {
+      entity.setSourceUrl(input.sourceUrl());
     }
-    if (input.get("baseUrl") instanceof String baseUrl) {
-      entity.setBaseUrl(baseUrl);
+    if (input.baseUrl() != null) {
+      entity.setBaseUrl(input.baseUrl());
     }
-    if (input.get("health") instanceof String health) {
-      entity.setHealth(health);
+    if (input.health() != null) {
+      entity.setHealth(input.health());
     }
     // security_roles is always overwritten (missing input → '[]') because the ON CONFLICT
     // COALESCE is fed a never-null EXCLUDED value.
     entity.setSecurityRoles(
-        writeJson(
-            input.get("securityRoles") == null ? java.util.List.of() : input.get("securityRoles")));
+        writeJson(input.securityRoles() == null ? java.util.List.of() : input.securityRoles()));
     return repo.save(entity);
   }
 
@@ -174,30 +133,19 @@ public class ModulesService {
   public List<String> securityRoleKeys(String key) {
     return repo.findById(key)
         .map(ModuleEntity::getSecurityRoles)
-        .map(this::parseSecurityRoles)
+        .map(this::parseSecurityRoleKeys)
         .orElse(List.of());
   }
 
-  private List<String> parseSecurityRoles(String json) {
-    return parseSecurityRolesObjects(json).stream()
-        .filter(r -> r.get("key") instanceof String)
-        .map(r -> (String) r.get("key"))
-        .toList();
+  private List<SecurityRoleDto> parseSecurityRoleDtos(String json) {
+    return jsonUtils.parseList(json, SecurityRoleDto.class);
   }
 
-  private List<Map<String, Object>> parseSecurityRolesObjects(String json) {
-    return jsonUtils.parseList(json);
-  }
-
-  private static String string(Object value) {
-    return value instanceof String s ? s : null;
+  private List<String> parseSecurityRoleKeys(String json) {
+    return parseSecurityRoleDtos(json).stream().map(SecurityRoleDto::key).toList();
   }
 
   private String writeJson(Object value) {
     return jsonUtils.write(value);
-  }
-
-  private static boolean notBlank(String value) {
-    return value != null && !value.isBlank();
   }
 }

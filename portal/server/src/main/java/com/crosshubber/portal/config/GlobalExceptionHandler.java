@@ -11,8 +11,11 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
+
+import jakarta.validation.ConstraintViolationException;
 
 /**
  * Centralized error handling.
@@ -47,6 +50,32 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Map<String, String>> handleUnreadable(HttpMessageNotReadableException ex) {
     log.warn("[portal] 400 invalid request body");
     return ResponseEntity.badRequest().body(Map.of("error", "invalid request body"));
+  }
+
+  /** Method validation on non-body parameters (e.g. {@code @PathVariable} constraints). */
+  @ExceptionHandler(HandlerMethodValidationException.class)
+  public ResponseEntity<Map<String, String>> handleMethodValidation(
+      HandlerMethodValidationException ex) {
+    String msg =
+        ex.getAllErrors().stream()
+            .map(error -> error.getDefaultMessage())
+            .reduce((a, b) -> a + "; " + b)
+            .orElse("validation failed");
+    log.warn("[portal] 400 {}", msg);
+    return ResponseEntity.badRequest().body(Map.of("error", msg));
+  }
+
+  /** {@code @Validated} bean validation outside the web layer (service-level constraints). */
+  @ExceptionHandler(ConstraintViolationException.class)
+  public ResponseEntity<Map<String, String>> handleConstraintViolation(
+      ConstraintViolationException ex) {
+    String msg =
+        ex.getConstraintViolations().stream()
+            .map(v -> v.getPropertyPath() + " " + v.getMessage())
+            .reduce((a, b) -> a + "; " + b)
+            .orElse("validation failed");
+    log.warn("[portal] 400 {}", msg);
+    return ResponseEntity.badRequest().body(Map.of("error", msg));
   }
 
   @ExceptionHandler(AccessDeniedException.class)

@@ -7,7 +7,6 @@ The codebase is a well-structured **Spring Boot 4.1.1 / Java 21 modular monolith
 **Completed in Steps 1–8:** #2, #4, #5, #6, #7, #13, #14, #15, #17, #19, #20, #21, #22, #23, #24, #25
 
 **Completed in Step 9 (2026-09-21):** #27 (Reconciler half — network I/O and KC sync moved out of the boot transaction; DB phase is atomic via `TransactionTemplate`), plus the following perf/cleanup pass not tracked as numbered items:
-
 - **Reconciler N+1 at boot** — `reconcileI18n` did a per-label `findById` (hundreds of SELECTs on every boot against the 227 KB seed catalog). Now one `findAll` + in-memory set + `saveAll` batch.
 - **InstallService** — KC `ensureRealmRoles` HTTP call removed from inside the install transaction; callers (`ManifestController`, `Reconciler`) invoke `syncRealmRoles(...)` post-commit. Entry-point upsert loads existing rows once per module (was one SELECT per entry).
 - **ShellTreeService.saveShellTree** — per-group `findByGroupKey` and per-item `findByModuleKeyAndEntryKey` in the save loops replaced with preloaded maps (was up to 700 SELECTs per save).
@@ -18,61 +17,32 @@ The codebase is a well-structured **Spring Boot 4.1.1 / Java 21 modular monolith
 - **V22__add_remaining_indexes.sql** — `entry_point_groups(category)`, `entry_point_groups(parent_key)`, `navigation_pinned_apps(parent_id)`.
 - **Dead code/deps removed** — `awaitility` + `h2` from pom, H2 datasource block from `application-test.yml`, dead repo methods (`WorkspaceRepository.findByUserId/deleteByUserIdAndName/existsByUserIdAndName`, `AiHubConversationRepository.findByUserId`, `NavigationPinnedAppRepository.findByUserIdOrderBySortOrderAsc`, `I18nLabelRepository.findByKey`), dead `InstallService.utf8` + duplicate `writeJson` overload.
 
+**Completed in Step 11 (2026-09-23):** #1, #9, #10 — typed response records across all modules
+(`registry/dto/*`, `shell/dto/*`, workspace/i18n/aihub/pinned/features/health/version records),
+`@Valid` request records on clean single-body endpoints (registry modules/entry-points/groups,
+i18n labels, settings homeApp, pinned-apps pin, aihub provider/token create), new
+`HandlerMethodValidationException` + `ConstraintViolationException` handlers, and shared
+`common/Keys`, `common/Texts`, `common/SecurityUtils` replacing the regex/helper duplication.
+See README "Design notes" #8–#10 for the deliberate response-shape decisions.
+
 ---
 
 ## 🔴 HIGH PRIORITY
 
 ### 1. Replace `Map<String, Object>` DTOs with Typed Records
 
-**Impact:** ~200+ lines eliminated, compile-time safety, OpenAPI-ready
+**Status:** ✅ DONE (Step 11) — all response-building maps replaced by records with per-field
+`@JsonInclude` semantics: `ModuleDto`, `EntryPointDto`, `EntryPointGroupDto`, `SecurityRoleDto`,
+`ModuleVersionDto` (registry), `ShellConfigDto`/`ShellUserDto`/`ShellServiceDto` (shell),
+`ShellTreePayload` (shelltree), `WorkspaceSummaryDto`/`WorkspaceDetailDto`, `I18nConfigDto`/
+`LanguageDto`/`LabelBundleDto`, `MessageDto` (aihub), `PinnedNodeDto`, `FeatureFlagsDto`,
+`HealthDto`, and manifest response records (`ManifestPayload`/`DraftPayload`/`RollbackPayload`/
+`ApplyPayload`, `InstallResult`). Schemaless JSONB blobs (instance/user/module settings, i18n
+`overrides`, nav layout, nav user-settings) intentionally stay `Map`/`JsonNode` — free-form by
+design. Trivial `{"ok":true}` ack wrappers stay `Map.of`.
 
-Every service returns `Map<String, Object>` instead of typed DTOs. This is the single most pervasive anti-pattern across the codebase.
-
-**Affected files:**
-- `ModulesService.toOutput()` — lines 38-72
-- `EntryPointsService.toOutput()` — lines 42-91
-- `AiHubConversationsService.conversationDto()/messageDto()` — lines 31-51
-- `ShellConfigService.buildConfig()` — lines 62-149 (87-line god method building Maps)
-- `ShellTreeService.shellTreePayload()` — lines 42-57
-- `InstanceSettingsService` — lines 41-72
-- `UserSettingsService` — lines 39-78
-- `WorkspacesController.listItem()/detail()` — lines 155-180 (controller has DTO logic)
-
-**Approach:**
-1. Create Java records per domain (e.g., `ModuleDto`, `EntryPointDto`, `ConversationDto`)
-2. Use `@JsonInclude(NON_NULL)` annotations on records to handle optional fields
-3. Replace `toOutput()` / `toPublic()` methods with record constructors or static factory methods
-4. Ensure consistent JSON key casing (camelCase everywhere, fix snake_case in `AiHubConversationsService`)
-
-**Example:**
-```java
-public record ModuleDto(
-    String key,
-    String name,
-    String icon,
-    String version,
-    boolean active,
-    boolean builtin,
-    String category,
-    String managedBy,
-    String roles,
-    String manifestDigest,
-    String health,
-    @JsonInclude.Include(JsonInclude.Include.NON_NULL) Instant createdAt,
-    @JsonInclude.Include(JsonInclude.Include.NON_NULL) Instant updatedAt
-) {
-    public static ModuleDto fromEntity(ModuleEntity e) {
-        return new ModuleDto(
-            e.getKey(), e.getName(), e.getIcon(), e.getVersion(),
-            e.isActive(), e.isBuiltin(), e.getCategory(), e.getManagedBy(),
-            e.getRoles(), e.getManifestDigest(), e.getHealth(),
-            e.getCreatedAt(), e.getUpdatedAt()
-        );
-    }
-}
-```
-
----
+**Remaining (originally in scope, resolved differently):** the eight affected files are converted;
+the OpenAPI benefit is now available via the record definitions.
 
 ### 2. Extract Duplicated `parseJson`/`writeJson` into Shared Utility
 
@@ -139,29 +109,10 @@ public class JsonUtils {
 
 ### 3. Fix `ShellConfigService.buildConfig()` — Duplicate DB Queries + God Method
 
-**Impact:** Performance + maintainability
-
-**Issues:**
-- `moduleRepo.findAll()` called **twice** (lines 68 and 73) — duplicate query
-- All groups and entry points loaded from DB, then filtered in Java
-- 87-line single method doing too much (God Method anti-pattern)
-- Role-based filtering done in Java instead of SQL
-
-**Approach:**
-1. Remove the duplicate `moduleRepo.findAll()` call
-2. Push role-based filtering to repository `@Query` methods:
-   ```java
-   @Query("SELECT m FROM ModuleEntity m WHERE m.active = true AND (m.roles = '' OR m.roles LIKE %:role%)")
-   List<ModuleEntity> findActiveForRole(@Param("role") String role);
-   ```
-3. Decompose the method into smaller private methods:
-   - `loadModulesForUser(PortalUser user)`
-   - `loadGroupsForUser(PortalUser user)`
-   - `loadEntryPointsForUser(PortalUser user)`
-   - `buildModuleConfig(ModuleEntity, List<EntryPointEntity>, List<EntryPointGroupEntity>)`
-4. Fix the O(n²) `noneMatch` pattern in group DTO construction (lines 114-134)
-
----
+**Status:** 🔶 MOSTLY DONE — the duplicate `moduleRepo.findAll()` and the O(n²) `noneMatch` group
+filter were already gone before Step 11; Step 11 converted the output to `ShellConfigDto` records
+and typed comparators. Still open: pushing role-based filtering to repository `@Query` methods and
+decomposing the triple-filter pipeline into smaller methods.
 
 ### 4. ~~Call `validate()` in `EntryPointsService.upsert()`~~
 
@@ -267,45 +218,27 @@ CREATE INDEX IF NOT EXISTS idx_module_versions_module_installed
 
 ### 9. Adopt Jakarta Bean Validation (`@Valid`)
 
-**Impact:** ~100+ lines of manual validation eliminated
-
-**Issue:** Zero use of `@Valid`, `@NotNull`, `@NotBlank` in controllers. Validation is entirely manual and inconsistent.
-
-**Approach:**
-1. Define DTO records with validation annotations:
-   ```java
-   public record CreateModuleRequest(
-       @NotBlank @Pattern(regexp = "^[a-z0-9][a-z0-9-]{0,63}$") String key,
-       @NotBlank @Size(max = 100) String name,
-       String icon,
-       String version
-   ) {}
-   ```
-2. Use `@Valid` on controller parameters
-3. Remove manual validation from services
-4. The existing `MethodArgumentNotValidException` handler in `GlobalExceptionHandler` already handles validation errors
+**Status:** ✅ DONE (Step 11, scoped) — request records + `@Valid` on the clean single-body
+endpoints: registry modules POST, entry-points POST/PUT, entry-point-groups POST/PUT, i18n labels
+PUT (`UpsertLabelsRequest`), settings homeApp PUT, pinned-apps pin POST, aihub provider/token
+create (annotations added to the existing records). `GlobalExceptionHandler` gained
+`HandlerMethodValidationException` + `ConstraintViolationException` handlers (Boot 4 routes
+method validation there — without them path/query constraints degrade to 500s). Deliberately NOT
+converted: partial-update bodies keyed on `containsKey` (i18n settings/languages, nav features),
+free-form JSONB bodies (user-settings, module-settings), JsonNode tree/layout payloads, and
+cross-field rules (entry-point type checks, manifest structure, 16 KB cap, xor url/baseUrl) —
+those stay programmatic. 400 wording for converted endpoints is now `"<field> <constraint>"`
+joined with `; ` (README design note #9).
 
 ---
 
 ### 10. Extract Shared Constants and Helper Methods
 
-**Impact:** DRY — eliminate 10+ copies of identical code
-
-| Duplicated | Copies | Location |
-|---|---|---|
-| `KEY_RE` regex | 5 | `ModulesService`, `EntryPointsService`, `EntryPointGroupsService`, `UserSettingsController`, `ManifestValidator` |
-| `LANG_CODE_RE` regex | 3 | `I18nLabelsController`, `I18nLanguagesController`, `I18nSettingsController` |
-| `REF_RE` regex | 2 | `SettingsController`, `NavigationValidationService` |
-| `string(Object)` helper | 4 | `ModulesService`, `EntryPointsService`, `AiHubChatController`, `ManifestController` |
-| `notBlank(String)` helper | 3 | `ModulesService`, `EntryPointsService`, `KcAdminClient` |
-| `currentUserSub()`/`currentUserRoles()` | 2 | `ModuleSettingsController`, `I18nLabelsController` |
-
-**Approach:**
-1. Create `DomainConstants` for regex patterns
-2. Create `StringUtils` for `string()`, `notBlank()`, `orEmpty()`, `stringOr()`, `intOr()`, `boolOr()`
-3. Create `SecurityUtils` for `currentUserSub()`, `currentUserRoles()`
-
----
+**Status:** ✅ DONE (Step 11) — `common/Keys` (`KEY_RE` ×6, `LANG_CODE_RE` ×3, `REF_RE` ×2,
+`I18N_KEY_RE`, `ELEMENT_RE`, `UUID_PATTERN`, `CATEGORIES`/`TYPES`), `common/Texts` (`string`,
+`notBlank`, `orEmpty`, `stringOr`, `intOr`, `boolOr`, `joinComma`), `common/SecurityUtils`
+(`principal`, `currentUserSub`, `currentUserRoles`). All private copies deleted; `EntryPointsService`
+also lost its unused `badRequest()` helper.
 
 ### 11. Add `@Enumerated(EnumType.STRING)` to String Fields
 
@@ -558,6 +491,15 @@ public interface ModuleSummary {
 - **`InstallService` (579 lines)** — split install/versions/drafts into focused collaborators.
 - **Token masking** (see Step 9 note) — stored-mask column + backfill would remove the per-token decrypt on list.
 - **Legacy tables** — `favorites`, `chat_conversations`, `chat_messages` (V1) have no Java entities; drop in a future cleanup migration after confirming no external consumers.
+
+## Newly identified (Step 11 audit, 2026-09-23)
+
+- **`entry_points.sandbox` write paths diverge** — `EntryPointsService.upsert` stores comma-joined
+  tokens but `InstallService.applyInstall` stores the raw JSON array text (`entry.get("sandbox")
+  .toString()` → `["a","b"]`), which the comma-split output then mangles. Unify both writes to
+  comma-join (needs a data-fix pass for manifest-installed rows).
+- **`KEY_RE` is permissive at the tail** — `^[a-z0-9][a-z0-9-]{0,63}$` accepts trailing hyphens
+  (`abc-`); tightening it would need a data audit first (KeysTest documents the behavior).
 
 ---
 

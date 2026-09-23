@@ -68,6 +68,20 @@ public class JsonUtils {
     }
   }
 
+  /** Typed list; null/blank input or invalid JSON yields an empty list. */
+  public <T> List<T> parseList(String raw, Class<T> elementType) {
+    if (raw == null || raw.isBlank()) {
+      return List.of();
+    }
+    try {
+      return mapper.readValue(
+          raw, mapper.getTypeFactory().constructCollectionType(List.class, elementType));
+    } catch (Exception e) {
+      log.warn("[json] parseList({}) failed: {}", elementType.getSimpleName(), e.getMessage());
+      return List.of();
+    }
+  }
+
   /** Raw {@link JsonNode} passthrough; null/blank input or invalid JSON yields {@code null}. */
   public JsonNode parseTreeOrNull(String raw) {
     if (raw == null || raw.isBlank()) {

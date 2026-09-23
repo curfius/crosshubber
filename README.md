@@ -158,6 +158,9 @@ Intentional API/storage decisions (several date back to the original port):
 | 5 | `roles` stored comma-joined TEXT (V11) | Role keys are kebab-case (validated) — no commas possible; API output stays an array |
 | 6 | `GET /api/mfe/foo` (no trailing path) → 400 `{"error":"bad path"}` | JSON is more consistent than HTML |
 | 7 | Navigation `hidden` flags (V23) | Per-row hidden/visible toggle for the navigation editors; omitted when `false` so payloads stay minimal |
+| 8 | Response payloads are typed records with per-field inclusion (2026-09) | Optional fields omit when null/blank; keys that must exist even when null (`parentKey`, workspace `layout`/`focusedGroupId`, services `url`, `{"manifest": null}`) carry per-field overrides; schemaless JSONB blobs (settings scopes, i18n overrides, nav layout) intentionally stay untyped |
+| 9 | Bean validation (`@Valid`) on clean single-body endpoints (2026-09) | 400 wording for those endpoints is now `"<field> <constraint>"` joined with `; `; cross-field rules and free-form/partial-update bodies (user-settings, module-settings, i18n settings/languages, manifest draft/install, nav features, JsonNode trees) stay programmatic by design |
+| 10 | Shell-config group `icon` unified with the registry omit-blank rule (2026-09) | Blank-string icons are no longer emitted in `/api/config` groups — one shared `EntryPointGroupDto` |
 
 ## Development
 

@@ -13,7 +13,9 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
+import com.crosshubber.portal.common.Texts;
 import com.crosshubber.portal.config.PortalProperties;
+import com.crosshubber.portal.modules.registry.dto.SecurityRoleDto;
 
 /**
  * Keycloak admin client (client-credentials). Used by the module registry to sync manifest-declared
@@ -37,10 +39,10 @@ public class KcAdminClient {
   public boolean isConfigured() {
     PortalProperties.KcAdmin kcAdmin = props.getKcAdmin();
     return kcAdmin != null
-        && notBlank(kcAdmin.getBaseUrl())
-        && notBlank(kcAdmin.getClientId())
-        && notBlank(kcAdmin.getClientSecret())
-        && notBlank(kcAdmin.getRealm());
+        && Texts.notBlank(kcAdmin.getBaseUrl())
+        && Texts.notBlank(kcAdmin.getClientId())
+        && Texts.notBlank(kcAdmin.getClientSecret())
+        && Texts.notBlank(kcAdmin.getRealm());
   }
 
   private String tokenUrl() {
@@ -86,13 +88,10 @@ public class KcAdminClient {
   }
 
   /** Creates the given realm roles (idempotent). An existing role gets its description updated. */
-  public void ensureRealmRoles(List<Map<String, Object>> roles) {
-    for (Map<String, Object> role : roles) {
-      String key = String.valueOf(role.get("key"));
-      String description =
-          role.get("description") instanceof String d && !d.isBlank()
-              ? d
-              : String.valueOf(role.get("name"));
+  public void ensureRealmRoles(List<SecurityRoleDto> roles) {
+    for (SecurityRoleDto role : roles) {
+      String key = role.key();
+      String description = Texts.notBlank(role.description()) ? role.description() : role.name();
       int status = request("POST", "/roles", Map.of("name", key, "description", description));
       if (status == 409) {
         request("PUT", "/roles/" + key, Map.of("name", key, "description", description));
@@ -147,9 +146,5 @@ public class KcAdminClient {
 
   private static String stripTrailingSlash(String url) {
     return url.replaceAll("/+$", "");
-  }
-
-  private static boolean notBlank(String value) {
-    return value != null && !value.isBlank();
   }
 }

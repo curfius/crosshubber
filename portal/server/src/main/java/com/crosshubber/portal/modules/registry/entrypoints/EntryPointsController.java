@@ -15,6 +15,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.crosshubber.portal.modules.registry.dto.EntryPointDto;
+import com.crosshubber.portal.modules.registry.dto.EntryPointUpsertRequest;
+
+import jakarta.validation.Valid;
+
 /** Entry points routes. */
 @RestController
 @RequestMapping("/api/registry/entry-points")
@@ -29,28 +34,27 @@ public class EntryPointsController {
   @GetMapping
   public ResponseEntity<Map<String, Object>> list(
       @RequestParam(required = false) String moduleKey) {
-    List<Map<String, Object>> entryPoints =
+    List<EntryPointDto> entryPoints =
         entryPointsService.list(moduleKey).stream().map(EntryPointsService::toOutput).toList();
     return ResponseEntity.ok(Map.of("entryPoints", entryPoints));
   }
 
   @PostMapping
   @PreAuthorize("hasRole('portal-registry-edit')")
-  public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
+  public ResponseEntity<?> create(@Valid @RequestBody EntryPointUpsertRequest body) {
     String error = entryPointsService.validate(body);
     if (error != null) {
       return ResponseEntity.badRequest().body(Map.of("error", error));
     }
-    String loadPath = EntryPointsService.string(body.get("loadPath"));
-    if ("embedded".equals(body.get("type"))
-        && loadPath != null
-        && !entryPointsService.validateLoadPath(loadPath)) {
+    if ("embedded".equals(body.type())
+        && body.loadPath() != null
+        && !entryPointsService.validateLoadPath(body.loadPath())) {
       return ResponseEntity.badRequest()
           .body(
               Map.of(
                   "error",
                   "loadPath \""
-                      + loadPath
+                      + body.loadPath()
                       + "\" is not registered."
                       + " Add it to portal.known_load_paths first."));
     }
@@ -61,17 +65,17 @@ public class EntryPointsController {
 
   @PutMapping("/{id}")
   @PreAuthorize("hasRole('portal-registry-edit')")
-  public ResponseEntity<?> update(@PathVariable long id, @RequestBody Map<String, Object> body) {
+  public ResponseEntity<?> update(
+      @PathVariable long id, @Valid @RequestBody EntryPointUpsertRequest body) {
     String error = entryPointsService.validate(body);
     if (error != null) {
       return ResponseEntity.badRequest().body(Map.of("error", error));
     }
-    String loadPath = EntryPointsService.string(body.get("loadPath"));
-    if ("embedded".equals(body.get("type"))
-        && loadPath != null
-        && !entryPointsService.validateLoadPath(loadPath)) {
+    if ("embedded".equals(body.type())
+        && body.loadPath() != null
+        && !entryPointsService.validateLoadPath(body.loadPath())) {
       return ResponseEntity.badRequest()
-          .body(Map.of("error", "loadPath \"" + loadPath + "\" is not registered."));
+          .body(Map.of("error", "loadPath \"" + body.loadPath() + "\" is not registered."));
     }
     EntryPointEntity entryPoint = entryPointsService.upsert(body);
     return ResponseEntity.ok(

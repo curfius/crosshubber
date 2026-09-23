@@ -6,14 +6,15 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.crosshubber.portal.bootstrap.EmbeddedCatalog;
-import com.crosshubber.portal.common.Roles;
+import com.crosshubber.portal.common.Keys;
+import com.crosshubber.portal.common.Texts;
 import com.crosshubber.portal.config.PortalProperties;
+import com.crosshubber.portal.modules.registry.dto.EntryPointDto;
+import com.crosshubber.portal.modules.registry.dto.EntryPointUpsertRequest;
 
 /**
  * Entry points domain service: validation (categories, types, portal-origin guards, registered load
@@ -21,11 +22,6 @@ import com.crosshubber.portal.config.PortalProperties;
  */
 @Service
 public class EntryPointsService {
-
-  private static final String KEY_RE = "^[a-z0-9][a-z0-9-]{0,63}$";
-  private static final List<String> CATEGORIES =
-      List.of("applications", "settings", "features", "user-settings");
-  private static final List<String> TYPES = List.of("iframe", "embedded", "mfe", "link");
 
   private final EntryPointRepository repo;
   private final PortalProperties props;
@@ -37,66 +33,9 @@ public class EntryPointsService {
 
   // ── Output mapping ───────────────────────────────────────────────────
 
-  /** Output DTO (key order matters). */
-  public static Map<String, Object> toOutput(EntryPointEntity ep) {
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("id", ep.getId());
-    out.put("moduleKey", ep.getModuleKey());
-    out.put("entryKey", ep.getEntryKey());
-    out.put("category", ep.getCategory());
-    out.put("name", ep.getName());
-    out.put("type", ep.getType());
-    out.put("sortOrder", ep.getSortOrder());
-    out.put("active", ep.getActive());
-    out.put("multi", ep.getMulti());
-    if (notBlank(ep.getDescription())) {
-      out.put("description", ep.getDescription());
-    }
-    if (notBlank(ep.getUrl())) {
-      out.put("url", ep.getUrl());
-    }
-    if (notBlank(ep.getSandbox())) {
-      String[] sandboxArray = ep.getSandbox().split(",");
-      if (sandboxArray.length > 0 && !sandboxArray[0].isEmpty()) {
-        out.put("sandbox", java.util.Arrays.asList(sandboxArray));
-      }
-    }
-    if (notBlank(ep.getAllow())) {
-      out.put("allow", ep.getAllow());
-    }
-    if (notBlank(ep.getLoadPath())) {
-      out.put("loadPath", ep.getLoadPath());
-    }
-    if (notBlank(ep.getEntryUrl())) {
-      out.put("entryUrl", ep.getEntryUrl());
-    }
-    if (notBlank(ep.getElement())) {
-      out.put("element", ep.getElement());
-    }
-    if (notBlank(ep.getParentEntryKey())) {
-      out.put("parentEntryKey", ep.getParentEntryKey());
-    }
-    if (notBlank(ep.getGroupKey())) {
-      out.put("groupKey", ep.getGroupKey());
-    }
-    List<String> roles = Roles.parse(ep.getRoles());
-    if (!roles.isEmpty()) {
-      out.put("roles", roles);
-    }
-    if (notBlank(ep.getIcon())) {
-      out.put("icon", ep.getIcon());
-    }
-    if (notBlank(ep.getColor())) {
-      out.put("color", ep.getColor());
-    }
-    if (Boolean.TRUE.equals(ep.getHidden())) {
-      out.put("hidden", true);
-    }
-    return out;
-  }
-
-  static boolean notBlank(String value) {
-    return value != null && !value.isBlank();
+  /** Output DTO. */
+  public static EntryPointDto toOutput(EntryPointEntity ep) {
+    return EntryPointDto.fromEntity(ep);
   }
 
   // ── Queries ──────────────────────────────────────────────────────────
@@ -120,29 +59,14 @@ public class EntryPointsService {
 
   // ── Validation (mirrors validateEntryPoint) ──────────────────────────
 
-  /** Returns the validation error message, or null when valid. */
-  public String validate(Map<String, Object> input) {
-    String moduleKey = string(input.get("moduleKey"));
-    String entryKey = string(input.get("entryKey"));
-    if (moduleKey == null || !moduleKey.matches(KEY_RE)) {
-      return "moduleKey must match [a-z0-9][a-z0-9-]{0,63}";
-    }
-    if (entryKey == null || !entryKey.matches(KEY_RE)) {
-      return "entryKey must match [a-z0-9][a-z0-9-]{0,63}";
-    }
-    String category = string(input.get("category"));
-    if (category == null || !CATEGORIES.contains(category)) {
-      return "category must be applications|settings|features|user-settings";
-    }
-    String name = string(input.get("name"));
-    if (name == null || name.isBlank()) {
-      return "name is required";
-    }
-    String type = string(input.get("type"));
-    if (type == null || !TYPES.contains(type)) {
-      return "type must be iframe|embedded|mfe|link";
-    }
-    String url = string(input.get("url"));
+  /**
+   * Cross-field validation for the entry point type; scalar constraints (keys, category, name,
+   * type) are enforced declaratively on {@link EntryPointUpsertRequest}. Returns the error message,
+   * or null when valid.
+   */
+  public String validate(EntryPointUpsertRequest input) {
+    String type = input.type();
+    String url = input.url();
     if ("iframe".equals(type)) {
       if (url == null || url.isBlank()) {
         return "iframe entry points require a url";
@@ -160,18 +84,18 @@ public class EntryPointsService {
       }
     }
     if ("embedded".equals(type)) {
-      String loadPath = string(input.get("loadPath"));
+      String loadPath = input.loadPath();
       if (loadPath == null || loadPath.isBlank()) {
         return "embedded entry points require a loadPath";
       }
     }
     if ("mfe".equals(type)) {
-      String entryUrl = string(input.get("entryUrl"));
-      String element = string(input.get("element"));
+      String entryUrl = input.entryUrl();
+      String element = input.element();
       if (entryUrl == null || entryUrl.isBlank()) {
         return "mfe entry points require an entryUrl";
       }
-      if (element == null || !element.matches("^[a-z][a-z0-9-]*$")) {
+      if (element == null || !element.matches(Keys.ELEMENT_RE)) {
         return "mfe entry points require a valid element name";
       }
       // Check if entryUrl points to portal SPA (must be a .js bundle)
@@ -202,34 +126,33 @@ public class EntryPointsService {
 
   /** Full-replace upsert on (moduleKey, entryKey) — mirrors repo.upsert. */
   @Transactional
-  public EntryPointEntity upsert(Map<String, Object> input) {
-    String moduleKey = string(input.get("moduleKey"));
-    String entryKey = string(input.get("entryKey"));
+  public EntryPointEntity upsert(EntryPointUpsertRequest input) {
     EntryPointEntity ep =
-        repo.findByModuleKeyAndEntryKey(moduleKey, entryKey).orElseGet(EntryPointEntity::new);
+        repo.findByModuleKeyAndEntryKey(input.moduleKey(), input.entryKey())
+            .orElseGet(EntryPointEntity::new);
     boolean isNew = ep.getId() == null;
     if (isNew) {
-      ep.setModuleKey(moduleKey);
-      ep.setEntryKey(entryKey);
+      ep.setModuleKey(input.moduleKey());
+      ep.setEntryKey(input.entryKey());
     }
-    ep.setCategory(stringOr(input.get("category"), "applications"));
-    ep.setName(stringOr(input.get("name"), entryKey));
-    ep.setDescription(string(input.get("description")));
-    ep.setType(stringOr(input.get("type"), "embedded"));
-    ep.setUrl(string(input.get("url")));
-    ep.setSandbox(joinSandbox(input.get("sandbox")));
-    ep.setAllow(string(input.get("allow")));
-    ep.setLoadPath(string(input.get("loadPath")));
-    ep.setEntryUrl(string(input.get("entryUrl")));
-    ep.setElement(string(input.get("element")));
-    ep.setParentEntryKey(string(input.get("parentEntryKey")));
-    ep.setGroupKey(string(input.get("groupKey")));
-    ep.setSortOrder(intOr(input.get("sortOrder"), 0));
-    ep.setRoles(orEmpty(joinRoles(input.get("roles"))));
-    ep.setActive(boolOr(input.get("active"), true));
-    ep.setIcon(string(input.get("icon")));
-    ep.setColor(string(input.get("color")));
-    ep.setMulti(boolOr(input.get("multi"), false));
+    ep.setCategory(input.category() != null ? input.category() : "applications");
+    ep.setName(input.name() != null ? input.name() : input.entryKey());
+    ep.setDescription(input.description());
+    ep.setType(input.type() != null ? input.type() : "embedded");
+    ep.setUrl(input.url());
+    ep.setSandbox(Texts.joinComma(input.sandbox()));
+    ep.setAllow(input.allow());
+    ep.setLoadPath(input.loadPath());
+    ep.setEntryUrl(input.entryUrl());
+    ep.setElement(input.element());
+    ep.setParentEntryKey(input.parentEntryKey());
+    ep.setGroupKey(input.groupKey());
+    ep.setSortOrder(input.sortOrder() != null ? input.sortOrder() : 0);
+    ep.setRoles(Texts.orEmpty(Texts.joinComma(input.roles())));
+    ep.setActive(input.active() != null ? input.active() : true);
+    ep.setIcon(input.icon());
+    ep.setColor(input.color());
+    ep.setMulti(input.multi() != null ? input.multi() : false);
     return repo.save(ep);
   }
 
@@ -288,44 +211,5 @@ public class EntryPointsService {
       return 80;
     }
     return -1;
-  }
-
-  /** Sandbox tokens: stored as comma-joined text (column flattened in V11). */
-  private String joinSandbox(Object sandbox) {
-    if (sandbox instanceof List<?> list) {
-      return list.stream().map(String::valueOf).reduce((a, b) -> a + "," + b).orElse(null);
-    }
-    return sandbox instanceof String s ? s : null;
-  }
-
-  private String joinRoles(Object roles) {
-    if (roles instanceof List<?> list) {
-      return list.stream().map(String::valueOf).reduce((a, b) -> a + "," + b).orElse(null);
-    }
-    return roles instanceof String s ? s : null;
-  }
-
-  static String string(Object value) {
-    return value instanceof String s ? s : null;
-  }
-
-  static String orEmpty(String value) {
-    return value == null ? "" : value;
-  }
-
-  static String stringOr(Object value, String fallback) {
-    return value instanceof String s ? s : fallback;
-  }
-
-  static int intOr(Object value, int fallback) {
-    return value instanceof Number n ? n.intValue() : fallback;
-  }
-
-  static boolean boolOr(Object value, boolean fallback) {
-    return value instanceof Boolean b ? b : fallback;
-  }
-
-  static ResponseStatusException badRequest(String message) {
-    return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
   }
 }

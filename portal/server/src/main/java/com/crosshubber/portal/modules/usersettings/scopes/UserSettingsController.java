@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.crosshubber.portal.common.Keys;
 import com.crosshubber.portal.security.PortalUser;
 
 import tools.jackson.databind.ObjectMapper;
@@ -25,7 +26,6 @@ import tools.jackson.databind.ObjectMapper;
 public class UserSettingsController {
 
   private static final int MAX_BODY_BYTES = 16 * 1024;
-  private static final String KEY_RE = "^[a-z0-9][a-z0-9-]{0,63}$";
 
   /** Portal-owned 'general' scope allow-list: key -> max string length. */
   private static final Map<String, Integer> GENERAL_ALLOWED_KEYS =
@@ -56,7 +56,7 @@ public class UserSettingsController {
     if (user == null) {
       return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
     }
-    if (!scope.matches(KEY_RE)) {
+    if (!scope.matches(Keys.KEY_RE)) {
       return ResponseEntity.badRequest()
           .body(Map.of("error", "scope must match [a-z0-9][a-z0-9-]{0,63}"));
     }
@@ -71,7 +71,7 @@ public class UserSettingsController {
     if (user == null) {
       return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
     }
-    if (!scope.matches(KEY_RE)) {
+    if (!scope.matches(Keys.KEY_RE)) {
       return ResponseEntity.badRequest()
           .body(Map.of("error", "scope must match [a-z0-9][a-z0-9-]{0,63}"));
     }

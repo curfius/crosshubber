@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
-import java.util.Map;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
@@ -22,6 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import com.crosshubber.portal.modules.navigation.pinnedapps.PinnedAppsService;
+import com.crosshubber.portal.modules.navigation.pinnedapps.PinnedNodeDto;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -120,15 +120,13 @@ class PortalSmokeTest {
         """;
     pinnedAppsService.savePinnedTree(userId, objectMapper.readTree(treeJson));
 
-    List<Map<String, Object>> roots = pinnedAppsService.getPinnedTree(userId);
+    List<PinnedNodeDto> roots = pinnedAppsService.getPinnedTree(userId);
     assertEquals(1, roots.size());
-    assertEquals("11111111-1111-1111-1111-111111111111", roots.get(0).get("id"));
-    assertEquals("folder", roots.get(0).get("nodeType"));
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> children = (List<Map<String, Object>>) roots.get(0).get("children");
-    assertEquals(1, children.size());
-    assertEquals("22222222-2222-2222-2222-222222222222", children.get(0).get("id"));
-    assertEquals("ai-hub:main", children.get(0).get("ref"));
+    assertEquals("11111111-1111-1111-1111-111111111111", roots.get(0).id());
+    assertEquals("folder", roots.get(0).nodeType());
+    assertEquals(1, roots.get(0).children().size());
+    assertEquals("22222222-2222-2222-2222-222222222222", roots.get(0).children().get(0).id());
+    assertEquals("ai-hub:main", roots.get(0).children().get(0).ref());
 
     // Re-save with the same UUIDs (update path) must not throw either.
     pinnedAppsService.savePinnedTree(userId, objectMapper.readTree(treeJson));

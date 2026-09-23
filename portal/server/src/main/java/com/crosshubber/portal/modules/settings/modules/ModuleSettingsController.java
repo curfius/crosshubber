@@ -2,10 +2,9 @@ package com.crosshubber.portal.modules.settings.modules;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -13,11 +12,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.crosshubber.portal.common.JsonUtils;
+import com.crosshubber.portal.common.SecurityUtils;
+import com.crosshubber.portal.modules.registry.dto.SecurityRoleDto;
 import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
-
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Module settings routes: writes require the platform fast-path role or one of the module's
@@ -29,15 +27,13 @@ public class ModuleSettingsController {
 
   private final ModuleSettingsService settingsService;
   private final ModuleRepository moduleRepo;
-  private final ObjectMapper objectMapper;
+  private final JsonUtils jsonUtils;
 
   public ModuleSettingsController(
-      ModuleSettingsService settingsService,
-      ModuleRepository moduleRepo,
-      ObjectMapper objectMapper) {
+      ModuleSettingsService settingsService, ModuleRepository moduleRepo, JsonUtils jsonUtils) {
     this.settingsService = settingsService;
     this.moduleRepo = moduleRepo;
-    this.objectMapper = objectMapper;
+    this.jsonUtils = jsonUtils;
   }
 
   @GetMapping("/{moduleKey}")
@@ -48,7 +44,7 @@ public class ModuleSettingsController {
   @PutMapping("/{moduleKey}")
   public ResponseEntity<?> update(
       @PathVariable String moduleKey, @RequestBody Map<String, Object> body) {
-    List<String> userRoles = currentUserRoles();
+    List<String> userRoles = SecurityUtils.currentUserRoles();
     if (!isModuleManager(userRoles, moduleKey)) {
       return ResponseEntity.status(403).body(Map.of("error", "forbidden"));
     }
@@ -74,32 +70,9 @@ public class ModuleSettingsController {
   }
 
   private List<String> declaredManagerRoles(String securityRolesJson) {
-    try {
-      if (securityRolesJson == null || securityRolesJson.isBlank()) {
-        return List.of();
-      }
-      JsonNode node = objectMapper.readTree(securityRolesJson);
-      if (!node.isArray()) {
-        return List.of();
-      }
-      return objectMapper
-          .convertValue(node, new TypeReference<List<Map<String, Object>>>() {})
-          .stream()
-          .map(r -> r.get("key"))
-          .filter(k -> k instanceof String)
-          .map(k -> (String) k)
-          .toList();
-    } catch (Exception e) {
-      return List.of();
-    }
-  }
-
-  private static List<String> currentUserRoles() {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    if (auth != null
-        && auth.getPrincipal() instanceof com.crosshubber.portal.security.PortalUser user) {
-      return user.roles();
-    }
-    return List.of();
+    return jsonUtils.parseList(securityRolesJson, SecurityRoleDto.class).stream()
+        .map(SecurityRoleDto::key)
+        .filter(Objects::nonNull)
+        .toList();
   }
 }

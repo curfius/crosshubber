@@ -9,16 +9,12 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.crosshubber.portal.common.Keys;
 import com.crosshubber.portal.modules.i18n.I18nService;
 
 /** PUT /api/i18n/languages/{code}. The default/fallback language cannot be disabled. */
 @RestController
 public class I18nLanguagesController {
-
-  // (?i) LANG_CODE_RE — an uppercase code
-  // passes the regex and then falls through to the 404 "unknown language" path (codes are
-  // stored lowercase).
-  private static final String LANG_CODE_RE = "(?i)^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$";
 
   private final I18nService i18nService;
 
@@ -30,7 +26,7 @@ public class I18nLanguagesController {
   @PreAuthorize("hasRole('portal-i18n-edit')")
   public ResponseEntity<?> update(
       @PathVariable String code, @RequestBody Map<String, Object> body) {
-    if (!code.matches(LANG_CODE_RE)) {
+    if (!code.matches(Keys.LANG_CODE_RE)) {
       return ResponseEntity.badRequest().body(Map.of("error", "invalid language code"));
     }
     I18nLanguageEntity existing = i18nService.findLanguage(code);
