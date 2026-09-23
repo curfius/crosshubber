@@ -119,7 +119,7 @@ public class InstallService {
           entry.hasNonNull("description") ? entry.get("description").asString() : null);
       ep.setType(entry.path("type").asString());
       ep.setUrl(validator.resolveUrl(entry, baseUrl));
-      ep.setSandbox(entry.hasNonNull("sandbox") ? entry.get("sandbox").toString() : null);
+      ep.setSandbox(joinStringArray(entry.get("sandbox")));
       ep.setAllow(entry.hasNonNull("allow") ? entry.get("allow").asString() : null);
       ep.setLoadPath(
           "embedded".equals(entry.path("type").asString()) && entry.hasNonNull("loadPath")
@@ -559,16 +559,17 @@ public class InstallService {
   }
 
   private String rolesOrEmpty(JsonNode roles) {
-    String joined = joinRoles(roles);
+    String joined = joinStringArray(roles);
     return joined != null ? joined : "";
   }
 
-  private String joinRoles(JsonNode roles) {
-    if (roles == null || !roles.isArray() || roles.isEmpty()) {
+  /** Comma-joins a JSON string array for flattened text columns (sandbox, roles). */
+  private String joinStringArray(JsonNode values) {
+    if (values == null || !values.isArray() || values.isEmpty()) {
       return null;
     }
     List<String> parts = new java.util.ArrayList<>();
-    roles.forEach(r -> parts.add(r.asString()));
+    values.forEach(v -> parts.add(v.asString()));
     return String.join(",", parts);
   }
 }

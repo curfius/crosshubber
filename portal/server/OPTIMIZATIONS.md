@@ -494,10 +494,9 @@ public interface ModuleSummary {
 
 ## Newly identified (Step 11 audit, 2026-09-23)
 
-- **`entry_points.sandbox` write paths diverge** — `EntryPointsService.upsert` stores comma-joined
-  tokens but `InstallService.applyInstall` stores the raw JSON array text (`entry.get("sandbox")
-  .toString()` → `["a","b"]`), which the comma-split output then mangles. Unify both writes to
-  comma-join (needs a data-fix pass for manifest-installed rows).
+- **`entry_points.sandbox` write paths diverged** — ✅ FIXED (2026-09-23): `InstallService` now
+  comma-joins via `joinStringArray` (shared with roles); `V25__normalize_entry_point_sandbox`
+  rewrites legacy JSON-array-text rows.
 - **`KEY_RE` is permissive at the tail** — `^[a-z0-9][a-z0-9-]{0,63}$` accepts trailing hyphens
   (`abc-`); tightening it would need a data audit first (KeysTest documents the behavior).
 
