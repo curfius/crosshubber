@@ -176,9 +176,10 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
 - `plan/archive/TENANT_FORK_PLAN.md` — archived per-tenant fork/forkability plan,
   **work stream completed 2026-09-29** (policy ownership, branding, theme/i18n/
   provider asserts). Live deferred items in that file's §8: external-module UI toggle
-  silent-revert hint, carris-light/dark selectable (17 vs 19 theme drift), i18n admin
-  hint "config-managed languages", `ModuleContentsService.java:151`
-  active-defaults-true footgun, per-tenant content-level overrides.
+  silent-revert hint, i18n admin hint "config-managed languages",
+  `ModuleContentsService.java:151` active-defaults-true footgun, per-tenant
+  content-level overrides. (carris-light/dark selectable resolved 2026-09-29 —
+  registered in `PORTAL_THEMES`.)
 - `plan/archive/NORMALIZATION_PLAN.md` — archived table-ownership normalization
   (registry_/navigation_ renames, entry point → module content), **topic closed
   2026-09-29**; migrations V27/V28; no live deferred items beyond its §9 notes.

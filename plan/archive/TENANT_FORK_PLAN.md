@@ -210,11 +210,14 @@ Fork = copy the `_default` baseline, delete what you don't want, restart — no 
 
 ## 8. Deferred / backlog
 
-External-module UI toggle silent-revert hint · carris-light/dark selectable (17 vs 19 theme drift) ·
+External-module UI toggle silent-revert hint ·
 i18n admin hint "config-managed languages" · `ModuleContentsService.java:151`
 active-defaults-true footgun (was `EntryPointsService.java:155` pre-normalization) ·
 per-tenant content-level overrides · removal of the retired-builtin cleanup lists
 (tracked in AGENTS.md backlog; keep one more release cycle).
+
+**Resolved post-archival:** carris-light/dark selectable (17 vs 19 theme drift) — both
+themes registered in `PORTAL_THEMES` on 2026-09-29.
 
 **Resolved in the 2026-09-29 bootstrap cleanup:** Reconciler's hardcoded first-boot instance-settings
 block removed (`_default/tenant.json settings{}` is the single config source;

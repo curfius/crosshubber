@@ -25,6 +25,8 @@ export const PORTAL_THEMES: ThemeOption[] = [
   { value: 'malo-3', label: 'Malo 3 (Purple + Teal)' },
   { value: 'malo-light', label: 'Malo Light (Navy + Teal)' },
   { value: 'malo-dark', label: 'Malo Dark (Navy + Teal)' },
+  { value: 'carris-light', label: 'Carris Light (Yellow + Blue)' },
+  { value: 'carris-dark', label: 'Carris Dark (Yellow + Gold)' },
 ];
 
 const STORAGE_KEY = 'portal-theme';
