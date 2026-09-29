@@ -1,7 +1,17 @@
 # NORMALIZATION_PLAN — Table ownership renames + "entry point" → "module content"
 
-Status: **IMPLEMENTED** (2026-09-29; `mvn verify` 81 green incl. smoke test, `npm test` 128 green, `npm run build` exit 0)
-Scope: schema (Flyway V26/V27), backend (packages/classes/API/JSON keys), frontend (types/URLs),
+> **Archived 2026-09-29 — topic closed.** Executed same-day as one commit
+> (`99da741`, stacked as a single changeset rather than the PR plan in §8). Execution
+> deltas vs this text: migrations became **V27/V28** (V26 was already taken by the
+> Step-13 hygiene migration, which also covered the favorites drop); the §2.1 JSONB
+> blob rewrite is moot (audit found zero `"entryKey":` object keys — blobs store string
+> refs only); V28 label inserts needed per-language FK guards (runs before the
+> Reconciler seeds `i18n_languages` on fresh installs). Verified end-to-end on the dev
+> tenant: Flyway applied 27+28 against existing data, Reconciler completed clean,
+> soft-refresh smoke test passed. Deferred items stay listed in §9.
+
+Status at closure: **IMPLEMENTED** (2026-09-29; `mvn verify` 81 green incl. smoke test, `npm test` 128 green, `npm run build` exit 0)
+Scope: schema (Flyway V27/V28), backend (packages/classes/API/JSON keys), frontend (types/URLs),
 i18n seed + migration, docs. Historical migrations and `docs/archive/**` are untouched.
 
 ---

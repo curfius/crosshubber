@@ -151,7 +151,7 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
   key, unknown provider id, default language outside the enabled set) fails boot. Builtin
   module `active` is config-owned: registry PATCH → 409, UI toggle hidden. `GET
   /api/branding` serves `tenant_meta` branding rows (public, fallback = repo baseline).
-  See `plan/TENANT_FORK_PLAN.md`.
+  See `plan/archive/TENANT_FORK_PLAN.md` (§6 new-tenant runbook; §8 deferred follow-ups).
 - **`i18n-catalog.json`** is the repo-owned seed catalog (originally exported from the
   pre-decommission Node stack; the regen script is gone). Edits are allowed; the
   reconciler seeds insert-if-absent, so changed values need a migration (see `V24__*`)
@@ -167,9 +167,21 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
 
 - `plan/AI_PLAN.md` — roadmap for the portal agent (session context pack, manifest
   `agentContributions` v2, MCP tool execution, A2A-shaped sub-agents, module-owned
-  knowledge retrieval).
+  knowledge retrieval). Dogfood consumers scoped in `plan/AI_MODULES_PLAN.md`
+  (`solutions`, `staffing` — planned, needs go decision).
+- `plan/TEST_PLAN.md` — approved (not started): tenant-driven regression testing via a
+  temporary deterministic `e2e` tenant; CI explicitly deferred.
 - `plan/UX_PLAN.md` — portal navigation/UX optimization roadmap (journey-based
   Phases 1–3; Phase 1 quick wins implemented 2026-09-22).
+- `plan/archive/TENANT_FORK_PLAN.md` — archived per-tenant fork/forkability plan,
+  **work stream completed 2026-09-29** (policy ownership, branding, theme/i18n/
+  provider asserts). Live deferred items in that file's §8: external-module UI toggle
+  silent-revert hint, carris-light/dark selectable (17 vs 19 theme drift), i18n admin
+  hint "config-managed languages", `ModuleContentsService.java:151`
+  active-defaults-true footgun, per-tenant content-level overrides.
+- `plan/archive/NORMALIZATION_PLAN.md` — archived table-ownership normalization
+  (registry_/navigation_ renames, entry point → module content), **topic closed
+  2026-09-29**; migrations V27/V28; no live deferred items beyond its §9 notes.
 - `plan/archive/OPTIMIZATIONS.md` — archived backend optimization plan, **topic closed in
   Step 13 (2026-09)**: #1 typed DTOs, #9 @Valid, #10 shared constants, #11 enums,
   #12 optimistic locking (409), #3 buildConfig, #16/#17/#18/#26 resolved with

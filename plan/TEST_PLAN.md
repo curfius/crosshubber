@@ -21,8 +21,8 @@ automated regression testing. CI is explicitly deferred; everything here runs lo
 **Key facts the plan builds on:**
 
 - Post-normalization API surface: `/api/registry/module-contents`, `/api/navigation/groups`,
-  `contentKey` naming (the concurrent registry/navigation refactor must be settled before specs
-  freeze; selectors may need a re-check if it is still churning).
+  `contentKey` naming (settled 2026-09-29 — normalization shipped as V27/V28 + API renames; selectors
+  re-verify before specs freeze).
 - Routes are only `login` / `w/:name` / `''` — screens are embedded modules reached via
   `?app=moduleKey:contentKey` deep links.
 - `KC_DB: dev-file` means Keycloak data lives inside its container — destroyed on `down` (with or

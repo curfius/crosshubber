@@ -1,6 +1,14 @@
 # Tenant fork plan — per-tenant deployable portal
 
-Status: **implemented** (2026-09-29; `mvn verify` 77 green incl. smoke test, `npm test` 128 green,
+> **Archived 2026-09-29 — work stream completed** (policy ownership, branding,
+> theme/i18n/provider asserts, boot sync of realm roles shipped together with the
+> schema normalization in commit `99da741`; re-verified green after that batch:
+> `mvn verify` 81, `npm test` 128, `npm run build` exit 0, boot on dev tenant clean).
+> §6 remains the new-tenant runbook; §8 holds the deferred follow-ups — also echoed
+> in the AGENTS.md backlog. Design notes live in README + AGENTS.md ("Tenant policy
+> ownership").
+
+Status at closure: **implemented** (2026-09-29; `mvn verify` 77 green incl. smoke test, `npm test` 128 green,
 `npm run build` green). Working reference for the "easily forkable tenants" work stream — §6 is the
 new-tenant runbook; §8 holds the deferred follow-ups.
 
@@ -203,8 +211,9 @@ Fork = copy the `_default` baseline, delete what you don't want, restart — no 
 ## 8. Deferred / backlog
 
 External-module UI toggle silent-revert hint · carris-light/dark selectable (17 vs 19 theme drift) ·
-i18n admin hint "config-managed languages" · `EntryPointsService.java:155` active-defaults-true
-footgun · per-tenant entry-point-level overrides · removal of the retired-builtin cleanup lists
+i18n admin hint "config-managed languages" · `ModuleContentsService.java:151`
+active-defaults-true footgun (was `EntryPointsService.java:155` pre-normalization) ·
+per-tenant content-level overrides · removal of the retired-builtin cleanup lists
 (tracked in AGENTS.md backlog; keep one more release cycle).
 
 **Resolved in the 2026-09-29 bootstrap cleanup:** Reconciler's hardcoded first-boot instance-settings
