@@ -3,7 +3,7 @@ import { EMBEDDED_LOAD_PATHS, embeddedModules } from './embedded-modules';
 
 // The authoritative embedded-module catalog lives in the backend
 // (portal/server/src/main/java/com/crosshubber/portal/bootstrap/EmbeddedCatalog.java);
-// keep this loader map in sync with it — the reconciler/EntryPointsController reject
+// keep this loader map in sync with it — the reconciler/ModuleContentsController reject
 // unknown load paths server-side. These tests pin the loader-map invariants that are
 // checkable client-side.
 

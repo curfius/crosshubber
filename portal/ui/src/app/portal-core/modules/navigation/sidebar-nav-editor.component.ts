@@ -3,8 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { NavigationStore } from '../../../core/navigation/navigation.store';
 import { WorkbenchService } from '../../features/workspaces/workspaces.store';
-import type { PortalEntryPoint } from '../../../core/models';
-import { entryPointId } from '../../../core/models';
+import type { PortalModuleContent } from '../../../core/models';
+import { moduleContentId } from '../../../core/models';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
 /**
@@ -32,18 +32,18 @@ export class SidebarNavEditor implements OnInit {
   protected readonly workspacesEnabled = computed(() => this.nav.features().workspacesEnabled);
 
   private readonly appsByRef = computed(() => {
-    const map = new Map<string, PortalEntryPoint>();
-    for (const ep of this.wb.getEntryPoints()) {
-      if (ep.category === 'applications' && ep.type !== 'link') map.set(entryPointId(ep), ep);
+    const map = new Map<string, PortalModuleContent>();
+    for (const ep of this.wb.getModuleContents()) {
+      if (ep.category === 'applications' && ep.type !== 'link') map.set(moduleContentId(ep), ep);
     }
     return map;
   });
 
   /** Picked quick-access apps, resolved + ordered. */
-  protected readonly picks = computed<PortalEntryPoint[]>(() =>
+  protected readonly picks = computed<PortalModuleContent[]>(() =>
     this.sidebar().apps
       .map((ref) => this.appsByRef().get(ref))
-      .filter((ep): ep is PortalEntryPoint => !!ep),
+      .filter((ep): ep is PortalModuleContent => !!ep),
   );
 
   /** Apps not yet picked (palette). */
@@ -51,7 +51,7 @@ export class SidebarNavEditor implements OnInit {
     const picked = new Set(this.sidebar().apps);
     const q = this.appFilter().toLowerCase();
     return [...this.appsByRef().values()]
-      .filter((ep) => !picked.has(entryPointId(ep)))
+      .filter((ep) => !picked.has(moduleContentId(ep)))
       .filter((ep) => !q || ep.name.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
   });
@@ -66,25 +66,25 @@ export class SidebarNavEditor implements OnInit {
     this.saving.set(false);
   }
 
-  protected async onReorder(event: CdkDragDrop<PortalEntryPoint[]>): Promise<void> {
+  protected async onReorder(event: CdkDragDrop<PortalModuleContent[]>): Promise<void> {
     const refs = [...this.sidebar().apps];
     // Reorder by moving the ref at previousIndex to currentIndex within the
     // RESOLVED list, then rebuild the full ref list (unknown refs keep slots).
     moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
-    const resolvedRefs = event.container.data.map((ep) => entryPointId(ep));
+    const resolvedRefs = event.container.data.map((ep) => moduleContentId(ep));
     // Merge: keep unknown refs (not resolvable) after the known ones.
     const unknownRefs = this.sidebar().apps.filter((ref) => !this.appsByRef().has(ref));
     const next = [...resolvedRefs, ...unknownRefs];
     await this.persistApps(next);
   }
 
-  protected async removePick(ep: PortalEntryPoint): Promise<void> {
-    const ref = entryPointId(ep);
+  protected async removePick(ep: PortalModuleContent): Promise<void> {
+    const ref = moduleContentId(ep);
     await this.persistApps(this.sidebar().apps.filter((r) => r !== ref));
   }
 
-  protected async addPick(ep: PortalEntryPoint): Promise<void> {
-    await this.persistApps([...this.sidebar().apps, entryPointId(ep)]);
+  protected async addPick(ep: PortalModuleContent): Promise<void> {
+    await this.persistApps([...this.sidebar().apps, moduleContentId(ep)]);
   }
 
   private async persistApps(apps: string[]): Promise<void> {

@@ -1,8 +1,8 @@
-﻿@if (config(); as cfg) {
+@if (config(); as cfg) {
 @if (i18n.initialized()) {
 <div class="flex h-screen w-full overflow-hidden bg-[var(--portal-bg-base)] text-[var(--portal-text-secondary)]">
   <app-sidebar
-    [entryPoints]="appEntryPoints()"
+    [moduleContents]="appModuleContents()"
     [workspaces]="workspaces()"
     [activeWorkspace]="activeWorkspace()"
     [activeAppKey]="activeAppKey()"
@@ -20,7 +20,7 @@
     <app-workspace-toolbar [userName]="cfg.user.name" [workspacesEnabled]="nav.features().workspacesEnabled" (logout)="logout()" />
     <div cdkDropListGroup class="relative flex min-h-0 flex-1 flex-col">
       @if (hasTabs()) {
-      <app-layout [node]="layout()!" [user]="cfg.user" [primaryGroupId]="primaryGroupId()" [editMode]="wb.editMode()" [hideSingleTabToolbar]="wb.hideSingleTabToolbar()" [allEntryPoints]="appEntryPoints()" />
+      <app-layout [node]="layout()!" [user]="cfg.user" [primaryGroupId]="primaryGroupId()" [editMode]="wb.editMode()" [hideSingleTabToolbar]="wb.hideSingleTabToolbar()" [allModuleContents]="appModuleContents()" />
       } @else {
       <div class="flex flex-1 flex-col items-center justify-center gap-4">
         <p class="text-sm text-[var(--portal-text-muted)]">{{ i18n.t('tabs.noTabs') }}</p>

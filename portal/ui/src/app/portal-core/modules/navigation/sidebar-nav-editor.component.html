@@ -57,7 +57,7 @@
       </div>
 
       <div cdkDropList (cdkDropListDropped)="onReorder($event)" [cdkDropListData]="picks()" class="space-y-1">
-        @for (ep of picks(); track ep.moduleKey + ':' + ep.entryKey) {
+        @for (ep of picks(); track ep.moduleKey + ':' + ep.contentKey) {
         <div cdkDrag class="flex items-center gap-2 rounded-lg border border-[var(--portal-card-border)] bg-[var(--portal-bg-surface)] px-2 py-1.5">
           <svg class="size-3 shrink-0 cursor-grab text-[var(--portal-text-disabled)]" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
           <span class="flex size-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-[var(--portal-text-inverse)]"
@@ -82,7 +82,7 @@
         [placeholder]="i18n.t('common.search')"
         class="ds-input mb-2 w-full py-1.5 text-xs" />
       <div class="max-h-60 space-y-1 overflow-y-auto">
-        @for (ep of available(); track ep.moduleKey + ':' + ep.entryKey) {
+        @for (ep of available(); track ep.moduleKey + ':' + ep.contentKey) {
         <button type="button" (click)="addPick(ep)"
           class="flex w-full items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-left transition hover:border-[var(--portal-card-border)] hover:bg-[var(--portal-bg-hover)]">
           <span class="flex size-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-[var(--portal-text-inverse)]"

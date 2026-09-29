@@ -7,10 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import com.crosshubber.portal.config.JacksonConfig;
-import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupEntity;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointType;
+import com.crosshubber.portal.modules.navigation.groups.NavigationGroupDto;
+import com.crosshubber.portal.modules.navigation.groups.NavigationGroupEntity;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentCategory;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentType;
 import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
 
 import tools.jackson.databind.JsonNode;
@@ -24,16 +25,16 @@ class RegistryDtosTest {
 
   private final JsonMapper mapper = new JacksonConfig().jsonMapper();
 
-  // --- EntryPointDto ---
+  // --- ModuleContentDto ---
 
   @Test
-  void entryPointDtoOmitsBlankAndFalsyOptionals() {
-    EntryPointEntity ep = new EntryPointEntity();
+  void moduleContentDtoOmitsBlankAndFalsyOptionals() {
+    ModuleContentEntity ep = new ModuleContentEntity();
     ep.setModuleKey("m");
-    ep.setEntryKey("main");
-    ep.setCategory(EntryPointCategory.APPLICATIONS);
+    ep.setContentKey("main");
+    ep.setCategory(ModuleContentCategory.APPLICATIONS);
     ep.setName("Main");
-    ep.setType(EntryPointType.EMBEDDED);
+    ep.setType(ModuleContentType.EMBEDDED);
     ep.setSortOrder(10);
     ep.setActive(true);
     ep.setMulti(false);
@@ -42,7 +43,7 @@ class RegistryDtosTest {
     ep.setRoles("");
     ep.setHidden(false);
 
-    EntryPointDto dto = EntryPointDto.fromEntity(ep);
+    ModuleContentDto dto = ModuleContentDto.fromEntity(ep);
 
     assertNull(dto.description());
     assertNull(dto.groupKey());
@@ -60,18 +61,18 @@ class RegistryDtosTest {
   }
 
   @Test
-  void entryPointDtoEmitsHiddenOnlyWhenTrueAndSplitsSandbox() {
-    EntryPointEntity ep = new EntryPointEntity();
+  void moduleContentDtoEmitsHiddenOnlyWhenTrueAndSplitsSandbox() {
+    ModuleContentEntity ep = new ModuleContentEntity();
     ep.setModuleKey("m");
-    ep.setEntryKey("main");
-    ep.setCategory(EntryPointCategory.APPLICATIONS);
+    ep.setContentKey("main");
+    ep.setCategory(ModuleContentCategory.APPLICATIONS);
     ep.setName("Main");
-    ep.setType(EntryPointType.IFRAME);
+    ep.setType(ModuleContentType.IFRAME);
     ep.setRoles("admin,editor");
     ep.setSandbox("allow-scripts,allow-forms");
     ep.setHidden(true);
 
-    EntryPointDto dto = EntryPointDto.fromEntity(ep);
+    ModuleContentDto dto = ModuleContentDto.fromEntity(ep);
 
     assertEquals(java.util.List.of("admin", "editor"), dto.roles());
     assertEquals(java.util.List.of("allow-scripts", "allow-forms"), dto.sandbox());
@@ -81,20 +82,20 @@ class RegistryDtosTest {
     assertTrue(node.has("roles"));
   }
 
-  // --- EntryPointGroupDto ---
+  // --- NavigationGroupDto ---
 
   @Test
   void groupDtoAlwaysEmitsParentKeyEvenWhenNull() {
-    EntryPointGroupEntity g = new EntryPointGroupEntity();
+    NavigationGroupEntity g = new NavigationGroupEntity();
     g.setGroupKey("nav-a");
-    g.setCategory(EntryPointCategory.SETTINGS);
+    g.setCategory(ModuleContentCategory.SETTINGS);
     g.setName("A");
     g.setParentKey(null);
     g.setSortOrder(0);
     g.setRoles("");
     g.setIcon("");
 
-    EntryPointGroupDto dto = EntryPointGroupDto.fromEntity(g);
+    NavigationGroupDto dto = NavigationGroupDto.fromEntity(g);
 
     assertNull(dto.parentKey());
     assertNull(dto.icon());

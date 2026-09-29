@@ -9,26 +9,26 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointType;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentType;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
 /**
- * MFE asset proxy: resolves the module's {@code mfe} entry point (60 s in-memory cache), then
- * fetches {@code <entryUrl-origin>/<rest>} server-side and pipes body + content-type.
+ * MFE asset proxy: resolves the module's {@code mfe} content (60 s in-memory cache), then fetches
+ * {@code <entryUrl-origin>/<rest>} server-side and pipes body + content-type.
  */
 @Service
 public class ProxyService {
 
   private static final Duration CACHE_TTL = Duration.ofSeconds(60);
 
-  private final EntryPointRepository entryPointRepo;
-  private final Cache<String, Optional<EntryPointEntity>> epCache;
+  private final ModuleContentRepository entryPointRepo;
+  private final Cache<String, Optional<ModuleContentEntity>> epCache;
   private final HttpClient httpClient;
 
-  public ProxyService(EntryPointRepository entryPointRepo) {
+  public ProxyService(ModuleContentRepository entryPointRepo) {
     this.entryPointRepo = entryPointRepo;
     this.epCache = Caffeine.newBuilder().expireAfterWrite(CACHE_TTL).build();
     this.httpClient =
@@ -40,20 +40,20 @@ public class ProxyService {
 
   public record FetchResult(int status, String contentType, byte[] body) {}
 
-  /** Resolves the module's mfe entry point (cached 60 s, only successful hits). */
-  public EntryPointEntity findMfeEntryPoint(String moduleKey) {
+  /** Resolves the module's mfe module content (cached 60 s, only successful hits). */
+  public ModuleContentEntity findMfeContent(String moduleKey) {
     return epCache
         .get(
             moduleKey,
             key ->
                 entryPointRepo.findByModuleKey(key).stream()
-                    .filter(ep -> ep.getType() == EntryPointType.MFE)
+                    .filter(ep -> ep.getType() == ModuleContentType.MFE)
                     .findFirst())
         .orElse(null);
   }
 
   /** Fetches the upstream asset; returns status, content-type and body. */
-  public FetchResult fetch(EntryPointEntity entryPoint, String rest) throws Exception {
+  public FetchResult fetch(ModuleContentEntity entryPoint, String rest) throws Exception {
     URI entryUrl = URI.create(entryPoint.getEntryUrl());
     URI origin = new URI(entryUrl.getScheme(), entryUrl.getAuthority(), "/", null, null);
     URI target = origin.resolve("/" + rest);

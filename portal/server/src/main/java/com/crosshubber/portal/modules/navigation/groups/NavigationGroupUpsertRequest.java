@@ -1,4 +1,4 @@
-package com.crosshubber.portal.modules.registry.dto;
+package com.crosshubber.portal.modules.navigation.groups;
 
 import java.util.List;
 
@@ -8,8 +8,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
-/** {@code POST/PUT /api/registry/entry-point-groups} body (full-replace upsert). */
-public record EntryPointGroupUpsertRequest(
+/** {@code POST/PUT /api/navigation/groups} body (full-replace upsert). */
+public record NavigationGroupUpsertRequest(
     @NotBlank(message = "is required")
         @Pattern(regexp = Keys.KEY_RE, message = "must match [a-z0-9][a-z0-9-]{0,63}")
         String groupKey,

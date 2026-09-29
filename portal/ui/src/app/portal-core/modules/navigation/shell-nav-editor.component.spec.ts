@@ -10,8 +10,8 @@ const RESPONSE: ShellTreeResponse = {
     { groupKey: 'nav-b', category: 'settings', name: 'B', parentKey: 'nav-a', sortOrder: 10 },
   ],
   items: [
-    { moduleKey: 'm1', entryKey: 'one', name: 'One', category: 'settings', type: 'embedded', sortOrder: 0, groupKey: 'nav-a', hidden: true },
-    { moduleKey: 'm2', entryKey: 'two', name: 'Two', category: 'settings', type: 'embedded', sortOrder: 10, groupKey: null },
+    { moduleKey: 'm1', contentKey: 'one', name: 'One', category: 'settings', type: 'embedded', sortOrder: 0, groupKey: 'nav-a', hidden: true },
+    { moduleKey: 'm2', contentKey: 'two', name: 'Two', category: 'settings', type: 'embedded', sortOrder: 10, groupKey: null },
   ],
 };
 
@@ -37,7 +37,7 @@ describe('shellTreeToPayload', () => {
     expect(groupA.hidden).toBe(true);
     const groupB = payload.groups.find((g) => g.groupKey === 'nav-b')!;
     expect(groupB.hidden).toBe(false);
-    const itemOne = payload.items.find((i) => i.moduleKey === 'm1' && i.entryKey === 'one')!;
+    const itemOne = payload.items.find((i) => i.moduleKey === 'm1' && i.contentKey === 'one')!;
     expect(itemOne.hidden).toBe(true);
     const itemTwo = payload.items.find((i) => i.moduleKey === 'm2')!;
     expect(itemTwo.hidden).toBe(false);

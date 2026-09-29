@@ -4,15 +4,18 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.crosshubber.portal.config.GlobalExceptionHandler;
 import com.crosshubber.portal.modules.registry.dto.ModuleDto;
@@ -57,5 +60,20 @@ class ModulesControllerValidationTest {
                 .content("{\"key\":\"k\",\"name\":\"N\"}"))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.module.key").value("k"));
+  }
+
+  @Test
+  void builtinActiveToggleSurfacesThe409Envelope() throws Exception {
+    when(modulesService.setActive("ai-hub", false))
+        .thenThrow(
+            new ResponseStatusException(
+                HttpStatus.CONFLICT, "builtin module availability is tenant-config-owned"));
+
+    mvc.perform(
+            patch("/api/registry/modules/ai-hub/active")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"active\": false}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.error").value("builtin module availability is tenant-config-owned"));
   }
 }

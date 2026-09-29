@@ -11,7 +11,7 @@ awaiting a go decision.
 ## Design principles
 
 - One canonical pattern per concern: one home concept, one launcher filter rule
-  set, one chat entry, DB-driven entry points over hardcoded chrome where roles
+  set, one chat entry, DB-driven module content over hardcoded chrome where roles
   must apply.
 - Every dead end gets feedback (toasts, disabled states, honest empty states).
 - API changes are Crosshubber-owned: any `/api/*` response change needs its tests
@@ -60,7 +60,7 @@ Known follow-ups from Phase 1 (backlog):
 | 8 | Shared "visible apps" filter helper — one rule set for Portal Navigation, Dashboard, sidebar, Add-app (each filters differently today) | Module browsing |
 | 9 | Breadcrumbs in workarea: workspace → app → module `?path=` (none exist today) | Wayfinding |
 | 10 | Close-tab available outside edit mode (split/add stay edit-only; loading a workspace currently hides close) | Workspaces |
-| 11 | Quick Chat flyout opens via `ai-hub:quick-chat` entry point (today hardcoded in Shell; roles/active flags never consulted; EP orphaned) | Browsing + feeds AGENTS `chat`/`quick-chat` merge backlog |
+| 11 | Quick Chat flyout opens via `ai-hub:quick-chat` module content ref (today hardcoded in Shell; roles/active flags never consulted; EP orphaned) | Browsing + feeds AGENTS `chat`/`quick-chat` merge backlog |
 | 12 | Hide Module registry from non-admins (server-side; currently visible to `devuser` behind a read-only banner) — **touches `/api/config`** | Settings & admin |
 | 13 | Consolidate workspace CRUD affordances (sidebar menu = open/rename/delete; delete confirms) | Workspaces |
 

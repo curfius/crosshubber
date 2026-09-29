@@ -41,13 +41,13 @@
               ? 'ds-tab ds-tab-active shrink-0'
               : 'ds-tab shrink-0'
           ">
-          <span class="ds-tab-dot" [style.background]="tab.entryPoint.color"></span>
-          <span class="max-w-32 truncate">{{ tab.entryPoint.name }}@if (tab.instance > 1) { &middot; {{ tab.instance }} }</span>
+          <span class="ds-tab-dot" [style.background]="tab.content.color"></span>
+          <span class="max-w-32 truncate">{{ tab.content.name }}@if (tab.instance > 1) { &middot; {{ tab.instance }} }</span>
           @if (editMode()) {
           <span
             class="ds-tab-close ml-0.5"
             (click)="$event.stopPropagation(); closeTab(tab.id)"
-            [attr.aria-label]="i18n.t('tabs.closeNamed', { name: tab.entryPoint.name })">&times;</span>
+            [attr.aria-label]="i18n.t('tabs.closeNamed', { name: tab.content.name })">&times;</span>
           }
         </button>
         }
@@ -164,7 +164,7 @@
       class="absolute inset-0"
       [style.display]="tab.id === activeId() ? null : 'none'"
       [attr.inert]="tab.id === activeId() ? null : ''">
-      <app-outlet [entryPoint]="tab.entryPoint" [user]="user()" />
+      <app-outlet [content]="tab.content" [user]="user()" />
     </div>
     }
   </div>
@@ -188,7 +188,7 @@
         class="ds-input"
         autofocus />
       <div class="mt-3 max-h-64 overflow-y-auto">
-        @for (ep of filteredApps(); track ep.moduleKey + ':' + ep.entryKey) {
+        @for (ep of filteredApps(); track ep.moduleKey + ':' + ep.contentKey) {
         <button
           (click)="addAppToGroup(ep)"
           class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-[var(--portal-bg-hover)]">

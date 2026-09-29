@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, output, computed, effect, inject, input, signal, viewChild, type ElementRef, type OnDestroy } from '@angular/core';
 import { AppOutlet } from './module-outlet.component';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
-import type { PortalUser, PortalEntryPoint, SplitDir, Tab } from '../../core/models';
-import { entryPointId } from '../../core/models';
+import type { PortalUser, PortalModuleContent, SplitDir, Tab } from '../../core/models';
+import { moduleContentId } from '../../core/models';
 import { WorkbenchService } from '../features/workspaces/workspaces.store';
 import { I18nService } from '../../core/i18n/i18n.service';
 
@@ -25,7 +25,7 @@ export class AppArea implements OnDestroy {
   readonly primaryGroupId = input<string | null>(null);
   readonly editMode = input<boolean>(false);
   readonly hideSingleTabToolbar = input<boolean>(false);
-  readonly allEntryPoints = input<PortalEntryPoint[]>([]);
+  readonly allModuleContents = input<PortalModuleContent[]>([]);
 
   protected readonly isPrimary = computed(() => this.groupId() === this.primaryGroupId());
   protected readonly showConfirm = signal(false);
@@ -34,8 +34,8 @@ export class AppArea implements OnDestroy {
   protected readonly filteredApps = computed(() => {
     const search = this.appSearch().toLowerCase();
     const homeRef = this.wb.getHomeAppRef();
-    return this.allEntryPoints()
-      .filter((ep) => ep.category === 'applications' && ep.active !== false && entryPointId(ep) !== homeRef)
+    return this.allModuleContents()
+      .filter((ep) => ep.category === 'applications' && ep.active !== false && moduleContentId(ep) !== homeRef)
       .filter((ep) => ep.name.toLowerCase().includes(search) || ep.moduleKey.toLowerCase().includes(search));
   });
 
@@ -136,7 +136,7 @@ export class AppArea implements OnDestroy {
     this.appSearch.set('');
   }
 
-  protected addAppToGroup(ep: PortalEntryPoint): void {
+  protected addAppToGroup(ep: PortalModuleContent): void {
     this.wb.openAppInGroup(ep, this.groupId());
   }
 
@@ -150,7 +150,7 @@ export class AppArea implements OnDestroy {
   }
 
   formatTabId(tab: Tab): string {
-    return entryPointId(tab.entryPoint);
+    return moduleContentId(tab.content);
   }
 
   private updateOverflow(): void {

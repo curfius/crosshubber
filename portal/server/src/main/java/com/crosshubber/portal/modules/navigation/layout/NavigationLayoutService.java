@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.crosshubber.portal.common.JsonUtils;
 import com.crosshubber.portal.modules.navigation.NavigationValidationService;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
 
 import tools.jackson.databind.JsonNode;
 
@@ -18,13 +18,13 @@ import tools.jackson.databind.JsonNode;
 public class NavigationLayoutService {
 
   private final NavigationLayoutRepository repo;
-  private final EntryPointRepository entryPointRepo;
+  private final ModuleContentRepository contentRepo;
   private final JsonUtils jsonUtils;
 
   public NavigationLayoutService(
-      NavigationLayoutRepository repo, EntryPointRepository entryPointRepo, JsonUtils jsonUtils) {
+      NavigationLayoutRepository repo, ModuleContentRepository contentRepo, JsonUtils jsonUtils) {
     this.repo = repo;
-    this.entryPointRepo = entryPointRepo;
+    this.contentRepo = contentRepo;
     this.jsonUtils = jsonUtils;
   }
 
@@ -34,7 +34,7 @@ public class NavigationLayoutService {
     if (raw != null) {
       return raw;
     }
-    return NavigationValidationService.buildDefaultLayout(entryPointRepo.findAll());
+    return NavigationValidationService.buildDefaultLayout(contentRepo.findAll());
   }
 
   @Transactional(readOnly = true)
@@ -59,7 +59,7 @@ public class NavigationLayoutService {
   /** Returns the set of known app refs for layout validation. */
   @Transactional(readOnly = true)
   public Set<String> knownAppRefs() {
-    return entryPointRepo.findAll().stream()
+    return contentRepo.findAll().stream()
         .map(NavigationValidationService::entryPointRef)
         .collect(Collectors.toSet());
   }

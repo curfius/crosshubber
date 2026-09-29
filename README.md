@@ -7,7 +7,7 @@ Crosshubber is a **modular enterprise portal** that serves as an integration pla
 The portal acts as an **integration backbone** that:
 
 - **Enables module interoperability** — Modules remain self-contained but declare their capabilities (applications, settings, agents, tools, skills, permissions, published/consumed events) through a standardized manifest. The portal discovers, validates, and surfaces these capabilities to users and other modules.
-- **Provides unified navigation** — A single shell composes entry points from all installed modules into a coherent navigation structure (applications, settings, features, user settings) with role-based visibility.
+- **Provides unified navigation** — A single shell composes module content from all installed modules into a coherent navigation structure (applications, settings, features, user settings) with role-based visibility.
 - **Delivers cross-cutting functionality** — Authentication (OIDC/OAuth2 with Keycloak), notifications, messaging, theming, internationalization (i18n), centralized instance settings, and per-user preferences are handled once at the portal level.
 - **Implements an event broker** — A NATS-backed event bus enables asynchronous, decoupled integration between modules via published/consumed event declarations in manifests.
 - **Embeds an AI super-agent** — The AI Hub is a first-class citizen: it consumes module-provided data, documentation, tools, and skills to guide users through the portal, execute tasks on their behalf, and enable workflow automation across module boundaries.
@@ -18,7 +18,7 @@ Modules integrate with the portal by providing a **manifest** (`portal-module.js
 
 | Manifest Section | Purpose |
 |---|---|
-| `content.applications` | UI entry points (iframe, embedded, MFE, link) surfaced in the main navigation |
+| `content.applications` | UI module content (iframe, embedded, MFE, link) surfaced in the main navigation |
 | `content.features` | Feature toggles exposed to users |
 | `content.adminSettings` / `userSettings` | Configuration forms injected into the portal's settings UI |
 | `security.roles` | Module-specific permission keys (e.g., `module-x:admin`) |
@@ -41,7 +41,7 @@ Modules are installed, versioned, and managed through the **Registry** — a bui
 │                Spring Boot 4.1 Server (Java 21)                 │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐            │
 │  │ Registry │ │  Nav     │ │ Workspaces│ │  AI Hub  │  ...     │
-│  │ Modules  │ │ EntryPts │ │ Workspaces│ │ (LLM,    │            │
+│  │ Modules  │ │ Content  │ │ Workspaces│ │ (LLM,    │            │
 │  │ Manifest │ │ Groups   │ │           │ │  Agents) │            │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘            │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐            │
@@ -74,10 +74,10 @@ Each feature owns its entities, repositories, and REST endpoints — packaged by
 
 - `auth` — OIDC login, session management, transparent token refresh
 - `modules` / `registry` — Module registry, manifest validation, install/upgrade/rollback
-- `entrypoints` / `entrypointgroups` — Navigation entry points and groups
-- `navigation` — Shell tree, layout, pinned apps, user settings, features
+- `registry.modulecontents` — Module content owned by installed modules
+- `navigation` — Shell tree, nav groups, layout, pinned apps, user settings, features
 - `workspaces` — User workspaces with layout/groups persistence
-- `settings` / `usersettings` — Instance and per-user settings
+- `navigation.settings` — Navigation/instance settings singleton (`/api/settings`)
 - `i18n` — Languages, labels, content versioning
 - `aihub` — Providers, tokens, models, conversations, channels, agent tools/skills
 - `proxy` — MFE/iframe proxy with SSRF guard
@@ -90,7 +90,7 @@ Cross-cutting: `config`, `security`, `common`.
 Each tenant runs in its own **PostgreSQL schema** (`PGSCHEMA`). The reconciler runs at boot to:
 
 1. Load tenant config (`_default/tenant.json` + `tenant-slug/tenant.json`)
-2. Upsert builtin modules & entry points from the embedded catalog
+2. Upsert builtin modules & module content from the embedded catalog
 3. Install/activate external modules declared in `modules.external[]`
 4. Seed AI Hub providers, instance settings, i18n languages/labels
 5. Record tenant metadata (digest, revision, applied-at)
@@ -128,9 +128,9 @@ All configuration is environment-overridable — see `portal/server/src/main/res
 
 ## Seeding & Reconciliation
 
-- **Flyway** (`V1..V24`) owns DDL — runs automatically on boot.
+- **Flyway** (`V1..V28`) owns DDL — runs automatically on boot.
 - **Reconciler** (fail-fast) seeds at boot:
-  - Builtin modules & entry points from embedded catalog
+  - Builtin modules & module content from embedded catalog
   - External modules from `modules.external[]` (retry + manifest fetch + validation)
   - AI Hub provider catalog
   - Instance settings, i18n languages/labels
@@ -160,11 +160,14 @@ Intentional API/storage decisions (several date back to the original port):
 | 7 | Navigation `hidden` flags (V23) | Per-row hidden/visible toggle for the navigation editors; omitted when `false` so payloads stay minimal |
 | 8 | Response payloads are typed records with per-field inclusion (2026-09) | Optional fields omit when null/blank; keys that must exist even when null (`parentKey`, workspace `layout`/`focusedGroupId`, services `url`, `{"manifest": null}`) carry per-field overrides; schemaless JSONB blobs (settings scopes, i18n overrides, nav layout) intentionally stay untyped |
 | 9 | Bean validation (`@Valid`) on clean single-body endpoints (2026-09) | 400 wording for those endpoints is now `"<field> <constraint>"` joined with `; `; cross-field rules and free-form/partial-update bodies (user-settings, module-settings, i18n settings/languages, manifest draft/install, nav features, JsonNode trees) stay programmatic by design |
-| 10 | Shell-config group `icon` unified with the registry omit-blank rule (2026-09) | Blank-string icons are no longer emitted in `/api/config` groups — one shared `EntryPointGroupDto` |
+| 10 | Shell-config group `icon` unified with the registry omit-blank rule (2026-09) | Blank-string icons are no longer emitted in `/api/config` groups — one shared `NavigationGroupDto` |
 | 11 | Constrained columns map to enums via nested lowercase `DbConverter`s (2026-09) | `@Enumerated(STRING)` stores UPPERCASE names, but CHECK values are lowercase/hyphenated — converters keep DB + API values byte-identical (no data migration); unknown DB values fail loudly |
 | 12 | Invalid `category` query filter on `/api/registry/entry-point-groups` → 400 `{"error":"list.category must be …"}` (was a silent empty list) | Declarative `@Pattern` + method validation; consistent with the `{"error"}` envelope convention |
 | 13 | Concurrent write to a versioned resource → 409 `{"error":"conflict: resource changed concurrently - reload and retry"}` (2026-09) | `@Version` optimistic locking on instance/module settings, nav layout, and workspaces (OPTIMIZATIONS #12); the `version` columns are internal — DTOs never expose them |
 | 14 | Non-convertible path/query param → 400 `{"error":"<param> has an invalid value"}` (was hardcoded `invalid versionId`, 2026-09) | One type-mismatch handler covers every endpoint; the old message misreported e.g. entry-point `{id}` failures as versionId |
+| 15 | Tenant policy ownership: keys present in merged `tenant.json` are re-asserted by the Reconciler every boot; absent keys stay admin-owned; overlay `null` releases a key (2026-09) | One rule drives modules (`modules.builtin` per-key map), themes (`settings.defaultTheme`/`enabledThemes`), languages (`i18n{}`), branding (`branding{}`), and AI providers (`aiHub.enabledProviders[]`). GitOps for declared keys, runtime freedom otherwise — see `plan/TENANT_FORK_PLAN.md` |
+| 16 | Builtin module `active` is tenant-config-owned: registry PATCH → 409, UI toggle hidden (2026-09) | The Reconciler used to force builtins active every boot; the toggle now silently reverted — hiding it is honest. External modules keep the toggle (their config-listed `active` still re-asserts at boot) |
+| 17 | `GET /api/branding` is public (permitAll) and falls back to repo-baseline values (2026-09) | The login screen renders pre-auth, so branding cannot ride authenticated `/api/config`; missing/blank rows degrade to the hardcoded baseline instead of failing |
 
 ## Development
 

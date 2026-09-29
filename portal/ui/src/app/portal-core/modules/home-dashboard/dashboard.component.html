@@ -66,7 +66,7 @@
     </button>
     @if (!collapsedMyApps()) {
     <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
-      @for (ep of filteredFavApps(); track ep.moduleKey + ':' + ep.entryKey) {
+      @for (ep of filteredFavApps(); track ep.moduleKey + ':' + ep.contentKey) {
       <div (click)="openApp(ep)"
         class="group/ep relative flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-[var(--portal-card-border)] bg-[var(--portal-bg-surface)] p-2.5 transition hover:border-[var(--portal-accent-primary-glow)] hover:bg-[var(--portal-bg-hover)]">
         <div class="flex size-8 items-center justify-center rounded-md text-xs font-bold text-[var(--portal-text-inverse)]" [style.background]="ep.color || 'var(--portal-accent-primary)'">
@@ -107,7 +107,7 @@
     </button>
     @if (!collapsedAllApplications()) {
     <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
-      @for (ep of filteredAllApps(); track ep.moduleKey + ':' + ep.entryKey) {
+      @for (ep of filteredAllApps(); track ep.moduleKey + ':' + ep.contentKey) {
       <div (click)="openApp(ep)"
         class="group/ep relative flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-[var(--portal-card-border)] bg-[var(--portal-bg-surface)] p-2.5 transition hover:border-[var(--portal-accent-primary-glow)] hover:bg-[var(--portal-bg-hover)]">
         <div class="flex size-8 items-center justify-center rounded-md text-xs font-bold text-[var(--portal-text-inverse)]" [style.background]="ep.color || 'var(--portal-accent-primary)'">

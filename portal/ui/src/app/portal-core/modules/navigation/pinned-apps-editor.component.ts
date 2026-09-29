@@ -6,8 +6,8 @@ import { newTreeId, REF_RE } from '../../../core/navigation/navigation.models';
 import type { PinnedNode } from '../../../core/navigation/navigation.models';
 import { NavigationStore } from '../../../core/navigation/navigation.store';
 import { WorkbenchService } from '../../features/workspaces/workspaces.store';
-import type { PortalEntryPoint } from '../../../core/models';
-import { entryPointId } from '../../../core/models';
+import type { PortalModuleContent } from '../../../core/models';
+import { moduleContentId } from '../../../core/models';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -17,7 +17,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * resolved through the workbench entry points); unresolvable refs fall back
  * to the raw ref code.
  */
-function toEditable(tree: PinnedNode[], resolve: (ref: string) => PortalEntryPoint | undefined): EditableTreeNode[] {
+function toEditable(tree: PinnedNode[], resolve: (ref: string) => PortalModuleContent | undefined): EditableTreeNode[] {
   return tree.map((node) => {
     if (node.nodeType === 'folder') {
       return {
@@ -82,9 +82,9 @@ export class PinnedAppsEditor implements OnInit {
   protected readonly appFilter = signal('');
 
   private readonly appsByRef = computed(() => {
-    const map = new Map<string, PortalEntryPoint>();
-    for (const ep of this.wb.getEntryPoints()) {
-      if (ep.category === 'applications' && ep.type !== 'link') map.set(entryPointId(ep), ep);
+    const map = new Map<string, PortalModuleContent>();
+    for (const ep of this.wb.getModuleContents()) {
+      if (ep.category === 'applications' && ep.type !== 'link') map.set(moduleContentId(ep), ep);
     }
     return map;
   });
@@ -92,7 +92,7 @@ export class PinnedAppsEditor implements OnInit {
   /** Apps available to pin (visible to the user, category applications). */
   protected readonly availableApps = computed(() => {
     const q = this.appFilter().toLowerCase();
-    return this.wb.getEntryPoints()
+    return this.wb.getModuleContents()
       .filter((ep) => ep.category === 'applications' && ep.type !== 'link' && ep.active !== false)
       .filter((ep) => !q || ep.name.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -122,8 +122,8 @@ export class PinnedAppsEditor implements OnInit {
     await this.save();
   }
 
-  protected async addApp(ep: PortalEntryPoint): Promise<void> {
-    const ref = entryPointId(ep);
+  protected async addApp(ep: PortalModuleContent): Promise<void> {
+    const ref = moduleContentId(ep);
     if (this.pinnedRefs().has(ref)) return;
     const node: EditableTreeNode = {
       id: newTreeId('item'),
@@ -141,7 +141,7 @@ export class PinnedAppsEditor implements OnInit {
     const ref = String(node.meta ?? '');
     if (!REF_RE.test(ref)) return;
     const idx = ref.indexOf(':');
-    const ep = this.wb.findEntryPoint(ref.slice(0, idx), ref.slice(idx + 1));
+    const ep = this.wb.findModuleContent(ref.slice(0, idx), ref.slice(idx + 1));
     if (ep) this.wb.openApp(ep);
   }
 

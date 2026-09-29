@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Test;
 
 import com.crosshubber.portal.modules.aihub.conversations.ConversationOrigin;
 import com.crosshubber.portal.modules.navigation.pinnedapps.PinnedNodeType;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointType;
 import com.crosshubber.portal.modules.registry.manifest.VersionStatus;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentCategory;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentType;
 
 /**
  * Domain enums map to lowercase(-hyphen) DB/API values via their nested converters; unknown values
@@ -19,27 +19,28 @@ import com.crosshubber.portal.modules.registry.manifest.VersionStatus;
 class DomainEnumsTest {
 
   @Test
-  void entryPointCategoryMapsHyphenatedValues() {
-    assertEquals("admin-settings", EntryPointCategory.ADMIN_SETTINGS.value());
-    assertEquals("user-settings", EntryPointCategory.USER_SETTINGS.value());
-    assertEquals(EntryPointCategory.ADMIN_SETTINGS, EntryPointCategory.parse("admin-settings"));
+  void moduleContentCategoryMapsHyphenatedValues() {
+    assertEquals("admin-settings", ModuleContentCategory.ADMIN_SETTINGS.value());
+    assertEquals("user-settings", ModuleContentCategory.USER_SETTINGS.value());
+    assertEquals(
+        ModuleContentCategory.ADMIN_SETTINGS, ModuleContentCategory.parse("admin-settings"));
 
-    EntryPointCategory.DbConverter converter = new EntryPointCategory.DbConverter();
-    assertEquals("settings", converter.convertToDatabaseColumn(EntryPointCategory.SETTINGS));
-    assertEquals(EntryPointCategory.SETTINGS, converter.convertToEntityAttribute("settings"));
+    ModuleContentCategory.DbConverter converter = new ModuleContentCategory.DbConverter();
+    assertEquals("settings", converter.convertToDatabaseColumn(ModuleContentCategory.SETTINGS));
+    assertEquals(ModuleContentCategory.SETTINGS, converter.convertToEntityAttribute("settings"));
     assertNull(converter.convertToDatabaseColumn(null));
     assertNull(converter.convertToEntityAttribute(null));
-    assertThrows(IllegalArgumentException.class, () -> EntryPointCategory.parse("bogus"));
+    assertThrows(IllegalArgumentException.class, () -> ModuleContentCategory.parse("bogus"));
   }
 
   @Test
   void entryPointTypeMapsLowercaseValues() {
-    assertEquals("iframe", EntryPointType.IFRAME.value());
-    assertEquals(EntryPointType.MFE, EntryPointType.parse("mfe"));
+    assertEquals("iframe", ModuleContentType.IFRAME.value());
+    assertEquals(ModuleContentType.MFE, ModuleContentType.parse("mfe"));
 
-    EntryPointType.DbConverter converter = new EntryPointType.DbConverter();
-    assertEquals("embedded", converter.convertToDatabaseColumn(EntryPointType.EMBEDDED));
-    assertEquals(EntryPointType.EMBEDDED, converter.convertToEntityAttribute("embedded"));
+    ModuleContentType.DbConverter converter = new ModuleContentType.DbConverter();
+    assertEquals("embedded", converter.convertToDatabaseColumn(ModuleContentType.EMBEDDED));
+    assertEquals(ModuleContentType.EMBEDDED, converter.convertToEntityAttribute("embedded"));
     assertNull(converter.convertToDatabaseColumn(null));
     assertNull(converter.convertToEntityAttribute(null));
   }

@@ -6,27 +6,27 @@ import { Bridge } from '../../core/bridge/bridge.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { ToastService } from '../../core/toast/toast.service';
 import { WorkbenchService } from './workspaces/workspaces.store';
-import type { PortalEntryPoint } from '../../core/models';
+import type { PortalModuleContent } from '../../core/models';
 
 const ORIGIN = window.location.origin;
 
 function ep(
   moduleKey: string,
-  entryKey: string,
-  type: PortalEntryPoint['type'],
+  contentKey: string,
+  type: PortalModuleContent['type'],
   url?: string,
-  category: PortalEntryPoint['category'] = 'applications',
-): PortalEntryPoint {
+  category: PortalModuleContent['category'] = 'applications',
+): PortalModuleContent {
   return {
     moduleKey,
-    entryKey,
+    contentKey,
     category,
-    name: `${moduleKey}/${entryKey}`,
+    name: `${moduleKey}/${contentKey}`,
     type,
     url: type === 'iframe' ? url : undefined,
     entryUrl: type === 'mfe' ? url : undefined,
-    loadPath: type === 'embedded' ? entryKey : undefined,
-    parentEntryKey: null,
+    loadPath: type === 'embedded' ? contentKey : undefined,
+    parentContentKey: null,
     groupKey: null,
     sortOrder: 0,
   };
@@ -50,8 +50,8 @@ describe('NavigationCoordinator', () => {
   let urlSync: UrlSyncService;
   let toast: ToastService;
   let i18n: I18nService;
-  let docs: PortalEntryPoint;
-  let wiki: PortalEntryPoint;
+  let docs: PortalModuleContent;
+  let wiki: PortalModuleContent;
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeAll(() => {
@@ -79,7 +79,7 @@ describe('NavigationCoordinator', () => {
     wb.setHomeApp(null);
     docs = ep('docs', 'main', 'iframe', `${ORIGIN}/docs/index.html`);
     wiki = ep('wiki', 'main', 'iframe', 'https://wiki.example.com/home');
-    wb.setEntryPoints([docs, wiki]);
+    wb.setModuleContents([docs, wiki]);
     warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ workspaces: [] }) })));
   });
@@ -102,7 +102,7 @@ describe('NavigationCoordinator', () => {
     wb.openApp(wiki);
     const afterOpen = history.length;
     const gid = Object.keys(wb.groups())[0];
-    const wikiTab = wb.groups()[gid].tabs.find((t) => t.entryPoint.moduleKey === 'wiki')!;
+    const wikiTab = wb.groups()[gid].tabs.find((t) => t.content.moduleKey === 'wiki')!;
     wb.closeTab(gid, wikiTab.id);
     expect(history.length).toBe(afterOpen);
     expect(location.search).toBe('?app=docs%3Amain');
@@ -152,7 +152,7 @@ describe('NavigationCoordinator', () => {
     const groups = wb.groups();
     const tabs = Object.values(groups).flatMap((g) => g.tabs);
     expect(tabs.length).toBe(1);
-    expect(tabs[0].entryPoint.moduleKey).toBe('docs');
+    expect(tabs[0].content.moduleKey).toBe('docs');
     expect(wb.getTabPath('docs:main')).toBe('/intro');
     expect(coordinator.consumePendingPath('docs')).toBe('/intro');
     expect((history.state as { v?: number }).v).toBe(1);
@@ -172,7 +172,7 @@ describe('NavigationCoordinator', () => {
     replaceUrl('/?app=docs%3Amain');
     await coordinator.applyState(urlSync.read(), { cold: true });
     const tabs = Object.values(wb.groups()).flatMap((g) => g.tabs);
-    expect(tabs.map((t) => t.entryPoint.moduleKey).sort()).toEqual(['docs', 'wiki']);
+    expect(tabs.map((t) => t.content.moduleKey).sort()).toEqual(['docs', 'wiki']);
     expect(wb.getActiveTabKey()).toBe('docs:main');
   });
 
@@ -190,7 +190,7 @@ describe('NavigationCoordinator', () => {
     replaceUrl('/?app=docs');
     await coordinator.applyState(urlSync.read(), { cold: true });
     const tabs = Object.values(wb.groups()).flatMap((g) => g.tabs);
-    expect(tabs.map((t) => t.entryPoint.moduleKey)).toEqual(['docs']);
+    expect(tabs.map((t) => t.content.moduleKey)).toEqual(['docs']);
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
@@ -215,7 +215,7 @@ describe('NavigationCoordinator', () => {
     replaceUrl('/?app=wiki%3Amain'); // simulate a URL that never had an entry
     coordinator['applyApp']('wiki:main', null, false);
     const tabs = Object.values(wb.groups()).flatMap((g) => g.tabs);
-    expect(tabs.map((t) => t.entryPoint.moduleKey)).toEqual(['docs']);
+    expect(tabs.map((t) => t.content.moduleKey)).toEqual(['docs']);
     expect(warnSpy).not.toHaveBeenCalled();
   });
 

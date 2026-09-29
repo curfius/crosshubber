@@ -1,4 +1,4 @@
-package com.crosshubber.portal.modules.registry.entrypoints;
+package com.crosshubber.portal.modules.registry.modulecontents;
 
 import java.time.Instant;
 
@@ -13,12 +13,12 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
-/** JPA entity for {@code entry_points} table. */
+/** JPA entity for {@code registry_module_contents} table. */
 @Entity
 @Table(
-    name = "entry_points",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"module_key", "entry_key"}))
-public class EntryPointEntity {
+    name = "registry_module_contents",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"module_key", "content_key"}))
+public class ModuleContentEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,12 +28,12 @@ public class EntryPointEntity {
   @Column(name = "module_key", nullable = false)
   private String moduleKey;
 
-  @Column(name = "entry_key", nullable = false)
-  private String entryKey;
+  @Column(name = "content_key", nullable = false)
+  private String contentKey;
 
-  @Convert(converter = EntryPointCategory.DbConverter.class)
+  @Convert(converter = ModuleContentCategory.DbConverter.class)
   @Column(name = "category", nullable = false)
-  private EntryPointCategory category;
+  private ModuleContentCategory category;
 
   @Column(name = "name", nullable = false)
   private String name;
@@ -41,9 +41,9 @@ public class EntryPointEntity {
   @Column(name = "description")
   private String description;
 
-  @Convert(converter = EntryPointType.DbConverter.class)
+  @Convert(converter = ModuleContentType.DbConverter.class)
   @Column(name = "type", nullable = false)
-  private EntryPointType type;
+  private ModuleContentType type;
 
   @Column(name = "url")
   private String url;
@@ -63,8 +63,8 @@ public class EntryPointEntity {
   @Column(name = "element")
   private String element;
 
-  @Column(name = "parent_entry_key")
-  private String parentEntryKey;
+  @Column(name = "parent_content_key")
+  private String parentContentKey;
 
   @Column(name = "group_key")
   private String groupKey;
@@ -138,19 +138,19 @@ public class EntryPointEntity {
     this.moduleKey = moduleKey;
   }
 
-  public String getEntryKey() {
-    return entryKey;
+  public String getContentKey() {
+    return contentKey;
   }
 
-  public void setEntryKey(String entryKey) {
-    this.entryKey = entryKey;
+  public void setContentKey(String contentKey) {
+    this.contentKey = contentKey;
   }
 
-  public EntryPointCategory getCategory() {
+  public ModuleContentCategory getCategory() {
     return category;
   }
 
-  public void setCategory(EntryPointCategory category) {
+  public void setCategory(ModuleContentCategory category) {
     this.category = category;
   }
 
@@ -170,11 +170,11 @@ public class EntryPointEntity {
     this.description = description;
   }
 
-  public EntryPointType getType() {
+  public ModuleContentType getType() {
     return type;
   }
 
-  public void setType(EntryPointType type) {
+  public void setType(ModuleContentType type) {
     this.type = type;
   }
 
@@ -226,12 +226,12 @@ public class EntryPointEntity {
     this.element = element;
   }
 
-  public String getParentEntryKey() {
-    return parentEntryKey;
+  public String getParentContentKey() {
+    return parentContentKey;
   }
 
-  public void setParentEntryKey(String parentEntryKey) {
-    this.parentEntryKey = parentEntryKey;
+  public void setParentContentKey(String parentContentKey) {
+    this.parentContentKey = parentContentKey;
   }
 
   public String getGroupKey() {

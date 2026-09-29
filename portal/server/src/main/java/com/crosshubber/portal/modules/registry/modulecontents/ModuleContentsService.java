@@ -1,4 +1,4 @@
-package com.crosshubber.portal.modules.registry.entrypoints;
+package com.crosshubber.portal.modules.registry.modulecontents;
 
 import java.net.URI;
 import java.util.LinkedHashMap;
@@ -13,49 +13,52 @@ import com.crosshubber.portal.bootstrap.EmbeddedCatalog;
 import com.crosshubber.portal.common.Keys;
 import com.crosshubber.portal.common.Texts;
 import com.crosshubber.portal.config.PortalProperties;
-import com.crosshubber.portal.modules.registry.dto.EntryPointDto;
-import com.crosshubber.portal.modules.registry.dto.EntryPointUpsertRequest;
+import com.crosshubber.portal.modules.registry.dto.ModuleContentDto;
+import com.crosshubber.portal.modules.registry.dto.ModuleContentUpsertRequest;
 
 /**
  * Entry points domain service: validation (categories, types, portal-origin guards, registered load
  * paths), upsert and reorder.
  */
 @Service
-public class EntryPointsService {
+public class ModuleContentsService {
 
-  private final EntryPointRepository repo;
+  private final ModuleContentRepository repo;
   private final PortalProperties props;
 
-  public EntryPointsService(EntryPointRepository repo, PortalProperties props) {
+  public ModuleContentsService(ModuleContentRepository repo, PortalProperties props) {
     this.repo = repo;
     this.props = props;
   }
 
-  // ── Output mapping ───────────────────────────────────────────────────
+  // — Output mapping
+  // —
 
   /** Output DTO. */
-  public static EntryPointDto toOutput(EntryPointEntity ep) {
-    return EntryPointDto.fromEntity(ep);
+  public static ModuleContentDto toOutput(ModuleContentEntity ep) {
+    return ModuleContentDto.fromEntity(ep);
   }
 
-  // ── Queries ──────────────────────────────────────────────────────────
+  // — Queries
+  // —
 
   @Transactional(readOnly = true)
-  public List<EntryPointEntity> list(String moduleKey) {
+  public List<ModuleContentEntity> list(String moduleKey) {
     if (moduleKey != null) {
       return repo.findByModuleKeyOrderBySortOrderAscNameAsc(moduleKey);
     }
     return repo.findAll(Sort.by(Sort.Order.asc("sortOrder"), Sort.Order.asc("name")));
   }
 
-  // ── Validation (mirrors validateEntryPoint) ──────────────────────────
+  // — Validation (mirrors validateEntryPoint)
+  // —
 
   /**
    * Cross-field validation for the entry point type; scalar constraints (keys, category, name,
-   * type) are enforced declaratively on {@link EntryPointUpsertRequest}. Returns the error message,
-   * or null when valid.
+   * type) are enforced declaratively on {@link ModuleContentUpsertRequest}. Returns the error
+   * message, or null when valid.
    */
-  public String validate(EntryPointUpsertRequest input) {
+  public String validate(ModuleContentUpsertRequest input) {
     String type = input.type();
     String url = input.url();
     if ("iframe".equals(type)) {
@@ -113,33 +116,35 @@ public class EntryPointsService {
     return EmbeddedCatalog.EMBEDDED_LOAD_PATHS.contains(loadPath);
   }
 
-  // ── Commands ─────────────────────────────────────────────────────────
+  // — Commands
+  // —
 
-  /** Full-replace upsert on (moduleKey, entryKey) — mirrors repo.upsert. */
+  /** Full-replace upsert on (moduleKey, contentKey) — mirrors repo.upsert. */
   @Transactional
-  public EntryPointEntity upsert(EntryPointUpsertRequest input) {
-    EntryPointEntity ep =
-        repo.findByModuleKeyAndEntryKey(input.moduleKey(), input.entryKey())
-            .orElseGet(EntryPointEntity::new);
+  public ModuleContentEntity upsert(ModuleContentUpsertRequest input) {
+    ModuleContentEntity ep =
+        repo.findByModuleKeyAndContentKey(input.moduleKey(), input.contentKey())
+            .orElseGet(ModuleContentEntity::new);
     boolean isNew = ep.getId() == null;
     if (isNew) {
       ep.setModuleKey(input.moduleKey());
-      ep.setEntryKey(input.entryKey());
+      ep.setContentKey(input.contentKey());
     }
     ep.setCategory(
         input.category() != null
-            ? EntryPointCategory.parse(input.category())
-            : EntryPointCategory.APPLICATIONS);
-    ep.setName(input.name() != null ? input.name() : input.entryKey());
+            ? ModuleContentCategory.parse(input.category())
+            : ModuleContentCategory.APPLICATIONS);
+    ep.setName(input.name() != null ? input.name() : input.contentKey());
     ep.setDescription(input.description());
-    ep.setType(input.type() != null ? EntryPointType.parse(input.type()) : EntryPointType.EMBEDDED);
+    ep.setType(
+        input.type() != null ? ModuleContentType.parse(input.type()) : ModuleContentType.EMBEDDED);
     ep.setUrl(input.url());
     ep.setSandbox(Texts.joinComma(input.sandbox()));
     ep.setAllow(input.allow());
     ep.setLoadPath(input.loadPath());
     ep.setEntryUrl(input.entryUrl());
     ep.setElement(input.element());
-    ep.setParentEntryKey(input.parentEntryKey());
+    ep.setParentContentKey(input.parentContentKey());
     ep.setGroupKey(input.groupKey());
     ep.setSortOrder(input.sortOrder() != null ? input.sortOrder() : 0);
     ep.setRoles(Texts.orEmpty(Texts.joinComma(input.roles())));
@@ -163,10 +168,10 @@ public class EntryPointsService {
   @Transactional
   public void reorder(List<Long> ids) {
     // One batch load instead of a SELECT per id.
-    Map<Long, EntryPointEntity> byId = new LinkedHashMap<>();
+    Map<Long, ModuleContentEntity> byId = new LinkedHashMap<>();
     repo.findAllById(ids).forEach(ep -> byId.put(ep.getId(), ep));
     for (int i = 0; i < ids.size(); i++) {
-      EntryPointEntity ep = byId.get(ids.get(i));
+      ModuleContentEntity ep = byId.get(ids.get(i));
       if (ep != null) {
         ep.setSortOrder(i * 10);
         repo.save(ep);
@@ -174,7 +179,8 @@ public class EntryPointsService {
     }
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────
+  // — Helpers
+  // —
 
   private boolean isPortalOrigin(String rawUrl) {
     try {

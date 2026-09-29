@@ -53,7 +53,7 @@ src/test/java/...                          # PortalSmokeTest (Testcontainers) + 
 ```
 
 **Package rule:** `modules.<feature>` owns its entity/repository/service/controller/dto
-(e.g. `modules.registry.{modules,entrypoints,entrypointgroups,manifest}`). `config`,
+(e.g. `modules.registry.{modules,modulecontents,manifest}`). `config`,
 `common`, `security` are cross-cutting — never import feature code from them. Feature
 modules never import each other's internals — inject services.
 

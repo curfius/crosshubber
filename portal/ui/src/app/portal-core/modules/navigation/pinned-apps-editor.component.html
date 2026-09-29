@@ -41,16 +41,16 @@
         [placeholder]="i18n.t('common.search')"
         class="ds-input mb-2 w-full py-1.5 text-xs" />
       <div class="max-h-96 space-y-1 overflow-y-auto">
-        @for (ep of availableApps(); track ep.moduleKey + ':' + ep.entryKey) {
+        @for (ep of availableApps(); track ep.moduleKey + ':' + ep.contentKey) {
         <button
           type="button"
           (click)="addApp(ep)"
-          [disabled]="pinnedRefs().has(ep.moduleKey + ':' + ep.entryKey)"
+          [disabled]="pinnedRefs().has(ep.moduleKey + ':' + ep.contentKey)"
           class="flex w-full items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-left transition hover:border-[var(--portal-card-border)] hover:bg-[var(--portal-bg-hover)] disabled:cursor-not-allowed disabled:opacity-40">
           <span class="flex size-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-[var(--portal-text-inverse)]"
             [style.background]="ep.color || 'var(--portal-accent-primary)'">{{ ep.name.charAt(0) }}</span>
           <span class="min-w-0 flex-1 truncate text-xs text-[var(--portal-text-secondary)]">{{ ep.name }}</span>
-          @if (pinnedRefs().has(ep.moduleKey + ':' + ep.entryKey)) {
+          @if (pinnedRefs().has(ep.moduleKey + ':' + ep.contentKey)) {
           <svg class="size-3.5 shrink-0 text-[var(--portal-status-success)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
           } @else {
           <svg class="size-3.5 shrink-0 text-[var(--portal-text-disabled)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>

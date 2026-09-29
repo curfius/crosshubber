@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { AppArea } from './tab-area.component';
-import type { PortalEntryPoint, PortalUser, LayoutNode, LeafNode, SplitNode } from '../../core/models';
+import type { PortalModuleContent, PortalUser, LayoutNode, LeafNode, SplitNode } from '../../core/models';
 import { WorkbenchService } from '../features/workspaces/workspaces.store';
 
 @Component({
@@ -18,7 +18,7 @@ export class AppLayout {
   readonly primaryGroupId = input<string | null>(null);
   readonly editMode = input<boolean>(false);
   readonly hideSingleTabToolbar = input<boolean>(false);
-  readonly allEntryPoints = input<PortalEntryPoint[]>([]);
+  readonly allModuleContents = input<PortalModuleContent[]>([]);
 
   protected readonly isSplit = computed(() => this.node().kind === 'split');
   protected readonly splitNode = computed(() => this.node() as SplitNode);

@@ -2,23 +2,23 @@ import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { Bridge } from './bridge.service';
 import { WorkbenchService } from '../../portal-core/features/workspaces/workspaces.store';
-import type { PortalEntryPoint } from '../models';
+import type { PortalModuleContent } from '../models';
 
 const ORIGIN = window.location.origin;
 
-let entryPoints: PortalEntryPoint[];
+let moduleContents: PortalModuleContent[];
 let warnSpy: ReturnType<typeof vi.spyOn>;
 
-function ep(moduleKey: string, type: 'iframe' | 'mfe', rawUrl: string): PortalEntryPoint {
+function ep(moduleKey: string, type: 'iframe' | 'mfe', rawUrl: string): PortalModuleContent {
   return {
     moduleKey,
-    entryKey: 'main',
+    contentKey: 'main',
     category: 'applications',
     name: moduleKey,
     type,
     url: type === 'iframe' ? rawUrl : undefined,
     entryUrl: type === 'mfe' ? rawUrl : undefined,
-    parentEntryKey: null,
+    parentContentKey: null,
     groupKey: null,
     sortOrder: 0,
   };
@@ -34,14 +34,14 @@ describe('Bridge security', () => {
 
   beforeAll(() => {
     TestBed.configureTestingModule({
-      providers: [{ provide: WorkbenchService, useValue: { getEntryPoints: () => entryPoints } }],
+      providers: [{ provide: WorkbenchService, useValue: { getModuleContents: () => moduleContents } }],
     });
     bridge = TestBed.inject(Bridge);
     bridge.moduleNavigate.subscribe((n) => navigated.push(n));
   });
 
   beforeEach(() => {
-    entryPoints = [];
+    moduleContents = [];
     bridge.ready.clear();
     navigated = [];
     warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -52,35 +52,35 @@ describe('Bridge security', () => {
   });
 
   it('accepts a navigate from a registered same-origin iframe', () => {
-    entryPoints = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
+    moduleContents = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
     postMessage({ source: 'iframe:docs', type: 'portal:navigate', path: '/intro' }, ORIGIN);
     expect(navigated).toEqual([{ moduleKey: 'docs', path: '/intro' }]);
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it('accepts a navigate from a registered cross-origin iframe', () => {
-    entryPoints = [ep('wiki', 'iframe', 'https://wiki.example.com/home')];
+    moduleContents = [ep('wiki', 'iframe', 'https://wiki.example.com/home')];
     postMessage({ source: 'iframe:wiki', type: 'portal:navigate', path: '/page1' }, 'https://wiki.example.com');
     expect(navigated).toEqual([{ moduleKey: 'wiki', path: '/page1' }]);
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it('rejects messages from an unregistered origin', () => {
-    entryPoints = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
+    moduleContents = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
     postMessage({ source: 'iframe:docs', type: 'portal:navigate', path: '/x' }, 'https://evil.example');
     expect(navigated).toEqual([]);
     expect(warnSpy).toHaveBeenCalled();
   });
 
   it('rejects "null" origins (sandboxed iframes)', () => {
-    entryPoints = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
+    moduleContents = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
     postMessage({ source: 'iframe:docs', type: 'portal:navigate', path: '/x' }, 'null');
     expect(navigated).toEqual([]);
     expect(warnSpy).toHaveBeenCalled();
   });
 
   it('rejects a module impersonating another module (origin/source mismatch)', () => {
-    entryPoints = [
+    moduleContents = [
       ep('docs', 'iframe', `${ORIGIN}/docs/index.html`),
       ep('wiki', 'iframe', 'https://wiki.example.com/home'),
     ];
@@ -90,7 +90,7 @@ describe('Bridge security', () => {
   });
 
   it('rejects messages without a parseable source', () => {
-    entryPoints = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
+    moduleContents = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
     postMessage({ type: 'portal:navigate', path: '/x' }, ORIGIN);
     postMessage({ source: 'garbage', type: 'portal:navigate', path: '/y' }, ORIGIN);
     expect(navigated).toEqual([]);
@@ -98,14 +98,14 @@ describe('Bridge security', () => {
   });
 
   it('rejects sources for modules that are not registered', () => {
-    entryPoints = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
+    moduleContents = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
     postMessage({ source: 'iframe:nope', type: 'portal:navigate', path: '/x' }, ORIGIN);
     expect(navigated).toEqual([]);
     expect(warnSpy).toHaveBeenCalled();
   });
 
   it('fires ready callbacks only for validated messages', () => {
-    entryPoints = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
+    moduleContents = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
     const cb = vi.fn();
     bridge.ready.add(cb);
     postMessage({ source: 'iframe:docs', type: 'portal:ready' }, ORIGIN);
@@ -114,7 +114,7 @@ describe('Bridge security', () => {
   });
 
   it('truncates oversized navigate paths', () => {
-    entryPoints = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
+    moduleContents = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
     postMessage({ source: 'iframe:docs', type: 'portal:navigate', path: '/' + 'a'.repeat(5000) }, ORIGIN);
     expect(navigated.length).toBe(1);
     expect(navigated[0].path.length).toBeLessThanOrEqual(2048);
@@ -128,7 +128,7 @@ describe('Bridge security', () => {
   });
 
   it('sendTo posts to the exact registered origin', () => {
-    entryPoints = [ep('wiki', 'iframe', 'https://wiki.example.com/home')];
+    moduleContents = [ep('wiki', 'iframe', 'https://wiki.example.com/home')];
     const iframe = document.createElement('iframe');
     document.body.appendChild(iframe);
     const postSpy = vi.fn();
@@ -159,7 +159,7 @@ describe('Bridge security', () => {
   });
 
   it('restoreModule uses postMessage for same-origin iframes without touching src', () => {
-    entryPoints = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
+    moduleContents = [ep('docs', 'iframe', `${ORIGIN}/docs/index.html`)];
     const iframe = document.createElement('iframe');
     document.body.appendChild(iframe);
     const postSpy = vi.fn();
@@ -173,7 +173,7 @@ describe('Bridge security', () => {
   });
 
   it('restoreModule falls back to a src reload for cross-origin iframes', () => {
-    entryPoints = [ep('wiki', 'iframe', 'https://wiki.example.com/home')];
+    moduleContents = [ep('wiki', 'iframe', 'https://wiki.example.com/home')];
     const iframe = document.createElement('iframe');
     document.body.appendChild(iframe);
     bridge.registerIframe('wiki', iframe, 'https://wiki.example.com/home');
@@ -183,7 +183,7 @@ describe('Bridge security', () => {
   });
 
   it('handles portal:bye by unregistering the MFE element', () => {
-    entryPoints = [ep('louie', 'mfe', `${ORIGIN}/mfe/louie.js`)];
+    moduleContents = [ep('louie', 'mfe', `${ORIGIN}/mfe/louie.js`)];
     const el = document.createElement('div');
     bridge.registerMfe('louie', el);
     postMessage({ source: 'mfe:louie', type: 'portal:bye' }, ORIGIN);

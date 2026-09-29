@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, DestroyRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from '../../../core/settings/settings.service';
-import { entryPointId, type PortalEntryPoint, PortalUser, type EntryPointGroup } from '../../../core/models';
+import { moduleContentId, type PortalModuleContent, PortalUser, type NavigationGroup } from '../../../core/models';
 import { TreeNode, buildSettingsTree } from '../../layout/sidebar/tree.model';
 import { AppOutlet } from '../../workarea/module-outlet.component';
 import { WorkbenchService } from '../../features/workspaces/workspaces.store';
@@ -27,30 +27,30 @@ export class Settings {
   readonly user = input<PortalUser | null>(null);
 
   protected readonly isAdmin = this.settingsService.isAdmin;
-  protected readonly activeEntry = signal<PortalEntryPoint | null>(null);
+  protected readonly activeEntry = signal<PortalModuleContent | null>(null);
 
-  protected readonly settingsEntryPoints = computed(() =>
-    this.wb.getEntryPoints().filter((ep) => ep.category === 'settings'),
+  protected readonly settingsContents = computed(() =>
+    this.wb.getModuleContents().filter((ep) => ep.category === 'settings'),
   );
 
   protected readonly settingsGroups = computed(() =>
-    this.wb.getEntryPointGroups().filter((g) => g.category === 'settings'),
+    this.wb.getNavigationGroups().filter((g) => g.category === 'settings'),
   );
 
-  protected readonly settingsTree = computed<TreeNode<PortalEntryPoint | EntryPointGroup>[]>(() =>
-    buildSettingsTree(this.settingsGroups(), this.settingsEntryPoints()),
+  protected readonly settingsTree = computed<TreeNode<PortalModuleContent | NavigationGroup>[]>(() =>
+    buildSettingsTree(this.settingsGroups(), this.settingsContents()),
   );
 
   protected readonly dsNodes = computed<DsTreeNode[]>(() => this.toDsNodes(this.settingsTree()));
 
   protected readonly selectedEntryId = computed(() => {
     const ep = this.activeEntry();
-    return ep ? entryPointId(ep) : null;
+    return ep ? moduleContentId(ep) : null;
   });
 
   constructor() {
     effect(() => {
-      const eps = this.settingsEntryPoints();
+      const eps = this.settingsContents();
       if (eps.length === 0) return;
       if (!this.activeEntry()) this.activeEntry.set(eps[0]);
     });
@@ -62,21 +62,21 @@ export class Settings {
     inject(DestroyRef).onDestroy(off);
   }
 
-  protected selectEntry(ep: PortalEntryPoint): void {
+  protected selectEntry(ep: PortalModuleContent): void {
     this.activeEntry.set(ep);
-    this.coordinator.navigateFromModule(MODULE_KEY, '/' + ep.entryKey);
+    this.coordinator.navigateFromModule(MODULE_KEY, '/' + ep.contentKey);
   }
 
   protected onTreeNodeSelected(node: DsTreeNode): void {
-    if (node.data) this.selectEntry(node.data as PortalEntryPoint);
+    if (node.data) this.selectEntry(node.data as PortalModuleContent);
   }
 
   private toDsNodes(
-    nodes: TreeNode<PortalEntryPoint | EntryPointGroup>[],
+    nodes: TreeNode<PortalModuleContent | NavigationGroup>[],
   ): DsTreeNode[] {
     return nodes.map((n) => {
       if ('moduleKey' in n.data) {
-        return { id: entryPointId(n.data), label: n.data.name, data: n.data };
+        return { id: moduleContentId(n.data), label: n.data.name, data: n.data };
       }
       return {
         id: `group:${n.data.groupKey}`,
@@ -87,8 +87,8 @@ export class Settings {
   }
 
   private applyModulePath(path: string): void {
-    const entryKey = path.replace(/^\//, '').split('/')[0];
-    const ep = this.settingsEntryPoints().find((e) => e.entryKey === entryKey);
+    const contentKey = path.replace(/^\//, '').split('/')[0];
+    const ep = this.settingsContents().find((e) => e.contentKey === contentKey);
     if (ep) this.activeEntry.set(ep);
   }
 }

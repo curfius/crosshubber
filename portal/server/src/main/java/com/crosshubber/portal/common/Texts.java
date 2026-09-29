@@ -18,14 +18,14 @@ public final class Texts {
     return value == null ? "" : value;
   }
 
-  /** The value when non-blank, otherwise null — optional DTO field mapping. */
+  /** The value when non-blank, otherwise null â€” optional DTO field mapping. */
   public static String blankToNull(String value) {
     return notBlank(value) ? value : null;
   }
 
   /**
    * Comma-joins a JSON array (or passes a raw string through) for storage in flattened text columns
-   * — used for entry point roles and sandbox tokens.
+   * â€” used for entry point roles and sandbox tokens.
    */
   public static String joinComma(Object value) {
     if (value instanceof List<?> list) {

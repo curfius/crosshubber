@@ -26,13 +26,14 @@ tests (`mvn verify` / `npm test`), not a parity harness.
 portal/
   server/                     Spring Boot backend
     src/main/java/com/crosshubber/portal/
-      modules/<feature>/      Feature packages (aihub, i18n, navigation, registry,
-                              settings, usersettings) — own entity/repo/service/controller
+      modules/<feature>/      Feature packages (aihub, i18n, navigation [incl. groups,
+                              settings], registry [incl. modulecontents], settings.modules,
+                              usersettings) — own entity/repo/service/controller
       auth/ security/ config/ common/ bootstrap/ shell/ workspaces/ proxy/
     src/main/resources/
       application.yml         portal.* config; env-driven, dev defaults insecure-by-design
-      db/migration/           Flyway V1..V26 (DDL only here)
-      i18n-catalog.json       GENERATED seed catalog (~227 KB, 8 languages) — don't hand-edit
+      db/migration/           Flyway V1..V28 (DDL only here)
+      i18n-catalog.json       GENERATED seed catalog (~227 KB, 4 languages) — don't hand-edit
   ui/                         Angular 22 workspace shell
     src/app/core/             Platform services (bridge, i18n, theme, auth, config...)
     src/app/portal-core/      Shell layout, workarea, 18 lazy module UIs, feature stores
@@ -97,9 +98,9 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
   parse/write helpers — don't hand-roll new ones.
 - HTTP client: shared `RestClient` customization lives in `config/HttpClientConfig`
   (10s connect / 30s read). Don't create ad-hoc `HttpClient`s.
-- Validation regexes and scalar-coercion helpers (`KEY_RE`, `LANG_CODE_RE`, `string()`,
-  `orEmpty`...) were duplicated across services — extract to `common` when touching
-  those files (see backlog in `OPTIMIZATIONS.md`).
+- Validation regexes and scalar-coercion helpers live in `common/Keys` and
+  `common/Texts` (`KEY_RE`, `LANG_CODE_RE`, `string()`, `blankToNull`...) — extend
+  them there, never re-copy (history: `plan/archive/OPTIMIZATIONS.md`).
 
 ## Frontend conventions
 
@@ -137,17 +138,30 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
   files through PS 5.1 `Set-Content`/`Out-File` (they emit BOMs and mojibake on write).
 - **The reconciler is fail-fast and runs at every boot** — it re-seeds i18n labels,
   providers, settings idempotently. Keep its upserts idempotent and cheap.
-- **Design notes (intentional quirks)**: `entry_points.roles` is stored comma-joined
+- **Design notes (intentional quirks)**: `registry_module_contents.roles` is stored comma-joined
   (V11) because keys are kebab-case validated; `GET /api/mfe/<key>` without trailing
   path returns 400 JSON by design; proxy upstream failures return 502 (not 500).
 - **Tenant config deep-merge**: arrays in the tenant overlay REPLACE the `_default`
   arrays (don't concatenate) — `dev/tenant.json` relies on this to blank demo modules.
+- **Tenant policy ownership (2026-09)**: keys/blocks present in the merged `tenant.json`
+  are desired state — the Reconciler re-asserts them at every boot (builtin availability
+  `modules.builtin` per-key map, `settings.defaultTheme`/`enabledThemes`, `i18n{}`
+  languages, `branding{}`, `aiHub.enabledProviders[]`); keys absent from the config stay
+  runtime/admin-owned; overlay `null` releases a key. Invalid config (unknown builtin
+  key, unknown provider id, default language outside the enabled set) fails boot. Builtin
+  module `active` is config-owned: registry PATCH → 409, UI toggle hidden. `GET
+  /api/branding` serves `tenant_meta` branding rows (public, fallback = repo baseline).
+  See `plan/TENANT_FORK_PLAN.md`.
 - **`i18n-catalog.json`** is the repo-owned seed catalog (originally exported from the
   pre-decommission Node stack; the regen script is gone). Edits are allowed; the
   reconciler seeds insert-if-absent, so changed values need a migration (see `V24__*`)
   or an update pass if existing installs must pick them up.
 - Windows dev environment: PowerShell 5.1. Avoid `&&` (unsupported) — use
   `cmd1; if ($?) { cmd2 }`. Native exes with spaces in paths need the call operator.
+- Remove the retired-builtin cleanup lists in `Reconciler.reconcileBuiltins`
+  (`llm-providers`, `ai-assistant`, 3 retired entry points) once every long-lived
+  install has booted past the 2026-09 rename — they cost ~5 findById lookups per boot
+  and exist only to delete stale rows on upgrades.
 
 ## Backlog pointers
 
@@ -156,7 +170,7 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
   knowledge retrieval).
 - `plan/UX_PLAN.md` — portal navigation/UX optimization roadmap (journey-based
   Phases 1–3; Phase 1 quick wins implemented 2026-09-22).
-- `portal/server/OPTIMIZATIONS.md` — backend optimization plan, **topic closed in
+- `plan/archive/OPTIMIZATIONS.md` — archived backend optimization plan, **topic closed in
   Step 13 (2026-09)**: #1 typed DTOs, #9 @Valid, #10 shared constants, #11 enums,
   #12 optimistic locking (409), #3 buildConfig, #16/#17/#18/#26 resolved with
   rationale. Remaining work moved to that file's "Deferred to future topics" section
@@ -164,8 +178,7 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
   split, token-mask column, Spring Session until multi-instance HA).
 - UI backlog (tracked here until a UI plan file exists): enable `"strict"` +
   `strictTemplates` in `portal/ui/tsconfig.json`; lazy-load non-default themes (18
-  theme files ship in global CSS today); merge `chat`/`quick-chat` duplicated logic;
-  replace remaining RxJS `Subject`s with signals; purge unused `.ds-*` CSS (~40% of
+  theme files ship in global CSS today); replace remaining RxJS `Subject`s with signals; purge unused `.ds-*` CSS (~40% of
   `components.css`); self-host CDN fonts (`design-tokens.css`).
 - Done as of Step 9 (2026-09-21): all components `OnPush`; shared `apiFetch`
   (`src/app/core/http/api-fetch.ts`) + `ScopedSettingsClient`; quick-chat is a

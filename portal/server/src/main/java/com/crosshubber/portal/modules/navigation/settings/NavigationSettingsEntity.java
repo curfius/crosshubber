@@ -1,4 +1,4 @@
-package com.crosshubber.portal.modules.settings.instance;
+package com.crosshubber.portal.modules.navigation.settings;
 
 import java.time.Instant;
 
@@ -13,10 +13,10 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
-/** JPA entity for {@code instance_settings} table (singleton row id=1). */
+/** JPA entity for {@code navigation_settings} table (singleton row id=1). */
 @Entity
-@Table(name = "instance_settings")
-public class InstanceSettingsEntity {
+@Table(name = "navigation_settings")
+public class NavigationSettingsEntity {
 
   @Id
   @Column(name = "id")
@@ -29,7 +29,7 @@ public class InstanceSettingsEntity {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
-  /** Optimistic-lock version — concurrent singleton writes fail with 409 (OPTIMIZATIONS #12). */
+  /** Optimistic-lock version â€” concurrent singleton writes fail with 409 (OPTIMIZATIONS #12). */
   @Version
   @Column(name = "version", nullable = false)
   private Integer version;

@@ -8,11 +8,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-/** MFE asset proxy route — mirrors GET /api/mfe/:key/* in proxy.routes.ts. */
+/** MFE asset proxy route â€” mirrors GET /api/mfe/:key/* in proxy.routes.ts. */
 @RestController
 public class ProxyController {
 
@@ -34,12 +34,12 @@ public class ProxyController {
     if (rest.isEmpty() || rest.contains("..") || decoded.contains("..")) {
       return ResponseEntity.badRequest().body(java.util.Map.of("error", "bad path"));
     }
-    EntryPointEntity entryPoint = proxyService.findMfeEntryPoint(key);
-    if (entryPoint == null || entryPoint.getEntryUrl() == null) {
+    ModuleContentEntity content = proxyService.findMfeContent(key);
+    if (content == null || content.getEntryUrl() == null) {
       return ResponseEntity.status(404).body(java.util.Map.of("error", "no such mfe module"));
     }
     try {
-      ProxyService.FetchResult upstream = proxyService.fetch(entryPoint, rest);
+      ProxyService.FetchResult upstream = proxyService.fetch(content, rest);
       if (upstream.status() < 200 || upstream.status() >= 300) {
         return ResponseEntity.status(upstream.status()).build();
       }

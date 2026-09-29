@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, DestroyRef } from '@angular/core';
-import { entryPointId, type PortalEntryPoint, PortalUser, type EntryPointGroup } from '../../../core/models';
+import { moduleContentId, type PortalModuleContent, PortalUser, type NavigationGroup } from '../../../core/models';
 import { TreeNode, buildUserSettingsTree } from '../../layout/sidebar/tree.model';
 import { AppOutlet } from '../../workarea/module-outlet.component';
 import { WorkbenchService } from '../../features/workspaces/workspaces.store';
@@ -28,30 +28,30 @@ export class UserSettings {
 
   readonly user = input<PortalUser | null>(null);
 
-  protected readonly activeEntry = signal<PortalEntryPoint | null>(null);
+  protected readonly activeEntry = signal<PortalModuleContent | null>(null);
 
-  protected readonly userSettingsEntryPoints = computed(() =>
-    this.wb.getEntryPoints().filter((ep) => ep.category === 'user-settings'),
+  protected readonly userSettingsContents = computed(() =>
+    this.wb.getModuleContents().filter((ep) => ep.category === 'user-settings'),
   );
 
   protected readonly userSettingsGroups = computed(() =>
-    this.wb.getEntryPointGroups().filter((g) => g.category === 'user-settings'),
+    this.wb.getNavigationGroups().filter((g) => g.category === 'user-settings'),
   );
 
-  protected readonly userSettingsTree = computed<TreeNode<PortalEntryPoint | EntryPointGroup>[]>(() =>
-    buildUserSettingsTree(this.userSettingsGroups(), this.userSettingsEntryPoints()),
+  protected readonly userSettingsTree = computed<TreeNode<PortalModuleContent | NavigationGroup>[]>(() =>
+    buildUserSettingsTree(this.userSettingsGroups(), this.userSettingsContents()),
   );
 
   protected readonly dsNodes = computed<DsTreeNode[]>(() => this.toDsNodes(this.userSettingsTree()));
 
   protected readonly selectedEntryId = computed(() => {
     const ep = this.activeEntry();
-    return ep ? entryPointId(ep) : null;
+    return ep ? moduleContentId(ep) : null;
   });
 
   constructor() {
     effect(() => {
-      const eps = this.userSettingsEntryPoints();
+      const eps = this.userSettingsContents();
       if (eps.length === 0) return;
       if (!this.activeEntry()) this.activeEntry.set(eps[0]);
     });
@@ -63,21 +63,21 @@ export class UserSettings {
     inject(DestroyRef).onDestroy(off);
   }
 
-  protected selectEntry(ep: PortalEntryPoint): void {
+  protected selectEntry(ep: PortalModuleContent): void {
     this.activeEntry.set(ep);
-    this.coordinator.navigateFromModule(MODULE_KEY, '/' + ep.entryKey);
+    this.coordinator.navigateFromModule(MODULE_KEY, '/' + ep.contentKey);
   }
 
   protected onTreeNodeSelected(node: DsTreeNode): void {
-    if (node.data) this.selectEntry(node.data as PortalEntryPoint);
+    if (node.data) this.selectEntry(node.data as PortalModuleContent);
   }
 
   private toDsNodes(
-    nodes: TreeNode<PortalEntryPoint | EntryPointGroup>[],
+    nodes: TreeNode<PortalModuleContent | NavigationGroup>[],
   ): DsTreeNode[] {
     return nodes.map((n) => {
       if ('moduleKey' in n.data) {
-        return { id: entryPointId(n.data), label: n.data.name, data: n.data };
+        return { id: moduleContentId(n.data), label: n.data.name, data: n.data };
       }
       return {
         id: `group:${n.data.groupKey}`,
@@ -88,8 +88,8 @@ export class UserSettings {
   }
 
   private applyModulePath(path: string): void {
-    const entryKey = path.replace(/^\//, '').split('/')[0];
-    const ep = this.userSettingsEntryPoints().find((e) => e.entryKey === entryKey);
+    const contentKey = path.replace(/^\//, '').split('/')[0];
+    const ep = this.userSettingsContents().find((e) => e.contentKey === contentKey);
     if (ep) this.activeEntry.set(ep);
   }
 }

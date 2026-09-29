@@ -24,7 +24,7 @@
       </div>
       @if (expanded()) {
       <div class="min-w-0 flex-1">
-        <p class="truncate text-sm font-semibold text-[var(--portal-text-primary)]">Crosshubber</p>
+        <p class="truncate text-sm font-semibold text-[var(--portal-text-primary)]">{{ branding.name() }}</p>
       </div>
       <button
         (click)="$event.stopPropagation(); togglePinned()"

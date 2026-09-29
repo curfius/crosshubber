@@ -1,7 +1,7 @@
 import { moveItemInArray, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import type { PortalEntryPoint, Tab, TabGroup, SplitDir, LeafNode, SplitNode, LayoutNode, WorkspaceMeta, SavedGroup, WorkspaceSnapshot, EntryPointGroup } from '../../../core/models';
-import { entryPointId, parseEntryPointId } from '../../../core/models';
+import type { PortalModuleContent, Tab, TabGroup, SplitDir, LeafNode, SplitNode, LayoutNode, WorkspaceMeta, SavedGroup, WorkspaceSnapshot, NavigationGroup } from '../../../core/models';
+import { moduleContentId, parseModuleContentId } from '../../../core/models';
 import { apiFetch } from '../../../core/http/api-fetch';
 import { UrlSyncService } from '../../../core/history/url-sync.service';
 import { tabKeyOf, type NavState } from '../../../core/history/nav-state';
@@ -16,7 +16,7 @@ const FALLBACK_HOME_REF = 'portal-dashboard:main';
 function withInstances(tabs: Tab[]): Tab[] {
   const counts = new Map<string, number>();
   return tabs.map((t) => {
-    const id = entryPointId(t.entryPoint);
+    const id = moduleContentId(t.content);
     const n = (counts.get(id) ?? 0) + 1;
     counts.set(id, n);
     return { ...t, instance: n };
@@ -63,8 +63,8 @@ export class WorkbenchService {
     return l ? firstLeaf(l) : null;
   });
 
-  private readonly entryPoints = signal<PortalEntryPoint[]>([]);
-  private readonly entryPointGroups = signal<EntryPointGroup[]>([]);
+  private readonly moduleContents = signal<PortalModuleContent[]>([]);
+  private readonly navigationGroups = signal<NavigationGroup[]>([]);
   private nextTabId = 1;
   private nextGroupId = 1;
   private nextSplitId = 1;
@@ -90,24 +90,24 @@ export class WorkbenchService {
     });
   }
 
-  setEntryPoints(eps: PortalEntryPoint[]): void {
-    this.entryPoints.set(eps);
+  setModuleContents(eps: PortalModuleContent[]): void {
+    this.moduleContents.set(eps);
   }
 
-  getEntryPoints(): PortalEntryPoint[] {
-    return this.entryPoints();
+  getModuleContents(): PortalModuleContent[] {
+    return this.moduleContents();
   }
 
-  setEntryPointGroups(groups: EntryPointGroup[]): void {
-    this.entryPointGroups.set(groups);
+  setNavigationGroups(groups: NavigationGroup[]): void {
+    this.navigationGroups.set(groups);
   }
 
-  getEntryPointGroups(): EntryPointGroup[] {
-    return this.entryPointGroups();
+  getNavigationGroups(): NavigationGroup[] {
+    return this.navigationGroups();
   }
 
-  findEntryPoint(moduleKey: string, entryKey: string): PortalEntryPoint | undefined {
-    return this.entryPoints().find((ep) => ep.moduleKey === moduleKey && ep.entryKey === entryKey);
+  findModuleContent(moduleKey: string, contentKey: string): PortalModuleContent | undefined {
+    return this.moduleContents().find((ep) => ep.moduleKey === moduleKey && ep.contentKey === contentKey);
   }
 
   // ── Home tab (fixture of the home view) ───────────────────────────────
@@ -136,11 +136,11 @@ export class WorkbenchService {
     return tab.id === this.homeTabId;
   }
 
-  private resolveHomeEntryPoint(): PortalEntryPoint | null {
-    const resolve = (ref: string): PortalEntryPoint | null => {
+  private resolveHomeContent(): PortalModuleContent | null {
+    const resolve = (ref: string): PortalModuleContent | null => {
       const idx = ref.indexOf(':');
       if (idx <= 0) return null;
-      const ep = this.findEntryPoint(ref.slice(0, idx), ref.slice(idx + 1));
+      const ep = this.findModuleContent(ref.slice(0, idx), ref.slice(idx + 1));
       return ep && ep.type !== 'link' ? ep : null;
     };
     return resolve(this.homeAppRef()) ?? resolve(FALLBACK_HOME_REF);
@@ -148,7 +148,7 @@ export class WorkbenchService {
 
   /** Ensures the unclosable Home tab exists as the first tab of the primary group. */
   ensureHomeTab(): void {
-    const ep = this.resolveHomeEntryPoint();
+    const ep = this.resolveHomeContent();
     if (!ep) {
       this.homeTabId = null;
       return;
@@ -160,8 +160,8 @@ export class WorkbenchService {
         this.groups.update((gs) => {
           for (const [gid, g] of Object.entries(gs)) {
             const idx = g.tabs.findIndex((t) => t.id === this.homeTabId);
-            if (idx >= 0 && entryPointId(g.tabs[idx].entryPoint) !== entryPointId(ep)) {
-              return { ...gs, [gid]: { ...g, tabs: withInstances(g.tabs.map((t) => (t.id === this.homeTabId ? { ...t, entryPoint: ep } : t))) } };
+            if (idx >= 0 && moduleContentId(g.tabs[idx].content) !== moduleContentId(ep)) {
+              return { ...gs, [gid]: { ...g, tabs: withInstances(g.tabs.map((t) => (t.id === this.homeTabId ? { ...t, content: ep } : t))) } };
             }
           }
           return gs;
@@ -173,7 +173,7 @@ export class WorkbenchService {
     if (!gid || !this.groups()[gid]) {
       gid = this.addGroup().id;
     }
-    const tab = { id: this.nextTabId++, entryPoint: ep, instance: 0 };
+    const tab = { id: this.nextTabId++, content: ep, instance: 0 };
     this.homeTabId = tab.id;
     this.groups.update((gs) => ({
       ...gs,
@@ -199,15 +199,15 @@ export class WorkbenchService {
     }
   }
 
-  openApp(ep: PortalEntryPoint, activate = true): void {
+  openApp(ep: PortalModuleContent, activate = true): void {
     if (ep.type === 'link') {
       window.open(ep.url, '_blank', 'noopener');
       return;
     }
-    const id = entryPointId(ep);
+    const id = moduleContentId(ep);
     if (!ep.multi) {
       for (const g of Object.values(this.groups())) {
-        const existing = g.tabs.find((t) => entryPointId(t.entryPoint) === id);
+        const existing = g.tabs.find((t) => moduleContentId(t.content) === id);
         if (existing) {
           this.activate(g.id, existing.id, true);
           return;
@@ -218,7 +218,7 @@ export class WorkbenchService {
     if (!gid || !this.groups()[gid]) {
       gid = this.addGroup().id;
     }
-    const tab = { id: this.nextTabId++, entryPoint: ep, instance: 0 };
+    const tab = { id: this.nextTabId++, content: ep, instance: 0 };
     this.groups.update((gs) => {
       const cur = gs[gid];
       return { ...gs, [gid]: { ...cur, tabs: withInstances([...cur.tabs, tab]) } };
@@ -243,7 +243,7 @@ export class WorkbenchService {
     const group = this.groups()[gid];
     if (!group || group.activeId == null) return null;
     const tab = group.tabs.find((t) => t.id === group.activeId);
-    return tab ? tabKeyOf(entryPointId(tab.entryPoint), tab.instance) : null;
+    return tab ? tabKeyOf(moduleContentId(tab.content), tab.instance) : null;
   }
 
   // ── Navigation URL sync (all History API access delegated to UrlSyncService) ──
@@ -288,28 +288,28 @@ export class WorkbenchService {
   /** Finds the open tab with the given tabKey (`epId` or `epId:instance`). */
   findByTabKey(key: string): { groupId: string; tab: Tab } | null {
     for (const [gid, g] of Object.entries(this.groups())) {
-      const tab = g.tabs.find((t) => tabKeyOf(entryPointId(t.entryPoint), t.instance) === key);
+      const tab = g.tabs.find((t) => tabKeyOf(moduleContentId(t.content), t.instance) === key);
       if (tab) return { groupId: gid, tab };
     }
     for (const [gid, g] of Object.entries(this.groups())) {
-      const tab = g.tabs.find((t) => entryPointId(t.entryPoint) === key);
+      const tab = g.tabs.find((t) => moduleContentId(t.content) === key);
       if (tab) return { groupId: gid, tab };
     }
     return null;
   }
 
   /** Resolves an `app` URL param to a known entry point (tolerates instance suffixes and bare moduleKeys). */
-  findEntryPointByAppKey(app: string): PortalEntryPoint | undefined {
-    const eps = this.entryPoints().filter((ep) => ep.active !== false);
-    const direct = eps.find((ep) => entryPointId(ep) === app);
+  findContentByAppKey(app: string): PortalModuleContent | undefined {
+    const eps = this.moduleContents().filter((ep) => ep.active !== false);
+    const direct = eps.find((ep) => moduleContentId(ep) === app);
     if (direct) return direct;
     const stripped = app.replace(/:\d+$/, '');
     if (stripped !== app) {
-      const { moduleKey, entryKey } = parseEntryPointId(stripped);
-      return eps.find((ep) => ep.moduleKey === moduleKey && ep.entryKey === entryKey);
+      const { moduleKey, contentKey } = parseModuleContentId(stripped);
+      return eps.find((ep) => ep.moduleKey === moduleKey && ep.contentKey === contentKey);
     }
     if (!app.includes(':')) {
-      return eps.find((ep) => ep.moduleKey === app && ep.entryKey === 'main');
+      return eps.find((ep) => ep.moduleKey === app && ep.contentKey === 'main');
     }
     return undefined;
   }
@@ -338,15 +338,15 @@ export class WorkbenchService {
     this.syncAfterMutation();
   }
 
-  openAppInGroup(ep: PortalEntryPoint, groupId: string): void {
+  openAppInGroup(ep: PortalModuleContent, groupId: string): void {
     if (!this.groups()[groupId]) return;
-    const id = entryPointId(ep);
-    const existing = this.groups()[groupId].tabs.find((t) => entryPointId(t.entryPoint) === id);
+    const id = moduleContentId(ep);
+    const existing = this.groups()[groupId].tabs.find((t) => moduleContentId(t.content) === id);
     if (existing) {
       this.activate(groupId, existing.id, true);
       return;
     }
-    const tab = { id: this.nextTabId++, entryPoint: ep, instance: 0 };
+    const tab = { id: this.nextTabId++, content: ep, instance: 0 };
     this.groups.update((gs) => ({
       ...gs,
       [groupId]: {
@@ -831,7 +831,7 @@ export class WorkbenchService {
         const serializedIdx = tabs.findIndex((t) => t.id === activeTab.id);
         activeIdx = serializedIdx >= 0 ? serializedIdx : 0;
       }
-      groups[gid] = { tabs: tabs.map((t) => entryPointId(t.entryPoint)), activeIdx };
+      groups[gid] = { tabs: tabs.map((t) => moduleContentId(t.content)), activeIdx };
     }
     return { layout: this.layout(), groups, focusedGroupId: this.focusedGroupId(), color: this.workspaceColor() };
   }
@@ -841,10 +841,10 @@ export class WorkbenchService {
     for (const [gid, sg] of Object.entries(snap.groups ?? {})) {
       const tabs: Tab[] = [];
       for (const key of sg.tabs ?? []) {
-        // Support both old format (moduleKey only) and new format (moduleKey:entryKey)
-        const { moduleKey, entryKey } = parseEntryPointId(key);
-        const ep = this.findEntryPoint(moduleKey, entryKey);
-        if (ep && ep.type !== 'link') tabs.push({ id: this.nextTabId++, entryPoint: ep, instance: 0 });
+        // Support both old format (moduleKey only) and new format (moduleKey:contentKey)
+        const { moduleKey, contentKey } = parseModuleContentId(key);
+        const ep = this.findModuleContent(moduleKey, contentKey);
+        if (ep && ep.type !== 'link') tabs.push({ id: this.nextTabId++, content: ep, instance: 0 });
       }
       const resolved = withInstances(tabs);
       const activeId =

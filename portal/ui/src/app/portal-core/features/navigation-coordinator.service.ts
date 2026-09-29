@@ -4,7 +4,7 @@ import { UrlSyncService, type NavRead } from '../../core/history/url-sync.servic
 import { tabKeyOf } from '../../core/history/nav-state';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { ToastService } from '../../core/toast/toast.service';
-import { entryPointId, type Tab } from '../../core/models';
+import { moduleContentId, type Tab } from '../../core/models';
 import { WorkbenchService } from './workspaces/workspaces.store';
 
 interface TabLocation {
@@ -73,7 +73,7 @@ export class NavigationCoordinator {
   navigateFromModule(moduleKey: string, path: string): void {
     const found = this.findActiveTabOfModule(moduleKey);
     if (!found) return;
-    const key = tabKeyOf(entryPointId(found.tab.entryPoint), found.tab.instance);
+    const key = tabKeyOf(moduleContentId(found.tab.content), found.tab.instance);
     if (this.wb.getTabPath(key) === path) return; // echo dedupe (D8)
     this.wb.setTabPath(key, path);
     const group = this.wb.groups()[found.groupId];
@@ -140,27 +140,27 @@ export class NavigationCoordinator {
       return;
     }
     if (!cold) return; // deep-link auto-open only on cold load (D5)
-    const ep = this.wb.findEntryPointByAppKey(app);
+    const ep = this.wb.findContentByAppKey(app);
     if (!ep || ep.type === 'link') {
       console.warn(`[nav] unknown app "${app}" in URL — ignored`);
       this.toast.show(this.i18n.t('nav.unknownApp', { app }));
       return;
     }
     this.wb.openApp(ep);
-    const opened = this.wb.findByTabKey(app) ?? this.wb.findByTabKey(entryPointId(ep));
+    const opened = this.wb.findByTabKey(app) ?? this.wb.findByTabKey(moduleContentId(ep));
     if (opened) this.activateTab(opened, path);
   }
 
   private activateTab(found: TabLocation, path: string | null): void {
     this.wb.activate(found.groupId, found.tab.id, false);
     if (path) {
-      this.wb.setTabPath(tabKeyOf(entryPointId(found.tab.entryPoint), found.tab.instance), path);
+      this.wb.setTabPath(tabKeyOf(moduleContentId(found.tab.content), found.tab.instance), path);
       this.dispatchRestore(found.tab, path);
     }
   }
 
   private dispatchRestore(tab: Tab, path: string): void {
-    const moduleKey = tab.entryPoint.moduleKey;
+    const moduleKey = tab.content.moduleKey;
     let delivered = this.bridge.restoreModule(moduleKey, path);
     const handlers = this.restoreHandlers.get(moduleKey);
     if (handlers && handlers.size > 0) {
@@ -180,21 +180,21 @@ export class NavigationCoordinator {
     // 1. focused group's active tab
     if (focused) {
       const g = groups[focused];
-      const tab = g?.tabs.find((t) => t.id === g.activeId && t.entryPoint.moduleKey === moduleKey);
+      const tab = g?.tabs.find((t) => t.id === g.activeId && t.content.moduleKey === moduleKey);
       if (tab) return { groupId: focused, tab };
     }
     // 2. focused group's other tabs (keep-alive: background tabs stay mounted)
     if (focused && groups[focused]) {
-      const tab = groups[focused].tabs.find((t) => t.entryPoint.moduleKey === moduleKey);
+      const tab = groups[focused].tabs.find((t) => t.content.moduleKey === moduleKey);
       if (tab) return { groupId: focused, tab };
     }
     // 3. any group's active tab, then any tab at all
     for (const [gid, g] of Object.entries(groups)) {
-      const tab = g.tabs.find((t) => t.id === g.activeId && t.entryPoint.moduleKey === moduleKey);
+      const tab = g.tabs.find((t) => t.id === g.activeId && t.content.moduleKey === moduleKey);
       if (tab) return { groupId: gid, tab };
     }
     for (const [gid, g] of Object.entries(groups)) {
-      const tab = g.tabs.find((t) => t.entryPoint.moduleKey === moduleKey);
+      const tab = g.tabs.find((t) => t.content.moduleKey === moduleKey);
       if (tab) return { groupId: gid, tab };
     }
     return null;

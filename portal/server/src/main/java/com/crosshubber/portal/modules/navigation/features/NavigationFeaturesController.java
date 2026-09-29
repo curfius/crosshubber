@@ -10,19 +10,19 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.crosshubber.portal.modules.settings.instance.InstanceSettingsService;
+import com.crosshubber.portal.modules.navigation.settings.NavigationSettingsService;
 import com.crosshubber.portal.security.PortalUser;
 
 /**
- * Navigation feature switches (backed by instance settings) — mirrors the features endpoints in
+ * Navigation feature switches (backed by instance settings) â€” mirrors the features endpoints in
  * navigation.routes.ts (D11).
  */
 @RestController
 public class NavigationFeaturesController {
 
-  private final InstanceSettingsService settingsService;
+  private final NavigationSettingsService settingsService;
 
-  public NavigationFeaturesController(InstanceSettingsService settingsService) {
+  public NavigationFeaturesController(NavigationSettingsService settingsService) {
     this.settingsService = settingsService;
   }
 

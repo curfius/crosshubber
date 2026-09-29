@@ -15,10 +15,10 @@ import com.crosshubber.portal.auth.kcadmin.KcAdminClient;
 import com.crosshubber.portal.common.NodeDates;
 import com.crosshubber.portal.modules.registry.dto.ModuleVersionDto;
 import com.crosshubber.portal.modules.registry.dto.SecurityRoleDto;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointType;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentCategory;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentType;
 import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
 import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
 
@@ -33,7 +33,7 @@ public class InstallService {
   private static final Logger log = LoggerFactory.getLogger(InstallService.class);
 
   private final ModuleRepository moduleRepo;
-  private final EntryPointRepository entryPointRepo;
+  private final ModuleContentRepository contentRepo;
   private final ModuleVersionRepository versionRepo;
   private final ManifestValidator validator;
   private final KcAdminClient kcAdminClient;
@@ -41,26 +41,27 @@ public class InstallService {
 
   public InstallService(
       ModuleRepository moduleRepo,
-      EntryPointRepository entryPointRepo,
+      ModuleContentRepository contentRepo,
       ModuleVersionRepository versionRepo,
       ManifestValidator validator,
       KcAdminClient kcAdminClient,
       ObjectMapper objectMapper) {
     this.moduleRepo = moduleRepo;
-    this.entryPointRepo = entryPointRepo;
+    this.contentRepo = contentRepo;
     this.versionRepo = versionRepo;
     this.validator = validator;
     this.kcAdminClient = kcAdminClient;
     this.objectMapper = objectMapper;
   }
 
-  // ── Install ──────────────────────────────────────────────────────────
+  // — Install
+  // —
 
   /**
    * Applies a manifest install: upserts module (new ones disabled, managed by manifest), upserts
-   * entry points (preserving navigation-managed fields), and records the version snapshot. KC role
-   * sync is deliberately NOT done here — call {@link #syncRealmRoles(JsonNode)} from outside the
-   * transaction so blocking HTTP never holds a pooled connection.
+   * module content (preserving navigation-managed fields), and records the version snapshot. KC
+   * role sync is deliberately NOT done here — call {@link #syncRealmRoles(JsonNode)} from outside
+   * the transaction so blocking HTTP never holds a pooled connection.
    */
   @Transactional
   public InstallResult applyInstall(JsonNode manifest, String installedBy) {
@@ -96,30 +97,30 @@ public class InstallService {
     module.setHealth(manifest.hasNonNull("health") ? manifest.get("health").asString() : null);
     moduleRepo.save(module);
 
-    // 2. Upsert entry points — runtime-managed fields (groupKey, sortOrder,
-    // parentEntryKey, active, icon, color) are preserved on conflict (D4).
+    // 2. Upsert module content — runtime-managed fields (groupKey, sortOrder,
+    // parentContentKey, active, icon, color) are preserved on conflict (D4).
     // Existing rows are loaded once (not per key) to avoid N+1 selects.
-    Map<String, EntryPointEntity> existing = new LinkedHashMap<>();
-    for (EntryPointEntity row : entryPointRepo.findByModuleKey(moduleKey)) {
-      existing.put(row.getEntryKey(), row);
+    Map<String, ModuleContentEntity> existing = new LinkedHashMap<>();
+    for (ModuleContentEntity row : contentRepo.findByModuleKey(moduleKey)) {
+      existing.put(row.getContentKey(), row);
     }
     for (ManifestValidator.FlatEntry flat : validator.flattenEntries(manifest)) {
       JsonNode entry = flat.entry();
-      String entryKey = entry.path("key").asString();
-      EntryPointEntity ep = existing.get(entryKey);
+      String contentKey = entry.path("key").asString();
+      ModuleContentEntity ep = existing.get(contentKey);
       if (ep == null) {
-        ep = new EntryPointEntity();
+        ep = new ModuleContentEntity();
         ep.setModuleKey(moduleKey);
-        ep.setEntryKey(entryKey);
+        ep.setContentKey(contentKey);
         ep.setSortOrder(0);
         ep.setActive(true);
         ep.setMulti(entry.has("multi") && entry.get("multi").asBoolean());
       }
-      ep.setCategory(EntryPointCategory.parse(flat.category()));
+      ep.setCategory(ModuleContentCategory.parse(flat.category()));
       ep.setName(entry.path("name").asString());
       ep.setDescription(
           entry.hasNonNull("description") ? entry.get("description").asString() : null);
-      ep.setType(EntryPointType.parse(entry.path("type").asString()));
+      ep.setType(ModuleContentType.parse(entry.path("type").asString()));
       ep.setUrl(validator.resolveUrl(entry, baseUrl));
       ep.setSandbox(joinStringArray(entry.get("sandbox")));
       ep.setAllow(entry.hasNonNull("allow") ? entry.get("allow").asString() : null);
@@ -133,7 +134,7 @@ public class InstallService {
               ? entry.get("element").asString()
               : null);
       ep.setRoles(rolesOrEmpty(entry.get("requiredRoles")));
-      entryPointRepo.save(ep);
+      contentRepo.save(ep);
     }
 
     // 3. Version snapshot — mark previous active as superseded
@@ -155,7 +156,7 @@ public class InstallService {
     versionRepo.save(versionRow);
 
     log.info(
-        "[install] module \"{}\" v{} installed (digest {}…)",
+        "[install] module \"{}\" v{} installed (digest {}—¦)",
         moduleKey,
         version,
         digest.substring(0, Math.min(8, digest.length())));
@@ -180,7 +181,8 @@ public class InstallService {
     }
   }
 
-  // ── Versions ─────────────────────────────────────────────────────────
+  // — Versions
+  // —
 
   @Transactional(readOnly = true)
   public List<ModuleVersionDto> listVersions(String moduleKey) {
@@ -226,7 +228,8 @@ public class InstallService {
         .orElse(null);
   }
 
-  // ── Rollback / drafts ────────────────────────────────────────────────
+  // — Rollback / drafts
+  // —
 
   /** Rollback creates a DRAFT from an older version — never activates directly. */
   @Transactional
@@ -430,7 +433,8 @@ public class InstallService {
         .orElse(null);
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────
+  // — Helpers
+  // —
 
   /** Install response payload ({@code POST /api/registry/manifests/install}). */
   public record InstallResult(boolean ok, String moduleKey, String version) {}

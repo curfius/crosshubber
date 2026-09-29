@@ -1,4 +1,4 @@
-package com.crosshubber.portal.modules.settings.instance;
+package com.crosshubber.portal.modules.navigation.settings;
 
 import java.util.Map;
 
@@ -13,18 +13,18 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 /**
- * Instance settings routes.
+ * Navigation settings routes ({@code /api/settings} — path kept for shell compatibility).
  *
  * <p>Only {@code homeApp} is written here; the feature switches are owned by the navigation module
  * (D11).
  */
 @RestController
 @RequestMapping("/api/settings")
-public class SettingsController {
+public class NavigationSettingsController {
 
-  private final InstanceSettingsService settingsService;
+  private final NavigationSettingsService settingsService;
 
-  public SettingsController(InstanceSettingsService settingsService) {
+  public NavigationSettingsController(NavigationSettingsService settingsService) {
     this.settingsService = settingsService;
   }
 

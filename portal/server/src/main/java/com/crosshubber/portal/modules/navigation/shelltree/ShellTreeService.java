@@ -14,50 +14,50 @@ import org.springframework.transaction.annotation.Transactional;
 import com.crosshubber.portal.common.Keys;
 import com.crosshubber.portal.common.Texts;
 import com.crosshubber.portal.modules.navigation.NavigationValidationService;
+import com.crosshubber.portal.modules.navigation.groups.NavigationGroupDto;
+import com.crosshubber.portal.modules.navigation.groups.NavigationGroupEntity;
+import com.crosshubber.portal.modules.navigation.groups.NavigationGroupRepository;
+import com.crosshubber.portal.modules.navigation.groups.NavigationGroupsService;
 import com.crosshubber.portal.modules.navigation.shelltree.dto.ShellTreePayload;
-import com.crosshubber.portal.modules.registry.dto.EntryPointDto;
-import com.crosshubber.portal.modules.registry.dto.EntryPointGroupDto;
-import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupEntity;
-import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupRepository;
-import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupsService;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointsService;
+import com.crosshubber.portal.modules.registry.dto.ModuleContentDto;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentCategory;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentsService;
 
 import tools.jackson.databind.JsonNode;
 
 /**
  * Settings-shell tree editor (groups + items): group key resolution (slugified {@code nav-*} keys),
- * per-bucket renumbering, ungrouping of unlisted items and cascade cleanup of removed groups — one
- * transaction.
+ * per-bucket renumbering, ungrouping of unlisted items and cascade cleanup of removed groups â€”
+ * one transaction.
  */
 @Service
 public class ShellTreeService {
 
-  private final EntryPointGroupRepository groupRepo;
-  private final EntryPointRepository entryPointRepo;
+  private final NavigationGroupRepository groupRepo;
+  private final ModuleContentRepository contentRepo;
 
   public ShellTreeService(
-      EntryPointGroupRepository groupRepo, EntryPointRepository entryPointRepo) {
+      NavigationGroupRepository groupRepo, ModuleContentRepository contentRepo) {
     this.groupRepo = groupRepo;
-    this.entryPointRepo = entryPointRepo;
+    this.contentRepo = contentRepo;
   }
 
   @Transactional(readOnly = true)
   public ShellTreePayload shellTreePayload(String category) {
-    List<EntryPointGroupDto> groups =
+    List<NavigationGroupDto> groups =
         groupRepo
-            .findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.parse(category))
+            .findByCategoryOrderBySortOrderAscNameAsc(ModuleContentCategory.parse(category))
             .stream()
-            .map(EntryPointGroupsService::toOutput)
+            .map(NavigationGroupsService::toOutput)
             .toList();
-    List<EntryPointDto> items =
-        entryPointRepo
-            .findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.parse(category))
+    List<ModuleContentDto> items =
+        contentRepo
+            .findByCategoryOrderBySortOrderAscNameAsc(ModuleContentCategory.parse(category))
             .stream()
             .filter(ep -> Boolean.TRUE.equals(ep.getActive()))
-            .map(EntryPointsService::toOutput)
+            .map(ModuleContentsService::toOutput)
             .toList();
     return new ShellTreePayload(category, groups, items);
   }
@@ -116,13 +116,13 @@ public class ShellTreeService {
         throw new IllegalArgumentException(
             "items[" + i + "].moduleKey: must match [a-z0-9][a-z0-9-]{0,63}");
       }
-      String entryKey = item.path("entryKey").asText(null);
-      if (entryKey == null || entryKey.isEmpty()) {
-        throw new IllegalArgumentException("items[" + i + "].entryKey: Required");
+      String contentKey = item.path("contentKey").asText(null);
+      if (contentKey == null || contentKey.isEmpty()) {
+        throw new IllegalArgumentException("items[" + i + "].contentKey: Required");
       }
-      if (!entryKey.matches(Keys.KEY_RE)) {
+      if (!contentKey.matches(Keys.KEY_RE)) {
         throw new IllegalArgumentException(
-            "items[" + i + "].entryKey: must match [a-z0-9][a-z0-9-]{0,63}");
+            "items[" + i + "].contentKey: must match [a-z0-9][a-z0-9-]{0,63}");
       }
       if (!isNullish(item.path("hidden")) && !item.path("hidden").isBoolean()) {
         throw new IllegalArgumentException("items[" + i + "].hidden: must be a boolean");
@@ -131,10 +131,10 @@ public class ShellTreeService {
 
     // Resolve group keys: client keys win; missing keys are slugified (unique
     // across ALL groups, mirroring the route helper).
-    List<EntryPointGroupEntity> existingGroups =
-        groupRepo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.parse(category));
+    List<NavigationGroupEntity> existingGroups =
+        groupRepo.findByCategoryOrderBySortOrderAscNameAsc(ModuleContentCategory.parse(category));
     Set<String> allGroupKeys = new LinkedHashSet<>();
-    Map<String, EntryPointGroupEntity> byGlobalKey = new LinkedHashMap<>();
+    Map<String, NavigationGroupEntity> byGlobalKey = new LinkedHashMap<>();
     groupRepo
         .findAll()
         .forEach(
@@ -142,8 +142,8 @@ public class ShellTreeService {
               allGroupKeys.add(g.getGroupKey());
               byGlobalKey.put(g.getGroupKey(), g);
             });
-    Map<String, EntryPointGroupEntity> byExistingKey = new LinkedHashMap<>();
-    for (EntryPointGroupEntity g : existingGroups) {
+    Map<String, NavigationGroupEntity> byExistingKey = new LinkedHashMap<>();
+    for (NavigationGroupEntity g : existingGroups) {
       byExistingKey.put(g.getGroupKey(), g);
     }
 
@@ -186,7 +186,7 @@ public class ShellTreeService {
       itemsForValidation.add(
           new NavigationValidationService.ShellItem(
               item.path("moduleKey").asString(),
-              item.path("entryKey").asString(),
+              item.path("contentKey").asString(),
               isNullish(item.path("groupKey")) ? null : item.path("groupKey").asString()));
     }
     NavigationValidationService.Validation treeValidation =
@@ -196,14 +196,14 @@ public class ShellTreeService {
     }
 
     // Items must belong to this category
-    List<EntryPointEntity> categoryRows =
-        entryPointRepo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.parse(category));
+    List<ModuleContentEntity> categoryRows =
+        contentRepo.findByCategoryOrderBySortOrderAscNameAsc(ModuleContentCategory.parse(category));
     Set<String> categoryKeys = new HashSet<>();
-    for (EntryPointEntity row : categoryRows) {
-      categoryKeys.add(row.getModuleKey() + ":" + row.getEntryKey());
+    for (ModuleContentEntity row : categoryRows) {
+      categoryKeys.add(row.getModuleKey() + ":" + row.getContentKey());
     }
     for (JsonNode item : itemInputs) {
-      String ref = item.path("moduleKey").asString() + ":" + item.path("entryKey").asString();
+      String ref = item.path("moduleKey").asString() + ":" + item.path("contentKey").asString();
       if (!categoryKeys.contains(ref)) {
         throw new IllegalArgumentException(
             "entry " + ref + " is not in category \"" + category + "\"");
@@ -212,20 +212,20 @@ public class ShellTreeService {
 
     // Groups: upsert in payload order, renumbering per parent bucket.
     // Roles are never touched (preserved on conflict, empty on insert).
-    // Lookups use the preloaded global map — no per-key SELECT in the loop.
+    // Lookups use the preloaded global map â€” no per-key SELECT in the loop.
     Map<String, Integer> bucketCounter = new LinkedHashMap<>();
     for (ResolvedGroup g : resolved) {
       String bucket = g.parentKey() == null ? "" : g.parentKey();
       int order = bucketCounter.getOrDefault(bucket, 0);
       bucketCounter.put(bucket, order + 10);
-      EntryPointGroupEntity entity =
-          byGlobalKey.containsKey(g.key()) ? byGlobalKey.get(g.key()) : new EntryPointGroupEntity();
+      NavigationGroupEntity entity =
+          byGlobalKey.containsKey(g.key()) ? byGlobalKey.get(g.key()) : new NavigationGroupEntity();
       if (entity.getGroupKey() == null) {
         entity.setGroupKey(g.key());
         entity.setRoles("");
       }
       if (entity.getCategory() == null) {
-        entity.setCategory(EntryPointCategory.parse(category));
+        entity.setCategory(ModuleContentCategory.parse(category));
       }
       entity.setName(g.name());
       entity.setParentKey(g.parentKey());
@@ -241,13 +241,13 @@ public class ShellTreeService {
     // Items: listed items get group_key + per-bucket renumber; unlisted items
     // of the category are ungrouped and appended after the listed root ones.
     // Lookup map is built from the already-loaded category rows (no per-item SELECT).
-    Map<String, EntryPointEntity> itemsByRef = new LinkedHashMap<>();
-    for (EntryPointEntity row : categoryRows) {
-      itemsByRef.put(row.getModuleKey() + ":" + row.getEntryKey(), row);
+    Map<String, ModuleContentEntity> itemsByRef = new LinkedHashMap<>();
+    for (ModuleContentEntity row : categoryRows) {
+      itemsByRef.put(row.getModuleKey() + ":" + row.getContentKey(), row);
     }
     Set<String> listedRefs = new LinkedHashSet<>();
     for (JsonNode item : itemInputs) {
-      listedRefs.add(item.path("moduleKey").asString() + ":" + item.path("entryKey").asString());
+      listedRefs.add(item.path("moduleKey").asString() + ":" + item.path("contentKey").asString());
     }
     Map<String, Integer> itemBucket = new LinkedHashMap<>();
     for (JsonNode item : itemInputs) {
@@ -255,27 +255,27 @@ public class ShellTreeService {
       String bucket = groupKey == null ? "" : groupKey;
       int order = itemBucket.getOrDefault(bucket, 0);
       itemBucket.put(bucket, order + 10);
-      EntryPointEntity ep =
+      ModuleContentEntity ep =
           itemsByRef.get(
-              item.path("moduleKey").asString() + ":" + item.path("entryKey").asString());
+              item.path("moduleKey").asString() + ":" + item.path("contentKey").asString());
       if (ep != null) {
         ep.setGroupKey(groupKey);
         ep.setSortOrder(order);
         ep.setHidden(item.path("hidden").asBoolean(false));
-        entryPointRepo.save(ep);
+        contentRepo.save(ep);
       }
     }
-    List<EntryPointEntity> unlisted =
+    List<ModuleContentEntity> unlisted =
         categoryRows.stream()
-            .filter(r -> !listedRefs.contains(r.getModuleKey() + ":" + r.getEntryKey()))
-            .sorted(java.util.Comparator.comparingInt(EntryPointEntity::getSortOrder))
+            .filter(r -> !listedRefs.contains(r.getModuleKey() + ":" + r.getContentKey()))
+            .sorted(java.util.Comparator.comparingInt(ModuleContentEntity::getSortOrder))
             .toList();
-    for (EntryPointEntity row : unlisted) {
+    for (ModuleContentEntity row : unlisted) {
       int order = itemBucket.getOrDefault("", 0);
       itemBucket.put("", order + 10);
       row.setGroupKey(null);
       row.setSortOrder(order);
-      entryPointRepo.save(row);
+      contentRepo.save(row);
     }
 
     // Groups removed from the payload: clear dangling item references first,
@@ -284,11 +284,11 @@ public class ShellTreeService {
     for (ResolvedGroup g : resolved) {
       payloadKeys.add(g.key());
     }
-    for (EntryPointGroupEntity g : existingGroups) {
+    for (NavigationGroupEntity g : existingGroups) {
       if (!payloadKeys.contains(g.getGroupKey())) {
-        for (EntryPointEntity ep : entryPointRepo.findByGroupKey(g.getGroupKey())) {
+        for (ModuleContentEntity ep : contentRepo.findByGroupKey(g.getGroupKey())) {
           ep.setGroupKey(null);
-          entryPointRepo.save(ep);
+          contentRepo.save(ep);
         }
         groupRepo.delete(g);
       }
@@ -297,7 +297,7 @@ public class ShellTreeService {
     return shellTreePayload(category);
   }
 
-  /** Mirrors the route slugify: nav-<base>, de-duplicated with -2, -3… */
+  /** Mirrors the route slugify: nav-<base>, de-duplicated with -2, -3â€¦ */
   private static String slugify(String name, Set<String> takenKeys) {
     String base = name.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-+|-+$", "");
     if (base.length() > 40) {

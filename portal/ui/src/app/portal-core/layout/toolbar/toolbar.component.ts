@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output, si
 import { FormsModule } from '@angular/forms';
 import { WorkbenchService } from '../../features/workspaces/workspaces.store';
 import { I18nService } from '../../../core/i18n/i18n.service';
-import type { PortalEntryPoint } from '../../../core/models';
+import type { PortalModuleContent } from '../../../core/models';
 
 @Component({
   selector: 'app-workspace-toolbar',
@@ -36,12 +36,12 @@ export class WorkspaceToolbar {
 
   /** Hide the entry when the user-settings builtin module is disabled/removed. */
   protected readonly userSettingsAvailable = computed(() =>
-    !!this.wb.findEntryPoint('user-settings', 'user-settings-shell'),
+    !!this.wb.findModuleContent('user-settings', 'user-settings-shell'),
   );
 
   /** Disabled gear instead of a silent no-op when the settings module is gone. */
   protected readonly settingsAvailable = computed(() =>
-    !!this.wb.findEntryPoint('settings', 'settings-shell'),
+    !!this.wb.findModuleContent('settings', 'settings-shell'),
   );
 
   protected openSaveDialog(): void {
@@ -121,7 +121,7 @@ export class WorkspaceToolbar {
   }
 
   protected openUserSettings(): void {
-    const ep = this.wb.findEntryPoint('user-settings', 'user-settings-shell');
+    const ep = this.wb.findModuleContent('user-settings', 'user-settings-shell');
     if (ep) {
       this.showProfile.set(false);
       this.wb.openApp(ep);
@@ -129,7 +129,7 @@ export class WorkspaceToolbar {
   }
 
   protected openSettings(): void {
-    const settingsEp = this.wb.findEntryPoint('settings', 'settings-shell');
+    const settingsEp = this.wb.findModuleContent('settings', 'settings-shell');
     if (settingsEp) {
       this.wb.openApp(settingsEp);
     }

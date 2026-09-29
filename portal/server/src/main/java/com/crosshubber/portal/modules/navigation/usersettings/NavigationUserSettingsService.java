@@ -10,31 +10,31 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.crosshubber.portal.common.JsonUtils;
 import com.crosshubber.portal.modules.navigation.NavigationValidationService;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Per-user navigation settings (sidebar) — read/write the user-settings document with merge-on-save
- * semantics.
+ * Per-user navigation settings (sidebar) â€” read/write the user-settings document with
+ * merge-on-save semantics.
  */
 @Service
 public class NavigationUserSettingsService {
 
   private final NavigationUserSettingsRepository repo;
-  private final EntryPointRepository entryPointRepo;
+  private final ModuleContentRepository contentRepo;
   private final ObjectMapper objectMapper;
   private final JsonUtils jsonUtils;
 
   public NavigationUserSettingsService(
       NavigationUserSettingsRepository repo,
-      EntryPointRepository entryPointRepo,
+      ModuleContentRepository contentRepo,
       ObjectMapper objectMapper,
       JsonUtils jsonUtils) {
     this.repo = repo;
-    this.entryPointRepo = entryPointRepo;
+    this.contentRepo = contentRepo;
     this.objectMapper = objectMapper;
     this.jsonUtils = jsonUtils;
   }
@@ -44,16 +44,16 @@ public class NavigationUserSettingsService {
     return repo.findById(userId).map(e -> parseJson(e.getSettings())).orElse(null);
   }
 
-  /** Defaults computed from entry points (D12), merged with stored settings. */
+  /** Defaults computed from module content (D12), merged with stored settings. */
   @Transactional(readOnly = true)
   public Map<String, Object> mergedSettings(String userId) {
-    List<EntryPointEntity> entryPoints = entryPointRepo.findAll();
-    return mergeUserSettings(entryPoints, getUserSettingsRaw(userId));
+    List<ModuleContentEntity> moduleContents = contentRepo.findAll();
+    return mergeUserSettings(moduleContents, getUserSettingsRaw(userId));
   }
 
   public Map<String, Object> mergeUserSettings(
-      List<EntryPointEntity> entryPoints, Map<String, Object> stored) {
-    Map<String, Object> defaults = defaultUserSettings(entryPoints);
+      List<ModuleContentEntity> moduleContents, Map<String, Object> stored) {
+    Map<String, Object> defaults = defaultUserSettings(moduleContents);
     if (stored == null) {
       return defaults;
     }
@@ -90,7 +90,7 @@ public class NavigationUserSettingsService {
     repo.save(entity);
   }
 
-  /** Validates the partial PUT body — returns error message or null. */
+  /** Validates the partial PUT body â€” returns error message or null. */
   public String validatePartial(JsonNode body) {
     if (body == null || !body.isObject()) {
       return "body must be an object";
@@ -153,8 +153,8 @@ public class NavigationUserSettingsService {
   /** Merges the validated partial over the current effective settings. */
   @Transactional
   public Map<String, Object> applyPartial(String userId, JsonNode partial) {
-    List<EntryPointEntity> entryPoints = entryPointRepo.findAll();
-    Map<String, Object> current = mergeUserSettings(entryPoints, getUserSettingsRaw(userId));
+    List<ModuleContentEntity> moduleContents = contentRepo.findAll();
+    Map<String, Object> current = mergeUserSettings(moduleContents, getUserSettingsRaw(userId));
     Map<String, Object> currentSidebar = castMap(current.get("sidebar"));
 
     Map<String, Object> next = new LinkedHashMap<>();
@@ -184,12 +184,12 @@ public class NavigationUserSettingsService {
     return next;
   }
 
-  /** Default sidebar settings — every visible app ref ordered by sortOrder. */
-  public Map<String, Object> defaultUserSettings(List<EntryPointEntity> entryPoints) {
+  /** Default sidebar settings â€” every visible app ref ordered by sortOrder. */
+  public Map<String, Object> defaultUserSettings(List<ModuleContentEntity> moduleContents) {
     Map<String, Object> sidebar = new LinkedHashMap<>();
     sidebar.put("showPinned", true);
     sidebar.put("showWorkspaces", true);
-    sidebar.put("apps", NavigationValidationService.buildDefaultSidebarApps(entryPoints));
+    sidebar.put("apps", NavigationValidationService.buildDefaultSidebarApps(moduleContents));
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("sidebar", sidebar);
     out.put("sidebarExpanded", new ArrayList<String>());

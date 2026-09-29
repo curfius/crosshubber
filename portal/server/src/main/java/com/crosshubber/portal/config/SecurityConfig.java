@@ -72,6 +72,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/i18n/config", "/api/i18n/labels/**")
                     .permitAll()
+                    .requestMatchers("/api/branding")
+                    .permitAll()
                     .requestMatchers("/api/ai-hub/webhooks/**")
                     .permitAll()
                     .requestMatchers("/api/login/**", "/logout")

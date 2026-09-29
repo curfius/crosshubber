@@ -7,6 +7,6 @@ import jakarta.validation.constraints.Pattern;
 
 /** {@code POST /api/navigation/pinned-apps} body (star-toggle an app ref). */
 public record PinRequest(
-    @NotBlank(message = "must be of the form \"moduleKey:entryKey\"")
-        @Pattern(regexp = Keys.REF_RE, message = "must be of the form \"moduleKey:entryKey\"")
+    @NotBlank(message = "must be of the form \"moduleKey:contentKey\"")
+        @Pattern(regexp = Keys.REF_RE, message = "must be of the form \"moduleKey:contentKey\"")
         String ref) {}

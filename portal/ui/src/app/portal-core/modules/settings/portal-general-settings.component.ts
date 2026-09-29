@@ -3,8 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { SettingsService } from '../../../core/settings/settings.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { WorkbenchService } from '../../features/workspaces/workspaces.store';
-import type { PortalEntryPoint } from '../../../core/models';
-import { entryPointId } from '../../../core/models';
+import type { PortalModuleContent } from '../../../core/models';
+import { moduleContentId } from '../../../core/models';
 
 /**
  * Instance-level settings (D13). Currently configures which application the
@@ -29,15 +29,15 @@ export class PortalGeneralSettings {
   protected readonly saveSuccess = signal(false);
 
   /** Candidate apps for the Home tab (visible applications, no links). */
-  protected readonly homeAppOptions = computed<PortalEntryPoint[]>(() =>
+  protected readonly homeAppOptions = computed<PortalModuleContent[]>(() =>
     this.wb
-      .getEntryPoints()
+      .getModuleContents()
       .filter((ep) => ep.category === 'applications' && ep.type !== 'link' && ep.active !== false)
       .sort((a, b) => a.name.localeCompare(b.name)),
   );
 
-  protected refOf(ep: PortalEntryPoint): string {
-    return entryPointId(ep);
+  protected refOf(ep: PortalModuleContent): string {
+    return moduleContentId(ep);
   }
 
   protected async onHomeAppChange(ref: string): Promise<void> {

@@ -15,12 +15,12 @@ import { buildIframeAgentScript } from '../../core/bridge/iframe-agent';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { NavigationCoordinator } from '../features/navigation-coordinator.service';
 import { embeddedModules } from './embedded-modules';
-import type { PortalEntryPoint, PortalUser } from '../../core/models';
-import { entryPointId } from '../../core/models';
+import type { PortalModuleContent, PortalUser } from '../../core/models';
+import { moduleContentId } from '../../core/models';
 
 const loadedScripts = new Map<string, Promise<void>>();
 
-function mfeScriptUrl(ep: PortalEntryPoint): string {
+function mfeScriptUrl(ep: PortalModuleContent): string {
   const entry = new URL(ep.entryUrl!, window.location.origin);
   if (entry.origin === window.location.origin) return ep.entryUrl!;
   return `/api/mfe/${ep.moduleKey}${entry.pathname}`;
@@ -63,13 +63,13 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   private readonly coordinator = inject(NavigationCoordinator);
   protected readonly i18n = inject(I18nService);
   private readonly renderer = inject(Renderer2);
-  readonly entryPoint = input.required<PortalEntryPoint>();
+  readonly content = input.required<PortalModuleContent>();
   readonly user = input<PortalUser | null>(null);
 
   protected readonly loading = signal(true);
-  protected readonly isIframe = computed(() => this.entryPoint().type === 'iframe');
+  protected readonly isIframe = computed(() => this.content().type === 'iframe');
   protected readonly iframeBlocked = computed(() => {
-    const ep = this.entryPoint();
+    const ep = this.content();
     return ep.type === 'iframe' && !!ep.url && isSelfFraming(ep.url);
   });
 
@@ -80,8 +80,8 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
 
   constructor() {
     effect(() => {
-      const ep = this.entryPoint();
-      const epId = entryPointId(ep);
+      const ep = this.content();
+      const epId = moduleContentId(ep);
       if (this.viewReady && epId !== this.previousEpId) {
         this.previousEpId = epId;
         this.cleanup();
@@ -92,7 +92,7 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    this.previousEpId = entryPointId(this.entryPoint());
+    this.previousEpId = moduleContentId(this.content());
     this.viewReady = true;
     this.render();
   }
@@ -103,7 +103,7 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   }
 
   private cleanup(): void {
-    const ep = this.entryPoint();
+    const ep = this.content();
     if (ep.type === 'mfe') {
       this.bridge.unregisterMfe(ep.moduleKey);
     }
@@ -125,7 +125,7 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   }
 
   private render(): void {
-    const ep = this.entryPoint();
+    const ep = this.content();
     if (ep.type === 'iframe') {
       this.renderIframe();
     } else if (ep.type === 'embedded') {
@@ -136,9 +136,9 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   }
 
   private renderIframe(): void {
-    const ep = this.entryPoint();
+    const ep = this.content();
     if (!ep.url || isSelfFraming(ep.url)) {
-      console.error(`[portal] blocked iframe "${ep.moduleKey}/${ep.entryKey}" — url frames the portal app: ${ep.url}`);
+      console.error(`[portal] blocked iframe "${ep.moduleKey}/${ep.contentKey}" — url frames the portal app: ${ep.url}`);
       this.loading.set(false);
       return;
     }
@@ -191,7 +191,7 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
       });
   }
 
-  private async renderMfe(ep: PortalEntryPoint): Promise<void> {
+  private async renderMfe(ep: PortalModuleContent): Promise<void> {
     try {
       await this.ensureScript(mfeScriptUrl(ep));
       await Promise.race([
@@ -263,7 +263,7 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   }
 
   private injectIframeMonitor(): void {
-    const ep = this.entryPoint();
+    const ep = this.content();
     if (ep.type !== 'iframe' || !ep.url || isSelfFraming(ep.url)) return;
     const iframe = this.iframeHost()?.nativeElement?.querySelector('iframe') as HTMLIFrameElement | null;
     if (!iframe) return;

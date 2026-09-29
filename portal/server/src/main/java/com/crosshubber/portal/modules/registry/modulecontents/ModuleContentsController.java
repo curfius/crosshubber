@@ -1,4 +1,4 @@
-package com.crosshubber.portal.modules.registry.entrypoints;
+package com.crosshubber.portal.modules.registry.modulecontents;
 
 import java.util.List;
 import java.util.Map;
@@ -15,40 +15,42 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.crosshubber.portal.modules.registry.dto.EntryPointDto;
-import com.crosshubber.portal.modules.registry.dto.EntryPointUpsertRequest;
+import com.crosshubber.portal.modules.registry.dto.ModuleContentDto;
+import com.crosshubber.portal.modules.registry.dto.ModuleContentUpsertRequest;
 
 import jakarta.validation.Valid;
 
-/** Entry points routes. */
+/** Module contents routes. */
 @RestController
-@RequestMapping("/api/registry/entry-points")
-public class EntryPointsController {
+@RequestMapping("/api/registry/module-contents")
+public class ModuleContentsController {
 
-  private final EntryPointsService entryPointsService;
+  private final ModuleContentsService moduleContentsService;
 
-  public EntryPointsController(EntryPointsService entryPointsService) {
-    this.entryPointsService = entryPointsService;
+  public ModuleContentsController(ModuleContentsService moduleContentsService) {
+    this.moduleContentsService = moduleContentsService;
   }
 
   @GetMapping
   public ResponseEntity<Map<String, Object>> list(
       @RequestParam(required = false) String moduleKey) {
-    List<EntryPointDto> entryPoints =
-        entryPointsService.list(moduleKey).stream().map(EntryPointsService::toOutput).toList();
-    return ResponseEntity.ok(Map.of("entryPoints", entryPoints));
+    List<ModuleContentDto> moduleContents =
+        moduleContentsService.list(moduleKey).stream()
+            .map(ModuleContentsService::toOutput)
+            .toList();
+    return ResponseEntity.ok(Map.of("moduleContents", moduleContents));
   }
 
   @PostMapping
   @PreAuthorize("hasRole('portal-registry-edit')")
-  public ResponseEntity<?> create(@Valid @RequestBody EntryPointUpsertRequest body) {
-    String error = entryPointsService.validate(body);
+  public ResponseEntity<?> create(@Valid @RequestBody ModuleContentUpsertRequest body) {
+    String error = moduleContentsService.validate(body);
     if (error != null) {
       return ResponseEntity.badRequest().body(Map.of("error", error));
     }
     if ("embedded".equals(body.type())
         && body.loadPath() != null
-        && !entryPointsService.validateLoadPath(body.loadPath())) {
+        && !moduleContentsService.validateLoadPath(body.loadPath())) {
       return ResponseEntity.badRequest()
           .body(
               Map.of(
@@ -58,41 +60,41 @@ public class EntryPointsController {
                       + "\" is not registered."
                       + " Add it to portal.known_load_paths first."));
     }
-    EntryPointEntity entryPoint = entryPointsService.upsert(body);
+    ModuleContentEntity content = moduleContentsService.upsert(body);
     return ResponseEntity.status(201)
-        .body(Map.of("ok", true, "entryPoint", EntryPointsService.toOutput(entryPoint)));
+        .body(Map.of("ok", true, "moduleContent", moduleContentsService.toOutput(content)));
   }
 
   @PutMapping("/{id}")
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> update(
-      @PathVariable long id, @Valid @RequestBody EntryPointUpsertRequest body) {
-    String error = entryPointsService.validate(body);
+      @PathVariable long id, @Valid @RequestBody ModuleContentUpsertRequest body) {
+    String error = moduleContentsService.validate(body);
     if (error != null) {
       return ResponseEntity.badRequest().body(Map.of("error", error));
     }
     if ("embedded".equals(body.type())
         && body.loadPath() != null
-        && !entryPointsService.validateLoadPath(body.loadPath())) {
+        && !moduleContentsService.validateLoadPath(body.loadPath())) {
       return ResponseEntity.badRequest()
           .body(Map.of("error", "loadPath \"" + body.loadPath() + "\" is not registered."));
     }
-    EntryPointEntity entryPoint = entryPointsService.upsert(body);
+    ModuleContentEntity content = moduleContentsService.upsert(body);
     return ResponseEntity.ok(
-        Map.of("ok", true, "entryPoint", EntryPointsService.toOutput(entryPoint)));
+        Map.of("ok", true, "moduleContent", moduleContentsService.toOutput(content)));
   }
 
   @DeleteMapping("/{id}")
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> remove(@PathVariable long id) {
-    return ResponseEntity.ok(Map.of("ok", entryPointsService.remove(id)));
+    return ResponseEntity.ok(Map.of("ok", moduleContentsService.remove(id)));
   }
 
   @PostMapping("/reorder")
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> reorder(@RequestBody Map<String, Object> body) {
     Object idsRaw = body == null ? null : body.get("ids");
-    // Missing or empty ids → 200 {ok:true} (no-op)
+    // Missing or empty ids â†’ 200 {ok:true} (no-op)
     if (idsRaw == null) {
       return ResponseEntity.ok(Map.of("ok", true));
     }
@@ -107,7 +109,7 @@ public class EntryPointsController {
       return ResponseEntity.badRequest().body(Map.of("error", "ids must be an array of numbers"));
     }
     List<Long> idList = ids.stream().map(i -> ((Number) i).longValue()).toList();
-    entryPointsService.reorder(idList);
+    moduleContentsService.reorder(idList);
     return ResponseEntity.ok(Map.of("ok", true));
   }
 }

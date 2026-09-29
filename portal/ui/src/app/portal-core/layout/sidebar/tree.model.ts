@@ -1,51 +1,51 @@
-import type { PortalEntryPoint, EntryPointGroup } from '../../../core/models';
-import { entryPointId } from '../../../core/models';
+import type { PortalModuleContent, NavigationGroup } from '../../../core/models';
+import { moduleContentId } from '../../../core/models';
 
 export interface TreeNode<T> {
   data: T;
-  children: TreeNode<PortalEntryPoint | EntryPointGroup>[];
+  children: TreeNode<PortalModuleContent | NavigationGroup>[];
 }
 
 export function buildAppTree(
-  groups: EntryPointGroup[],
-  entryPoints: PortalEntryPoint[],
-): TreeNode<PortalEntryPoint | EntryPointGroup>[] {
+  groups: NavigationGroup[],
+  moduleContents: PortalModuleContent[],
+): TreeNode<PortalModuleContent | NavigationGroup>[] {
   const appGroups = groups.filter((g) => g.category === 'applications');
-  const appEps = entryPoints.filter((ep) => ep.category === 'applications');
+  const appEps = moduleContents.filter((ep) => ep.category === 'applications');
 
   return buildTree(appGroups, appEps);
 }
 
 export function buildSettingsTree(
-  groups: EntryPointGroup[],
-  entryPoints: PortalEntryPoint[],
-): TreeNode<PortalEntryPoint | EntryPointGroup>[] {
+  groups: NavigationGroup[],
+  moduleContents: PortalModuleContent[],
+): TreeNode<PortalModuleContent | NavigationGroup>[] {
   const settingsGroups = groups.filter((g) => g.category === 'settings');
-  const settingsEps = entryPoints.filter((ep) => ep.category === 'settings');
+  const settingsEps = moduleContents.filter((ep) => ep.category === 'settings');
 
   return buildTree(settingsGroups, settingsEps);
 }
 
 export function buildUserSettingsTree(
-  groups: EntryPointGroup[],
-  entryPoints: PortalEntryPoint[],
-): TreeNode<PortalEntryPoint | EntryPointGroup>[] {
+  groups: NavigationGroup[],
+  moduleContents: PortalModuleContent[],
+): TreeNode<PortalModuleContent | NavigationGroup>[] {
   const userGroups = groups.filter((g) => g.category === 'user-settings');
-  const userEps = entryPoints.filter((ep) => ep.category === 'user-settings');
+  const userEps = moduleContents.filter((ep) => ep.category === 'user-settings');
 
   return buildTree(userGroups, userEps);
 }
 
 function buildTree(
-  groups: EntryPointGroup[],
-  entryPoints: PortalEntryPoint[],
-): TreeNode<PortalEntryPoint | EntryPointGroup>[] {
-  const groupNodes = new Map<string, TreeNode<EntryPointGroup>>();
+  groups: NavigationGroup[],
+  moduleContents: PortalModuleContent[],
+): TreeNode<PortalModuleContent | NavigationGroup>[] {
+  const groupNodes = new Map<string, TreeNode<NavigationGroup>>();
   for (const g of groups) {
     groupNodes.set(g.groupKey, { data: g, children: [] });
   }
 
-  const roots: TreeNode<PortalEntryPoint | EntryPointGroup>[] = [];
+  const roots: TreeNode<PortalModuleContent | NavigationGroup>[] = [];
   for (const g of groups) {
     const node = groupNodes.get(g.groupKey)!;
     if (g.parentKey && groupNodes.has(g.parentKey)) {
@@ -55,8 +55,8 @@ function buildTree(
     }
   }
 
-  for (const ep of entryPoints) {
-    const node: TreeNode<PortalEntryPoint | EntryPointGroup> = { data: ep, children: [] };
+  for (const ep of moduleContents) {
+    const node: TreeNode<PortalModuleContent | NavigationGroup> = { data: ep, children: [] };
     if (ep.groupKey && groupNodes.has(ep.groupKey)) {
       groupNodes.get(ep.groupKey)!.children.push(node);
     } else {

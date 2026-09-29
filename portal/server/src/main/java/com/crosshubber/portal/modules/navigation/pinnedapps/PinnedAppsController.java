@@ -74,7 +74,7 @@ public class PinnedAppsController {
     String decoded = java.net.URLDecoder.decode(ref, java.nio.charset.StandardCharsets.UTF_8);
     if (!decoded.matches(Keys.REF_RE)) {
       return ResponseEntity.badRequest()
-          .body(Map.of("error", "ref must be of the form \"moduleKey:entryKey\""));
+          .body(Map.of("error", "ref must be of the form \"moduleKey:contentKey\""));
     }
     pinnedAppsService.unpinRef(user.sub(), decoded);
     return ResponseEntity.ok(Map.of("ok", true));

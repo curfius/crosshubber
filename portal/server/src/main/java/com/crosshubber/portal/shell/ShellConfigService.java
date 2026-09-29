@@ -18,13 +18,13 @@ import org.springframework.stereotype.Service;
 import com.crosshubber.portal.common.JsonUtils;
 import com.crosshubber.portal.common.Roles;
 import com.crosshubber.portal.config.PortalProperties;
-import com.crosshubber.portal.modules.registry.dto.EntryPointDto;
-import com.crosshubber.portal.modules.registry.dto.EntryPointGroupDto;
-import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupEntity;
-import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupRepository;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointsService;
+import com.crosshubber.portal.modules.navigation.groups.NavigationGroupDto;
+import com.crosshubber.portal.modules.navigation.groups.NavigationGroupEntity;
+import com.crosshubber.portal.modules.navigation.groups.NavigationGroupRepository;
+import com.crosshubber.portal.modules.registry.dto.ModuleContentDto;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentsService;
 import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
 import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
 import com.crosshubber.portal.modules.usersettings.scopes.UserSettingsRepository;
@@ -35,7 +35,7 @@ import com.crosshubber.portal.shell.dto.ShellUserDto;
 
 /**
  * Aggregates the authenticated user's shell config for {@code GET /api/config} triple filtering:
- * visible modules -> allowed groups -> visible entry points.
+ * visible modules -> allowed groups -> visible module content.
  */
 @Service
 public class ShellConfigService {
@@ -46,8 +46,8 @@ public class ShellConfigService {
       List.of("applications", "settings", "features", "user-settings");
 
   private final ModuleRepository moduleRepo;
-  private final EntryPointRepository entryPointRepo;
-  private final EntryPointGroupRepository groupRepo;
+  private final ModuleContentRepository contentRepo;
+  private final NavigationGroupRepository groupRepo;
   private final UserSettingsRepository userSettingsRepo;
   private final JsonUtils jsonUtils;
   private final PortalProperties props;
@@ -60,13 +60,13 @@ public class ShellConfigService {
 
   public ShellConfigService(
       ModuleRepository moduleRepo,
-      EntryPointRepository entryPointRepo,
-      EntryPointGroupRepository groupRepo,
+      ModuleContentRepository contentRepo,
+      NavigationGroupRepository groupRepo,
       UserSettingsRepository userSettingsRepo,
       JsonUtils jsonUtils,
       PortalProperties props) {
     this.moduleRepo = moduleRepo;
-    this.entryPointRepo = entryPointRepo;
+    this.contentRepo = contentRepo;
     this.groupRepo = groupRepo;
     this.userSettingsRepo = userSettingsRepo;
     this.jsonUtils = jsonUtils;
@@ -79,10 +79,10 @@ public class ShellConfigService {
     log.info("[portal] /api/config for user={} roles={}", user.name(), userRoles);
 
     Set<String> visibleModuleKeys = visibleModuleKeys(userRoles);
-    Map<String, EntryPointGroupEntity> allowedGroups = allowedGroups(userRoles);
-    List<EntryPointDto> visibleEps =
-        visibleEntryPoints(userRoles, visibleModuleKeys, allowedGroups);
-    List<EntryPointGroupDto> usedGroups = usedGroupsDto(visibleEps, allowedGroups);
+    Map<String, NavigationGroupEntity> allowedGroups = allowedGroups(userRoles);
+    List<ModuleContentDto> visibleEps =
+        visibleModuleContents(userRoles, visibleModuleKeys, allowedGroups);
+    List<NavigationGroupDto> usedGroups = usedGroupsDto(visibleEps, allowedGroups);
 
     return new ShellConfigDto(
         new ShellUserDto(user.sub(), user.name(), user.email(), userRoles),
@@ -92,7 +92,7 @@ public class ShellConfigService {
         services());
   }
 
-  /** Active modules whose role list matches the user — single {@code findAll}, key set result. */
+  /** Active modules whose role list matches the user â€” single {@code findAll}, key set result. */
   private Set<String> visibleModuleKeys(List<String> userRoles) {
     Set<String> keys = new LinkedHashSet<>();
     for (ModuleEntity m : moduleRepo.findAll()) {
@@ -106,12 +106,12 @@ public class ShellConfigService {
 
   /**
    * Groups whose role list matches the user, keyed by {@code group_key} in find order. Nav-tree
-   * hidden sections (and their descendants) are removed from the runtime view — entry points
+   * hidden sections (and their descendants) are removed from the runtime view â€” module content
    * referencing them fall away with the same rule used for role-blocked groups.
    */
-  private Map<String, EntryPointGroupEntity> allowedGroups(List<String> userRoles) {
-    Map<String, EntryPointGroupEntity> byKey = new LinkedHashMap<>();
-    for (EntryPointGroupEntity g : groupRepo.findAll()) {
+  private Map<String, NavigationGroupEntity> allowedGroups(List<String> userRoles) {
+    Map<String, NavigationGroupEntity> byKey = new LinkedHashMap<>();
+    for (NavigationGroupEntity g : groupRepo.findAll()) {
       if (Roles.hasAnyRole(userRoles, Roles.parse(g.getRoles()))) {
         byKey.put(g.getGroupKey(), g);
       }
@@ -119,13 +119,13 @@ public class ShellConfigService {
     Set<String> hiddenKeys =
         byKey.values().stream()
             .filter(g -> Boolean.TRUE.equals(g.getHidden()))
-            .map(EntryPointGroupEntity::getGroupKey)
+            .map(NavigationGroupEntity::getGroupKey)
             .collect(Collectors.toSet());
     if (!hiddenKeys.isEmpty()) {
       boolean changed = true;
       while (changed) {
         changed = false;
-        for (EntryPointGroupEntity g : List.copyOf(byKey.values())) {
+        for (NavigationGroupEntity g : List.copyOf(byKey.values())) {
           if (g.getParentKey() != null
               && hiddenKeys.contains(g.getParentKey())
               && byKey.containsKey(g.getGroupKey())) {
@@ -140,16 +140,16 @@ public class ShellConfigService {
   }
 
   /**
-   * Entry points visible to the user: module visible + active + known category + role match + group
-   * allowed (or no group). Category filter excludes admin-settings (admin settings are reachable
-   * only via their own routes). Sorted by category order, then sort_order, then name.
+   * Module content visible to the user: module visible + active + known category + role match +
+   * group allowed (or no group). Category filter excludes admin-settings (admin settings are
+   * reachable only via their own routes). Sorted by category order, then sort_order, then name.
    */
-  private List<EntryPointDto> visibleEntryPoints(
+  private List<ModuleContentDto> visibleModuleContents(
       List<String> userRoles,
       Set<String> visibleModuleKeys,
-      Map<String, EntryPointGroupEntity> allowedGroups) {
-    List<EntryPointDto> visible = new ArrayList<>();
-    for (EntryPointEntity ep : entryPointRepo.findAll()) {
+      Map<String, NavigationGroupEntity> allowedGroups) {
+    List<ModuleContentDto> visible = new ArrayList<>();
+    for (ModuleContentEntity ep : contentRepo.findAll()) {
       if (!visibleModuleKeys.contains(ep.getModuleKey())) {
         continue;
       }
@@ -170,34 +170,34 @@ public class ShellConfigService {
       if (ep.getGroupKey() != null && !allowedGroups.containsKey(ep.getGroupKey())) {
         continue;
       }
-      visible.add(EntryPointsService.toOutput(ep));
+      visible.add(ModuleContentsService.toOutput(ep));
     }
     visible.sort(BY_CATEGORY_THEN_ORDER_THEN_NAME);
     return visible;
   }
 
-  /** Group DTOs actually referenced by the visible entry points, sorted by sort_order, name. */
-  private List<EntryPointGroupDto> usedGroupsDto(
-      List<EntryPointDto> visibleEps, Map<String, EntryPointGroupEntity> allowedGroups) {
+  /** Group DTOs actually referenced by the visible module content, sorted by sort_order, name. */
+  private List<NavigationGroupDto> usedGroupsDto(
+      List<ModuleContentDto> visibleEps, Map<String, NavigationGroupEntity> allowedGroups) {
     Set<String> referencedKeys =
         visibleEps.stream()
-            .map(EntryPointDto::groupKey)
+            .map(ModuleContentDto::groupKey)
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
     return allowedGroups.values().stream()
         .filter(g -> referencedKeys.contains(g.getGroupKey()))
-        .map(EntryPointGroupDto::fromEntity)
+        .map(NavigationGroupDto::fromEntity)
         .sorted(BY_ORDER_THEN_NAME)
         .toList();
   }
 
-  private static final Comparator<EntryPointDto> BY_CATEGORY_THEN_ORDER_THEN_NAME =
-      Comparator.comparingInt((EntryPointDto ep) -> CATEGORY_ORDER.indexOf(ep.category()))
-          .thenComparingInt(EntryPointDto::orderOf)
+  private static final Comparator<ModuleContentDto> BY_CATEGORY_THEN_ORDER_THEN_NAME =
+      Comparator.comparingInt((ModuleContentDto ep) -> CATEGORY_ORDER.indexOf(ep.category()))
+          .thenComparingInt(ModuleContentDto::orderOf)
           .thenComparing(ep -> ep.name(), String.CASE_INSENSITIVE_ORDER);
 
-  private static final Comparator<EntryPointGroupDto> BY_ORDER_THEN_NAME =
-      Comparator.comparingInt(EntryPointGroupDto::orderOf)
+  private static final Comparator<NavigationGroupDto> BY_ORDER_THEN_NAME =
+      Comparator.comparingInt(NavigationGroupDto::orderOf)
           .thenComparing(g -> g.name(), String.CASE_INSENSITIVE_ORDER);
 
   /** User settings {@code general} scope as a JSON object (or empty). */

@@ -128,15 +128,15 @@ describe('WorkbenchService workspace persistence', () => {
   });
 
   it('saveSessionSnapshot persists home state to sessionStorage', () => {
-    wb.setEntryPoints([]);
+    wb.setModuleContents([]);
     wb.openApp({
       moduleKey: 'portal-dashboard',
-      entryKey: 'main',
+      contentKey: 'main',
       category: 'applications',
       name: 'Dashboard',
       type: 'iframe',
       url: 'https://dashboard.example.com',
-      parentEntryKey: null,
+      parentContentKey: null,
       groupKey: null,
       sortOrder: 0,
     });

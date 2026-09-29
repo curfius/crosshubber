@@ -198,7 +198,7 @@ export class Bridge {
   private isOriginAllowed(origin: string): boolean {
     if (!origin || origin === 'null') return false;
     if (origin === window.location.origin) return true;
-    for (const ep of this.wb.getEntryPoints()) {
+    for (const ep of this.wb.getModuleContents()) {
       const raw = ep.type === 'iframe' ? ep.url : ep.entryUrl;
       if (!raw) continue;
       try {
@@ -213,7 +213,7 @@ export class Bridge {
   private moduleAllowsOrigin(moduleKey: string, origin: string): boolean {
     const portal = window.location.origin;
     let registered = false;
-    for (const ep of this.wb.getEntryPoints()) {
+    for (const ep of this.wb.getModuleContents()) {
       if (ep.moduleKey !== moduleKey) continue;
       if (ep.type !== 'iframe' && ep.type !== 'mfe') continue;
       registered = true;

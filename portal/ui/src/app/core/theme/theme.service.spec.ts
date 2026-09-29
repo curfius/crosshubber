@@ -75,3 +75,63 @@ describe('ThemeService persistence precedence', () => {
     expect(updateMock).not.toHaveBeenCalled();
   });
 });
+
+describe('ThemeService tenant policy', () => {
+  let updateMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    localStorage.clear();
+    document.documentElement.removeAttribute('data-theme');
+    updateMock = vi.fn(async () => ({}));
+    TestBed.configureTestingModule({
+      providers: [{ provide: UserSettingsService, useValue: { update: updateMock } }],
+    });
+  });
+
+  it('narrows the selectable set and switches an out-of-policy theme to the tenant default', () => {
+    localStorage.setItem(STORAGE_KEY, 'nord');
+    const svc = TestBed.inject(ThemeService);
+    svc.setPolicy({ defaultTheme: 'dracula', enabledThemes: ['dracula', 'light'] });
+    expect(svc.available().map((t) => t.value)).toEqual(['light', 'dracula']);
+    expect(svc.defaultTheme()).toBe('dracula');
+    expect(svc.theme()).toBe('dracula');
+    expect(theme()).toBe('dracula');
+    expect(updateMock).toHaveBeenCalledWith('general', { theme: 'dracula' });
+  });
+
+  it('keeps a theme that is inside the policy', () => {
+    localStorage.setItem(STORAGE_KEY, 'light');
+    const svc = TestBed.inject(ThemeService);
+    svc.setPolicy({ defaultTheme: 'dracula', enabledThemes: ['dracula', 'light'] });
+    expect(svc.theme()).toBe('light');
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
+  it('ignores an unknown defaultTheme and falls back inside the enabled set', () => {
+    const svc = TestBed.inject(ThemeService);
+    svc.setPolicy({ defaultTheme: 'not-a-theme', enabledThemes: ['light', 'nord'] });
+    expect(svc.defaultTheme()).toBe('light');
+  });
+
+  it('an enabledThemes set matching nothing keeps the full catalog', () => {
+    const svc = TestBed.inject(ThemeService);
+    svc.setPolicy({ enabledThemes: ['bogus-one', 'bogus-two'] });
+    expect(svc.available().length).toBeGreaterThan(2);
+  });
+
+  it('a null policy is a no-op (full catalog, code default)', () => {
+    localStorage.setItem(STORAGE_KEY, 'nord');
+    const svc = TestBed.inject(ThemeService);
+    svc.setPolicy(null);
+    expect(svc.theme()).toBe('nord');
+    expect(svc.defaultTheme()).toBe(DEFAULT_THEME);
+  });
+
+  it('setTheme rejects values outside the policy', () => {
+    const svc = TestBed.inject(ThemeService);
+    svc.setPolicy({ defaultTheme: 'dracula', enabledThemes: ['dracula', 'light'] });
+    svc.setTheme('nord');
+    expect(svc.theme()).toBe('dracula');
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('dracula');
+  });
+});

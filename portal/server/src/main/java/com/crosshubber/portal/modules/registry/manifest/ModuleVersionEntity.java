@@ -14,9 +14,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
-/** JPA entity for {@code module_versions} table. */
+/** JPA entity for {@code registry_module_versions} table. */
 @Entity
-@Table(name = "module_versions")
+@Table(name = "registry_module_versions")
 public class ModuleVersionEntity {
 
   @Id

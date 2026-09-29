@@ -7,13 +7,13 @@ import type { NavigationLayout, LayoutSectionNode, LayoutNode, LayoutItemNode } 
 import { NavigationAdminService } from '../../../core/navigation/navigation-admin.service';
 import { NavigationStore } from '../../../core/navigation/navigation.store';
 import { WorkbenchService } from '../../features/workspaces/workspaces.store';
-import type { PortalEntryPoint } from '../../../core/models';
-import { entryPointId } from '../../../core/models';
+import type { PortalModuleContent } from '../../../core/models';
+import { moduleContentId } from '../../../core/models';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
 function layoutToTree(
   sections: LayoutNode[],
-  resolve: (ref: string) => PortalEntryPoint | undefined,
+  resolve: (ref: string) => PortalModuleContent | undefined,
 ): EditableTreeNode[] {
   return sections.map((node) => {
     if (node.type === 'item') {
@@ -95,9 +95,9 @@ export class PortalNavSettings implements OnInit {
   protected readonly dndNodes = computed(() => this.tree());
 
   private readonly appsByRef = computed(() => {
-    const map = new Map<string, PortalEntryPoint>();
-    for (const ep of this.wb.getEntryPoints()) {
-      if (ep.category === 'applications' && ep.type !== 'link') map.set(entryPointId(ep), ep);
+    const map = new Map<string, PortalModuleContent>();
+    for (const ep of this.wb.getModuleContents()) {
+      if (ep.category === 'applications' && ep.type !== 'link') map.set(moduleContentId(ep), ep);
     }
     return map;
   });

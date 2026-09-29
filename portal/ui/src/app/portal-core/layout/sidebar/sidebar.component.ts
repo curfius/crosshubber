@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, input, output, signal, viewChild } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import type { PortalEntryPoint, WorkspaceMeta } from '../../../core/models';
-import { entryPointId } from '../../../core/models';
+import type { PortalModuleContent, WorkspaceMeta } from '../../../core/models';
+import { moduleContentId } from '../../../core/models';
 import { I18nService } from '../../../core/i18n/i18n.service';
+import { BrandingService } from '../../../core/branding/branding.service';
 import type { PinnedNode } from '../../../core/navigation/navigation.models';
 import { NavigationStore } from '../../../core/navigation/navigation.store';
 import { WorkbenchService } from '../../features/workspaces/workspaces.store';
@@ -16,11 +17,11 @@ import { WorkbenchService } from '../../features/workspaces/workspaces.store';
   styleUrl: './sidebar.component.css',
 })
 export class Sidebar {
-  readonly entryPoints = input<PortalEntryPoint[]>([]);
+  readonly moduleContents = input<PortalModuleContent[]>([]);
   readonly workspaces = input<WorkspaceMeta[]>([]);
   readonly activeWorkspace = input<string | null>(null);
   readonly homeClick = output<void>();
-  readonly entryPointClick = output<PortalEntryPoint>();
+  readonly entryPointClick = output<PortalModuleContent>();
   readonly workspaceClick = output<string>();
   readonly workspaceRename = output<{ old: string; newName: string }>();
   readonly workspaceDelete = output<string>();
@@ -31,6 +32,7 @@ export class Sidebar {
   readonly chatClick = output<void>();
 
   protected readonly i18n = inject(I18nService);
+  protected readonly branding = inject(BrandingService);
   protected readonly nav = inject(NavigationStore);
   private readonly wb = inject(WorkbenchService);
 
@@ -106,21 +108,21 @@ export class Sidebar {
   }
 
   /** Picked quick-access apps, refs resolved to visible entry points. */
-  protected readonly pickedApps = computed<PortalEntryPoint[]>(() => {
-    const byRef = new Map<string, PortalEntryPoint>();
-    for (const ep of this.entryPoints()) {
-      if (ep.category === 'applications') byRef.set(entryPointId(ep), ep);
+  protected readonly pickedApps = computed<PortalModuleContent[]>(() => {
+    const byRef = new Map<string, PortalModuleContent>();
+    for (const ep of this.moduleContents()) {
+      if (ep.category === 'applications') byRef.set(moduleContentId(ep), ep);
     }
     return this.sidebarSettings()
       .apps.map((ref) => byRef.get(ref))
-      .filter((ep): ep is PortalEntryPoint => !!ep);
+      .filter((ep): ep is PortalModuleContent => !!ep);
   });
 
   /** Resolves a pinned-tree item ref to a visible entry point. */
-  protected resolveRef(ref: string): PortalEntryPoint | null {
+  protected resolveRef(ref: string): PortalModuleContent | null {
     const idx = ref.indexOf(':');
     if (idx <= 0) return null;
-    const ep = this.wb.findEntryPoint(ref.slice(0, idx), ref.slice(idx + 1));
+    const ep = this.wb.findModuleContent(ref.slice(0, idx), ref.slice(idx + 1));
     return ep && ep.category === 'applications' ? ep : null;
   }
 
@@ -144,7 +146,7 @@ export class Sidebar {
     this.pinned.update((v) => !v);
   }
 
-  epId(ep: PortalEntryPoint): string {
-    return entryPointId(ep);
+  epId(ep: PortalModuleContent): string {
+    return moduleContentId(ep);
   }
 }

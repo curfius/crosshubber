@@ -3,7 +3,7 @@ import { By } from '@angular/platform-browser';
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { AppArea } from './tab-area.component';
 import { WorkbenchService } from '../features/workspaces/workspaces.store';
-import type { PortalEntryPoint } from '../../core/models';
+import type { PortalModuleContent } from '../../core/models';
 
 class ResizeObserverStub {
   observe(): void {}
@@ -11,15 +11,15 @@ class ResizeObserverStub {
   disconnect(): void {}
 }
 
-function iframeEp(key: string): PortalEntryPoint {
+function iframeEp(key: string): PortalModuleContent {
   return {
     moduleKey: key,
-    entryKey: 'main',
+    contentKey: 'main',
     category: 'applications',
     name: key,
     type: 'iframe',
     url: `https://${key}.example.com/index.html`,
-    parentEntryKey: null,
+    parentContentKey: null,
     groupKey: null,
     sortOrder: 0,
   };
@@ -34,10 +34,10 @@ describe('AppArea keep-alive tabs', () => {
   it('renders every tab once, hides+inerts inactive ones, and keeps them mounted across switches', () => {
     TestBed.configureTestingModule({ imports: [AppArea] });
     const wb = TestBed.inject(WorkbenchService);
-    wb.setEntryPoints([iframeEp('alpha'), iframeEp('beta'), iframeEp('gamma')]);
-    wb.openApp(wb.getEntryPoints()[0]);
-    wb.openApp(wb.getEntryPoints()[1]);
-    wb.openApp(wb.getEntryPoints()[2]);
+    wb.setModuleContents([iframeEp('alpha'), iframeEp('beta'), iframeEp('gamma')]);
+    wb.openApp(wb.getModuleContents()[0]);
+    wb.openApp(wb.getModuleContents()[1]);
+    wb.openApp(wb.getModuleContents()[2]);
     const gid = Object.keys(wb.groups())[0];
     const tabs = wb.groups()[gid].tabs;
 
@@ -47,7 +47,7 @@ describe('AppArea keep-alive tabs', () => {
     fixture.componentRef.setInput('primaryGroupId', gid);
     fixture.componentRef.setInput('editMode', false);
     fixture.componentRef.setInput('hideSingleTabToolbar', false);
-    fixture.componentRef.setInput('allEntryPoints', []);
+    fixture.componentRef.setInput('allModuleContents', []);
     fixture.detectChanges();
 
     // All tabs stay mounted (keep-alive), not just the active one.

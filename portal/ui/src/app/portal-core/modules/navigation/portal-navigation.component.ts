@@ -5,8 +5,8 @@ import { WorkbenchService } from '../../features/workspaces/workspaces.store';
 import { NavigationStore } from '../../../core/navigation/navigation.store';
 import { NavigationAdminService } from '../../../core/navigation/navigation-admin.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
-import type { PortalEntryPoint } from '../../../core/models';
-import { entryPointId } from '../../../core/models';
+import type { PortalModuleContent } from '../../../core/models';
+import { moduleContentId } from '../../../core/models';
 import type { NavigationLayout, LayoutNode, LayoutSectionNode, LayoutItemNode } from '../../../core/navigation/navigation.models';
 
 /**
@@ -30,24 +30,24 @@ export class PortalNavigation implements OnInit {
   protected readonly search = signal('');
   protected readonly collapsed = signal<Set<string>>(new Set());
 
-  protected readonly entryPoints = signal<PortalEntryPoint[]>([]);
+  protected readonly moduleContents = signal<PortalModuleContent[]>([]);
 
   /** refs visible to the current user (role-filtered /api/config data). */
   private readonly refToEp = computed(() => {
-    const map = new Map<string, PortalEntryPoint>();
-    for (const ep of this.entryPoints()) {
-      if (ep.category === 'applications') map.set(entryPointId(ep), ep);
+    const map = new Map<string, PortalModuleContent>();
+    for (const ep of this.moduleContents()) {
+      if (ep.category === 'applications') map.set(moduleContentId(ep), ep);
     }
     return map;
   });
 
-  protected readonly pinnedApps = computed<PortalEntryPoint[]>(() => {
+  protected readonly pinnedApps = computed<PortalModuleContent[]>(() => {
     if (!this.layout()?.pinnedSectionEnabled) return [];
     if (!this.nav.features().pinnedAppsEnabled) return [];
     const q = this.search().toLowerCase();
     return this.nav.pinnedRefs()
       .map((ref) => this.refToEp().get(ref))
-      .filter((ep): ep is PortalEntryPoint => !!ep && this.matches(ep, q));
+      .filter((ep): ep is PortalModuleContent => !!ep && this.matches(ep, q));
   });
 
   protected readonly sections = computed<LayoutNode[]>(() => {
@@ -71,19 +71,19 @@ export class PortalNavigation implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
-    this.entryPoints.set(this.wb.getEntryPoints());
+    this.moduleContents.set(this.wb.getModuleContents());
     if (!this.nav.loaded()) await this.nav.load();
     const layout = await this.admin.loadLayout();
     if (layout) this.layout.set(layout);
   }
 
-  protected isPinned(ep: PortalEntryPoint): boolean {
-    return this.nav.isPinned(entryPointId(ep));
+  protected isPinned(ep: PortalModuleContent): boolean {
+    return this.nav.isPinned(moduleContentId(ep));
   }
 
-  protected async togglePin(ep: PortalEntryPoint, event: Event): Promise<void> {
+  protected async togglePin(ep: PortalModuleContent, event: Event): Promise<void> {
     event.stopPropagation();
-    await this.nav.togglePin(entryPointId(ep));
+    await this.nav.togglePin(moduleContentId(ep));
   }
 
   protected isCollapsed(id: string): boolean {
@@ -99,15 +99,15 @@ export class PortalNavigation implements OnInit {
     });
   }
 
-  protected epOf(node: LayoutNode): PortalEntryPoint | null {
+  protected epOf(node: LayoutNode): PortalModuleContent | null {
     return node.type === 'item' ? this.refToEp().get((node as LayoutItemNode).ref) ?? null : null;
   }
 
-  protected openApp(ep: PortalEntryPoint): void {
+  protected openApp(ep: PortalModuleContent): void {
     this.wb.openApp(ep);
   }
 
-  protected openInNewTab(ep: PortalEntryPoint, event: Event): void {
+  protected openInNewTab(ep: PortalModuleContent, event: Event): void {
     event.stopPropagation();
     this.wb.openApp(ep, false);
   }
@@ -121,7 +121,7 @@ export class PortalNavigation implements OnInit {
     }
   }
 
-  private matches(ep: PortalEntryPoint, q: string): boolean {
+  private matches(ep: PortalModuleContent, q: string): boolean {
     if (!q) return true;
     return ep.name.toLowerCase().includes(q) || ep.moduleKey.toLowerCase().includes(q);
   }

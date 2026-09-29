@@ -52,10 +52,14 @@
             </div>
           </div>
           <div class="flex shrink-0 items-center gap-3">
+            @if (mod.builtin) {
+            <span class="text-xs text-[var(--portal-text-tertiary)]" [title]="i18n.t('registry.builtinManaged')">{{ i18n.t('registry.builtinManaged') }}</span>
+            } @else {
             <label class="flex items-center gap-2 text-xs text-[var(--portal-text-tertiary)]">
               {{ i18n.t('registry.enabled') }}
               <app-switch [checked]="mod.active" (toggled)="toggleModuleActive(mod, $event)" />
             </label>
+            }
             @if (!isEditing()) {
             <button (click)="startEditing()" [title]="i18n.t('registry.tooltip.editModule')"
               class="cursor-pointer rounded-md px-3 py-1.5 text-xs text-[var(--portal-text-secondary)] transition hover:bg-[var(--portal-bg-hover)]">
@@ -127,7 +131,7 @@
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 class="ds-heading-3 text-sm">{{ i18n.t('registry.section.content') }}</h2>
             @if (isEditing()) {
-              <button (click)="newEntryPoint()"
+              <button (click)="newModuleContent()"
                 class="ds-btn ds-btn-accent ds-btn-sm">{{ i18n.t('registry.action.addContent') }}</button>
             } @else {
               <span class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('registry.hint.enableEditToModify') }}</span>
@@ -206,7 +210,7 @@
               }
             }
           } @else {
-            <!-- Read-only mode: show activeManifest content + legacy entryPoints -->
+            <!-- Read-only mode: show activeManifest content + legacy moduleContents -->
             @let active = activeManifest();
             @if (active) {
               @for (cat of contentCategories; track cat) {
@@ -230,7 +234,7 @@
                           <td class="px-4 py-3 text-xs font-medium">{{ entry.name }}</td>
                           <td class="px-4 py-3 font-mono text-xs">{{ entry.key }}</td>
                           <td class="px-4 py-3"><span class="rounded-full border px-2.5 py-0.5 text-[11px] font-medium" [class]="typeBadge(entry.type)">{{ entry.type }}</span></td>
-                          <td class="px-4 py-3 font-mono text-xs max-w-48 truncate">{{ contentTarget(entry, active.baseUrl) }}</td>
+                          <td class="px-4 py-3 font-mono text-xs max-w-48 truncate">{{ manifestContentTarget(entry, active.baseUrl) }}</td>
                         </tr>
                         }
                       </tbody>
@@ -245,8 +249,8 @@
                 </div>
               }
             } @else {
-              <!-- Fallback to legacy entryPoints table when no manifest -->
-              @if (entryPoints().length > 0) {
+              <!-- Fallback to legacy moduleContents table when no manifest -->
+              @if (moduleContents().length > 0) {
               <div class="ds-table-wrapper mt-3 overflow-x-auto">
                 <table class="ds-table w-full min-w-[720px]">
                   <thead>
@@ -259,13 +263,13 @@
                     </tr>
                   </thead>
                   <tbody>
-                    @for (ep of entryPoints(); track ep.id) {
+                    @for (ep of moduleContents(); track ep.id) {
                     <tr>
                       <td class="px-4 py-3 text-xs">{{ ep.name }}</td>
-                      <td class="px-4 py-3 font-mono text-xs">{{ ep.entryKey }}</td>
+                      <td class="px-4 py-3 font-mono text-xs">{{ ep.contentKey }}</td>
                       <td class="px-4 py-3"><span class="ds-badge ds-badge-default uppercase">{{ ep.category }}</span></td>
                       <td class="px-4 py-3"><span class="rounded-full border px-2.5 py-0.5 text-[11px] font-medium" [class]="typeBadge(ep.type)">{{ ep.type }}</span></td>
-                      <td class="px-4 py-3 font-mono text-xs max-w-48 truncate">{{ epTarget(ep) }}</td>
+                      <td class="px-4 py-3 font-mono text-xs max-w-48 truncate">{{ contentTarget(ep) }}</td>
                     </tr>
                     }
                   </tbody>
@@ -747,7 +751,7 @@
 <div class="ds-modal-backdrop">
   <div class="ds-modal ds-modal-lg w-full">
     <div class="ds-modal-header">
-      <h2 class="ds-modal-title">{{ editingEpId() ? i18n.t('registry.content.edit') : i18n.t('registry.content.new') }}</h2>
+      <h2 class="ds-modal-title">{{ editingContentId() ? i18n.t('registry.content.edit') : i18n.t('registry.content.new') }}</h2>
       <button (click)="closeEpForm()" class="ds-modal-close" [attr.aria-label]="i18n.t('registry.action.close')">&times;</button>
     </div>
     <div class="ds-modal-body">
@@ -755,8 +759,8 @@
         <div class="relative pb-0.5">
           <button type="button" (click)="showColorPicker.set(!showColorPicker())"
             class="flex size-9 cursor-pointer items-center justify-center rounded-full text-sm font-semibold text-white transition hover:ring-2 hover:ring-[var(--portal-border-strong)]"
-            [style.background]="epForm().color ?? 'var(--portal-border-strong)'" [title]="i18n.t('registry.tooltip.changeColor')">
-            {{ (epForm().name || '?') | slice:0:1 | uppercase }}
+            [style.background]="contentForm().color ?? 'var(--portal-border-strong)'" [title]="i18n.t('registry.tooltip.changeColor')">
+            {{ (contentForm().name || '?') | slice:0:1 | uppercase }}
           </button>
           @if (showColorPicker()) {
           <div class="absolute left-0 top-11 z-10 flex w-44 flex-wrap gap-2 rounded-xl border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] p-3 shadow-xl">
@@ -764,7 +768,7 @@
             <button type="button" (click)="selectColor(c)"
               class="size-6 cursor-pointer rounded-full border-2 transition"
               [style.background]="c"
-              [class]="epForm().color === c ? 'border-[var(--portal-text-primary)]' : 'border-transparent'"
+              [class]="contentForm().color === c ? 'border-[var(--portal-text-primary)]' : 'border-transparent'"
               [attr.aria-label]="i18n.t('registry.aria.color', { color: c })"></button>
             }
           </div>
@@ -772,32 +776,32 @@
         </div>
         <label class="block min-w-0 flex-1">
           <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.displayName') }}</span>
-          <input [value]="epForm().name" (input)="onNameInput($any($event.target).value)"
+          <input [value]="contentForm().name" (input)="onNameInput($any($event.target).value)"
             class="ds-input mt-1" />
         </label>
         <label class="flex shrink-0 flex-col items-center gap-1 pb-0.5">
           <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.active') }}</span>
-          <app-switch [checked]="epForm().active ?? true" (toggled)="setEpField('active', $event)" />
+          <app-switch [checked]="contentForm().active ?? true" (toggled)="setContentField('active', $event)" />
         </label>
       </div>
 
       <div class="flex items-end gap-3">
         <label class="block min-w-0 flex-1">
           <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.key') }}</span>
-          <input [value]="epForm().entryKey" (input)="setEpField('entryKey', $any($event.target).value)" [disabled]="!!editingEpId()"
+          <input [value]="contentForm().contentKey" (input)="setContentField('contentKey', $any($event.target).value)" [disabled]="!!editingContentId()"
             class="ds-input mt-1 font-mono disabled:opacity-50" />
         </label>
-        @if (epForm().category === 'applications') {
+        @if (contentForm().category === 'applications') {
         <label class="flex shrink-0 flex-col items-center gap-1 pb-0.5">
           <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.multiInstance') }}</span>
-          <app-switch [checked]="epForm().multi ?? false" (toggled)="setEpField('multi', $event)" />
+          <app-switch [checked]="contentForm().multi ?? false" (toggled)="setContentField('multi', $event)" />
         </label>
         }
       </div>
 
       <label class="block">
         <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.description') }}</span>
-        <textarea rows="3" [value]="epForm().description ?? ''" (input)="setEpField('description', $any($event.target).value || undefined)"
+        <textarea rows="3" [value]="contentForm().description ?? ''" (input)="setContentField('description', $any($event.target).value || undefined)"
           [placeholder]="i18n.t('registry.placeholder.description')"
           class="ds-textarea mt-1 placeholder:text-[var(--portal-input-placeholder)]"></textarea>
       </label>
@@ -807,7 +811,7 @@
       <div class="grid grid-cols-2 gap-3">
         <label class="block">
           <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.portalCategory') }}</span>
-          <select [value]="epForm().category" (change)="setEpCategory($any($event.target).value)"
+          <select [value]="contentForm().category" (change)="setEpCategory($any($event.target).value)"
             class="ds-select mt-1">
             <option value="applications">applications</option>
             <option value="settings">settings</option>
@@ -817,7 +821,7 @@
         </label>
         <label class="block">
           <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.type') }}</span>
-          <select [value]="epForm().type" (change)="setEpType($any($event.target).value)"
+          <select [value]="contentForm().type" (change)="setEpType($any($event.target).value)"
             class="ds-select mt-1">
             <option value="iframe">iframe</option>
             <option value="embedded">embedded</option>
@@ -827,33 +831,33 @@
         </label>
       </div>
 
-      @if (epForm().type === 'iframe' || epForm().type === 'link') {
+      @if (contentForm().type === 'iframe' || contentForm().type === 'link') {
       <label class="block">
         <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.url') }}</span>
-        <input [value]="epForm().url" (input)="setEpField('url', $any($event.target).value)"
+        <input [value]="contentForm().url" (input)="setContentField('url', $any($event.target).value)"
           placeholder="https://example.com"
           class="ds-input mt-1 font-mono placeholder:text-[var(--portal-input-placeholder)]" />
       </label>
-      @if (epForm().type === 'iframe') {
+      @if (contentForm().type === 'iframe') {
       <div class="grid grid-cols-2 gap-3">
         <label class="block">
           <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">sandbox</span>
-          <input [value]="epForm().sandbox" (input)="setEpField('sandbox', $any($event.target).value)"
+          <input [value]="contentForm().sandbox" (input)="setContentField('sandbox', $any($event.target).value)"
             placeholder="allow-scripts, allow-popups, allow-forms"
             class="ds-input mt-1 font-mono placeholder:text-[var(--portal-input-placeholder)]" />
         </label>
         <label class="block">
           <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">allow</span>
-          <input [value]="epForm().allow" (input)="setEpField('allow', $any($event.target).value)"
+          <input [value]="contentForm().allow" (input)="setContentField('allow', $any($event.target).value)"
             placeholder="clipboard-write; camera"
             class="ds-input mt-1 font-mono placeholder:text-[var(--portal-input-placeholder)]" />
         </label>
       </div>
       }
-      } @else if (epForm().type === 'embedded') {
+      } @else if (contentForm().type === 'embedded') {
       <label class="block">
         <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">loadPath</span>
-        <select [value]="epForm().loadPath" (change)="setEpField('loadPath', $any($event.target).value)"
+        <select [value]="contentForm().loadPath" (change)="setContentField('loadPath', $any($event.target).value)"
           class="mt-1 w-full ds-select mt-1 font-mono w-full">
           @for (p of loadPaths; track p) {
           <option [value]="p">{{ p }}</option>
@@ -863,13 +867,13 @@
       } @else {
       <label class="block">
         <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.entryUrl') }}</span>
-        <input [value]="epForm().entryUrl" (input)="setEpField('entryUrl', $any($event.target).value)"
+        <input [value]="contentForm().entryUrl" (input)="setContentField('entryUrl', $any($event.target).value)"
           placeholder="https://cdn.example.com/mfe.js"
           class="ds-input mt-1 font-mono placeholder:text-[var(--portal-input-placeholder)]" />
       </label>
       <label class="block">
         <span class="text-xs font-medium text-[var(--portal-text-tertiary)]">{{ i18n.t('registry.field.element') }}</span>
-        <input [value]="epForm().element" (input)="setEpField('element', $any($event.target).value)"
+        <input [value]="contentForm().element" (input)="setContentField('element', $any($event.target).value)"
           placeholder="mfe-my-app"
           class="ds-input mt-1 font-mono placeholder:text-[var(--portal-input-placeholder)]" />
       </label>
@@ -881,7 +885,7 @@
     </div>
     <div class="ds-modal-footer">
       <button (click)="closeEpForm()" class="ds-btn ds-btn-ghost">{{ i18n.t('registry.action.cancel') }}</button>
-      <button (click)="saveEntryPoint()" [disabled]="busy()" class="ds-btn ds-btn-accent">
+      <button (click)="saveModuleContent()" [disabled]="busy()" class="ds-btn ds-btn-accent">
         {{ busy() ? i18n.t('registry.action.saving') : i18n.t('registry.action.save') }}
       </button>
     </div>
@@ -1325,13 +1329,13 @@
   (cancelled)="cancelRemoveModule()" />
 }
 
-@if (pendingDeleteEp(); as ep) {
+@if (pendingDeleteContent(); as ep) {
 <app-confirm-dialog
   [title]="i18n.t('registry.confirm.deleteContent')"
   [message]="i18n.t('registry.confirm.deleteContentMessage', { name: ep.name })"
   [confirmLabel]="i18n.t('registry.confirm.delete')"
-  (confirmed)="confirmRemoveEntryPoint()"
-  (cancelled)="cancelRemoveEntryPoint()" />
+  (confirmed)="confirmRemoveModuleContent()"
+  (cancelled)="cancelRemoveModuleContent()" />
 }
 
 @if (pendingRollback(); as v) {

@@ -12,11 +12,11 @@ import org.mockito.Mockito;
 import com.crosshubber.portal.common.JsonUtils;
 import com.crosshubber.portal.config.JacksonConfig;
 import com.crosshubber.portal.config.PortalProperties;
-import com.crosshubber.portal.modules.registry.entrypointgroups.EntryPointGroupRepository;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointType;
+import com.crosshubber.portal.modules.navigation.groups.NavigationGroupRepository;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentCategory;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentType;
 import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
 import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
 import com.crosshubber.portal.modules.usersettings.scopes.UserSettingsRepository;
@@ -28,15 +28,15 @@ import tools.jackson.databind.json.JsonMapper;
 class ShellConfigServiceTest {
 
   private final ModuleRepository moduleRepo = Mockito.mock(ModuleRepository.class);
-  private final EntryPointRepository entryPointRepo = Mockito.mock(EntryPointRepository.class);
-  private final EntryPointGroupRepository groupRepo = Mockito.mock(EntryPointGroupRepository.class);
+  private final ModuleContentRepository contentRepo = Mockito.mock(ModuleContentRepository.class);
+  private final NavigationGroupRepository groupRepo = Mockito.mock(NavigationGroupRepository.class);
   private final UserSettingsRepository userSettingsRepo =
       Mockito.mock(UserSettingsRepository.class);
   private final JsonMapper mapper = new JacksonConfig().jsonMapper();
   private final ShellConfigService svc =
       new ShellConfigService(
           moduleRepo,
-          entryPointRepo,
+          contentRepo,
           groupRepo,
           userSettingsRepo,
           new JsonUtils(mapper),
@@ -57,14 +57,14 @@ class ShellConfigServiceTest {
     return m;
   }
 
-  private static EntryPointEntity ep(
-      String moduleKey, String entryKey, EntryPointCategory category) {
-    EntryPointEntity e = new EntryPointEntity();
+  private static ModuleContentEntity ep(
+      String moduleKey, String contentKey, ModuleContentCategory category) {
+    ModuleContentEntity e = new ModuleContentEntity();
     e.setModuleKey(moduleKey);
-    e.setEntryKey(entryKey);
+    e.setContentKey(contentKey);
     e.setCategory(category);
-    e.setName(entryKey);
-    e.setType(EntryPointType.EMBEDDED);
+    e.setName(contentKey);
+    e.setType(ModuleContentType.EMBEDDED);
     e.setSortOrder(0);
     e.setActive(true);
     e.setMulti(false);
@@ -72,16 +72,16 @@ class ShellConfigServiceTest {
   }
 
   @Test
-  void buildConfigFiltersModulesGroupsAndEntryPointsByRole() {
+  void buildConfigFiltersModulesGroupsAndModuleContentsByRole() {
     Mockito.when(moduleRepo.findAll())
         .thenReturn(List.of(module("visible", true, ""), module("other", true, "admin")));
     Mockito.when(groupRepo.findAll()).thenReturn(List.of());
-    Mockito.when(entryPointRepo.findAll())
+    Mockito.when(contentRepo.findAll())
         .thenReturn(
             List.of(
-                ep("visible", "a", EntryPointCategory.APPLICATIONS),
-                ep("other", "b", EntryPointCategory.APPLICATIONS),
-                ep("visible", "c", EntryPointCategory.ADMIN_SETTINGS)));
+                ep("visible", "a", ModuleContentCategory.APPLICATIONS),
+                ep("other", "b", ModuleContentCategory.APPLICATIONS),
+                ep("visible", "c", ModuleContentCategory.ADMIN_SETTINGS)));
     Mockito.when(userSettingsRepo.findByUserId("sub-1")).thenReturn(List.of());
 
     ShellConfigDto config = svc.buildConfig(user());
@@ -89,38 +89,38 @@ class ShellConfigServiceTest {
     assertEquals("sub-1", config.user().sub());
     assertNull(config.user().email());
     assertEquals(List.of("portal-user"), config.user().roles());
-    assertEquals(1, config.entryPoints().size());
-    assertEquals("a", config.entryPoints().get(0).entryKey());
-    assertTrue(config.entryPointGroups().isEmpty());
+    assertEquals(1, config.moduleContents().size());
+    assertEquals("a", config.moduleContents().get(0).contentKey());
+    assertTrue(config.navigationGroups().isEmpty());
     assertTrue(config.preferences().isEmpty());
   }
 
   @Test
-  void buildConfigSortsEntryPointsByCategoryOrderThenSortOrderThenName() {
+  void buildConfigSortsModuleContentsByCategoryOrderThenSortOrderThenName() {
     Mockito.when(moduleRepo.findAll()).thenReturn(List.of(module("m", true, "")));
     Mockito.when(groupRepo.findAll()).thenReturn(List.of());
-    EntryPointEntity zFirst = ep("m", "z", EntryPointCategory.SETTINGS);
+    ModuleContentEntity zFirst = ep("m", "z", ModuleContentCategory.SETTINGS);
     zFirst.setSortOrder(10);
-    EntryPointEntity aSecond = ep("m", "a", EntryPointCategory.SETTINGS);
+    ModuleContentEntity aSecond = ep("m", "a", ModuleContentCategory.SETTINGS);
     aSecond.setSortOrder(20);
-    EntryPointEntity app = ep("m", "app", EntryPointCategory.APPLICATIONS);
-    Mockito.when(entryPointRepo.findAll()).thenReturn(List.of(zFirst, aSecond, app));
+    ModuleContentEntity app = ep("m", "app", ModuleContentCategory.APPLICATIONS);
+    Mockito.when(contentRepo.findAll()).thenReturn(List.of(zFirst, aSecond, app));
     Mockito.when(userSettingsRepo.findByUserId("sub-1")).thenReturn(List.of());
 
     ShellConfigDto config = svc.buildConfig(user());
 
-    List<String> entryKeys =
-        config.entryPoints().stream()
-            .map(com.crosshubber.portal.modules.registry.dto.EntryPointDto::entryKey)
+    List<String> contentKeys =
+        config.moduleContents().stream()
+            .map(com.crosshubber.portal.modules.registry.dto.ModuleContentDto::contentKey)
             .toList();
-    assertEquals(List.of("app", "z", "a"), entryKeys);
+    assertEquals(List.of("app", "z", "a"), contentKeys);
   }
 
   @Test
   void servicesAlwaysIncludePostgresWithNullUrl() {
     Mockito.when(moduleRepo.findAll()).thenReturn(List.of());
     Mockito.when(groupRepo.findAll()).thenReturn(List.of());
-    Mockito.when(entryPointRepo.findAll()).thenReturn(List.of());
+    Mockito.when(contentRepo.findAll()).thenReturn(List.of());
     Mockito.when(userSettingsRepo.findByUserId("sub-1")).thenReturn(List.of());
 
     ShellConfigDto config = svc.buildConfig(user());

@@ -3,8 +3,8 @@ import { Subject } from 'rxjs';
 import type {
   ModulePayload,
   ModuleType,
-  PortalEntryPoint,
-  EntryPointGroup,
+  PortalModuleContent,
+  NavigationGroup,
   EntryCategory,
   PortalModuleManifest,
   VersionOutput,
@@ -23,10 +23,10 @@ export interface ModuleOutput {
   health?: string | null;
 }
 
-export interface EntryPointOutput {
+export interface ModuleContentOutput {
   id: number;
   moduleKey: string;
-  entryKey: string;
+  contentKey: string;
   category: EntryCategory;
   name: string;
   description?: string;
@@ -37,7 +37,7 @@ export interface EntryPointOutput {
   loadPath?: string;
   entryUrl?: string;
   element?: string;
-  parentEntryKey?: string | null;
+  parentContentKey?: string | null;
   groupKey?: string | null;
   sortOrder: number;
   roles?: string[];
@@ -74,7 +74,7 @@ export class RegistryService {
   }
 
   private groupUrl(key: string): string {
-    return `/api/registry/entry-point-groups/${encodeURIComponent(key)}`;
+    return `/api/navigation/groups/${encodeURIComponent(key)}`;
   }
 
   // ── Modules ────────────────────────────────────────────────────────
@@ -105,24 +105,24 @@ export class RegistryService {
     this.changed.next();
   }
 
-  // ── Entry Points ───────────────────────────────────────────────────
+  // ── Module Content ───────────────────────────────────────────────────
 
-  async listAllEntryPoints(): Promise<EntryPointOutput[]> {
-    const body = await this.request('/api/registry/entry-points', undefined, 'unauthorized');
-    return (body as { entryPoints: EntryPointOutput[] }).entryPoints;
+  async listAllModuleContents(): Promise<ModuleContentOutput[]> {
+    const body = await this.request('/api/registry/module-contents', undefined, 'unauthorized');
+    return (body as { moduleContents: ModuleContentOutput[] }).moduleContents;
   }
 
-  async listEntryPoints(moduleKey?: string): Promise<EntryPointOutput[]> {
+  async listModuleContents(moduleKey?: string): Promise<ModuleContentOutput[]> {
     const url = moduleKey
-      ? `/api/registry/entry-points?moduleKey=${encodeURIComponent(moduleKey)}`
-      : '/api/registry/entry-points';
+      ? `/api/registry/module-contents?moduleKey=${encodeURIComponent(moduleKey)}`
+      : '/api/registry/module-contents';
     const body = await this.request(url, undefined, 'unauthorized');
-    return (body as { entryPoints: EntryPointOutput[] }).entryPoints;
+    return (body as { moduleContents: ModuleContentOutput[] }).moduleContents;
   }
 
-  async saveEntryPoint(input: {
+  async saveModuleContent(input: {
     moduleKey: string;
-    entryKey: string;
+    contentKey: string;
     category: EntryCategory;
     name: string;
     description?: string;
@@ -133,36 +133,36 @@ export class RegistryService {
     loadPath?: string;
     entryUrl?: string;
     element?: string;
-    parentEntryKey?: string | null;
+    parentContentKey?: string | null;
     groupKey?: string | null;
     sortOrder?: number;
     active?: boolean;
     color?: string;
     multi?: boolean;
-  }): Promise<EntryPointOutput> {
-    const body = await this.request('/api/registry/entry-points', this.jsonInit(input), 'save failed');
+  }): Promise<ModuleContentOutput> {
+    const body = await this.request('/api/registry/module-contents', this.jsonInit(input), 'save failed');
     this.changed.next();
-    return (body as { entryPoint: EntryPointOutput }).entryPoint;
+    return (body as { moduleContent: ModuleContentOutput }).moduleContent;
   }
 
-  async removeEntryPoint(id: number): Promise<void> {
-    await this.request(`/api/registry/entry-points/${id}`, { method: 'DELETE' }, 'delete failed');
-    this.changed.next();
-  }
-
-  async reorderEntryPoints(ids: number[]): Promise<void> {
-    await this.request('/api/registry/entry-points/reorder', this.jsonInit({ ids }), 'reorder failed');
+  async removeModuleContent(id: number): Promise<void> {
+    await this.request(`/api/registry/module-contents/${id}`, { method: 'DELETE' }, 'delete failed');
     this.changed.next();
   }
 
-  // ── Entry Point Groups ─────────────────────────────────────────────
+  async reorderModuleContents(ids: number[]): Promise<void> {
+    await this.request('/api/registry/module-contents/reorder', this.jsonInit({ ids }), 'reorder failed');
+    this.changed.next();
+  }
 
-  async listGroups(category?: string): Promise<EntryPointGroup[]> {
+  // ── Navigation Groups ─────────────────────────────────────────────
+
+  async listGroups(category?: string): Promise<NavigationGroup[]> {
     const url = category
-      ? `/api/registry/entry-point-groups?category=${encodeURIComponent(category)}`
-      : '/api/registry/entry-point-groups';
+      ? `/api/navigation/groups?category=${encodeURIComponent(category)}`
+      : '/api/navigation/groups';
     const body = await this.request(url, undefined, 'unauthorized');
-    return (body as { groups: EntryPointGroup[] }).groups;
+    return (body as { groups: NavigationGroup[] }).groups;
   }
 
   async saveGroup(input: {
@@ -172,10 +172,10 @@ export class RegistryService {
     parentKey?: string | null;
     sortOrder?: number;
     icon?: string;
-  }): Promise<EntryPointGroup> {
-    const body = await this.request('/api/registry/entry-point-groups', this.jsonInit(input), 'save failed');
+  }): Promise<NavigationGroup> {
+    const body = await this.request('/api/navigation/groups', this.jsonInit(input), 'save failed');
     this.changed.next();
-    return (body as { group: EntryPointGroup[] } & { group: EntryPointGroup }).group;
+    return (body as { group: NavigationGroup[] } & { group: NavigationGroup }).group;
   }
 
   async removeGroup(groupKey: string): Promise<void> {
@@ -184,7 +184,7 @@ export class RegistryService {
   }
 
   async reorderGroups(keys: string[]): Promise<void> {
-    await this.request('/api/registry/entry-point-groups/reorder', this.jsonInit({ keys }), 'reorder failed');
+    await this.request('/api/navigation/groups/reorder', this.jsonInit({ keys }), 'reorder failed');
     this.changed.next();
   }
 

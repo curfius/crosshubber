@@ -15,23 +15,23 @@ import org.mockito.Mockito;
 import com.crosshubber.portal.auth.kcadmin.KcAdminClient;
 import com.crosshubber.portal.config.JacksonConfig;
 import com.crosshubber.portal.config.PortalProperties;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
 import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-/** Manifest installs must store sandbox as comma-joined tokens, matching EntryPointsService. */
+/** Manifest installs must store sandbox as comma-joined tokens, matching ModuleContentsService. */
 class InstallServiceSandboxTest {
 
   private final ObjectMapper mapper = new JacksonConfig().jsonMapper();
   private final ModuleRepository moduleRepo = Mockito.mock(ModuleRepository.class);
-  private final EntryPointRepository entryPointRepo = Mockito.mock(EntryPointRepository.class);
+  private final ModuleContentRepository contentRepo = Mockito.mock(ModuleContentRepository.class);
   private final InstallService svc =
       new InstallService(
           moduleRepo,
-          entryPointRepo,
+          contentRepo,
           Mockito.mock(ModuleVersionRepository.class),
           new ManifestValidator(new PortalProperties(), mapper),
           Mockito.mock(KcAdminClient.class),
@@ -40,7 +40,7 @@ class InstallServiceSandboxTest {
   @BeforeEach
   void stubRepos() {
     Mockito.when(moduleRepo.findById("demo")).thenReturn(Optional.empty());
-    Mockito.when(entryPointRepo.findByModuleKey("demo")).thenReturn(List.of());
+    Mockito.when(contentRepo.findByModuleKey("demo")).thenReturn(List.of());
   }
 
   @Test
@@ -52,7 +52,7 @@ class InstallServiceSandboxTest {
 
     assertTrue(result.ok());
     assertEquals("demo", result.moduleKey());
-    assertEquals("allow-scripts,allow-popups", savedEntryPoint().getSandbox());
+    assertEquals("allow-scripts,allow-popups", savedContent().getSandbox());
   }
 
   @Test
@@ -61,12 +61,12 @@ class InstallServiceSandboxTest {
 
     svc.applyInstall(manifest, "tester");
 
-    assertNull(savedEntryPoint().getSandbox());
+    assertNull(savedContent().getSandbox());
   }
 
-  private EntryPointEntity savedEntryPoint() {
-    ArgumentCaptor<EntryPointEntity> captor = ArgumentCaptor.forClass(EntryPointEntity.class);
-    Mockito.verify(entryPointRepo).save(captor.capture());
+  private ModuleContentEntity savedContent() {
+    ArgumentCaptor<ModuleContentEntity> captor = ArgumentCaptor.forClass(ModuleContentEntity.class);
+    Mockito.verify(contentRepo).save(captor.capture());
     return captor.getValue();
   }
 

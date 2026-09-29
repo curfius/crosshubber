@@ -13,36 +13,37 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.crosshubber.portal.common.Keys;
 import com.crosshubber.portal.modules.navigation.NavigationValidationService;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Pinned apps (per user) — tree save is a transactional delete+reinsert; client UUIDs are honored.
+ * Pinned apps (per user) â€” tree save is a transactional delete+reinsert; client UUIDs are
+ * honored.
  */
 @Service
 public class PinnedAppsService {
 
   private final NavigationPinnedAppRepository repo;
-  private final EntryPointRepository entryPointRepo;
+  private final ModuleContentRepository contentRepo;
   private final ObjectMapper objectMapper;
 
   public PinnedAppsService(
       NavigationPinnedAppRepository repo,
-      EntryPointRepository entryPointRepo,
+      ModuleContentRepository contentRepo,
       ObjectMapper objectMapper) {
     this.repo = repo;
-    this.entryPointRepo = entryPointRepo;
+    this.contentRepo = contentRepo;
     this.objectMapper = objectMapper;
   }
 
-  /** Known app refs "moduleKey:entryKey". */
+  /** Known app refs "moduleKey:contentKey". */
   @Transactional(readOnly = true)
   public Set<String> knownAppRefs() {
     Set<String> refs = new LinkedHashSet<>();
-    for (EntryPointEntity ep : entryPointRepo.findAll()) {
+    for (ModuleContentEntity ep : contentRepo.findAll()) {
       refs.add(NavigationValidationService.entryPointRef(ep));
     }
     return refs;
@@ -80,11 +81,11 @@ public class PinnedAppsService {
   /** Transactional delete + reinsert of the user's pinned tree. */
   @Transactional
   public void savePinnedTree(String userId, JsonNode nodes) {
-    // Single bulk statement (see deleteAllForUser) — per-entity deletes break on
+    // Single bulk statement (see deleteAllForUser) â€” per-entity deletes break on
     // the self-referential ON DELETE CASCADE.
     repo.deleteAllForUser(userId);
     // IDs are client-generated (UUIDs set before persist), so the whole tree can be
-    // collected first and batch-saved — no per-row flush needed for parent resolution.
+    // collected first and batch-saved â€” no per-row flush needed for parent resolution.
     List<NavigationPinnedAppEntity> rows = new ArrayList<>();
     insertNodes(userId, nodes, null, rows);
     repo.saveAll(rows);

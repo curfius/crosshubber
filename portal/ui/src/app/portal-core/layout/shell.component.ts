@@ -5,8 +5,8 @@ import type { Subscription } from 'rxjs';
 import { AppLayout } from '../workarea/split-layout.component';
 import { WorkspaceToolbar } from './toolbar/toolbar.component';
 import { ConfigService } from '../../core/config/config.service';
-import type { PortalConfig, PortalEntryPoint } from '../../core/models';
-import { entryPointId } from '../../core/models';
+import type { PortalConfig, PortalModuleContent } from '../../core/models';
+import { moduleContentId } from '../../core/models';
 import { UrlSyncService } from '../../core/history/url-sync.service';
 import { NavigationCoordinator } from '../features/navigation-coordinator.service';
 import { RegistryService } from '../modules/module-registry/module-registry.store';
@@ -20,6 +20,7 @@ import { AiHubService } from '../../core/ai-hub/ai-hub.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { I18nAdminService } from '../../core/i18n/i18n-admin.service';
 import { ThemeService } from '../../core/theme/theme.service';
+import { BrandingService } from '../../core/branding/branding.service';
 import { ToastService } from '../../core/toast/toast.service';
 
 @Component({
@@ -51,11 +52,12 @@ export class Shell implements OnDestroy {
   protected readonly i18n = inject(I18nService);
   private readonly i18nAdmin = inject(I18nAdminService);
   private readonly theme = inject(ThemeService);
+  private readonly branding = inject(BrandingService);
   protected readonly toast = inject(ToastService);
   protected readonly showQuickChat = signal(false);
 
-  protected readonly appEntryPoints = computed(() =>
-    this.config()?.entryPoints.filter((ep) => ep.category === 'applications' && ep.active !== false) ?? [],
+  protected readonly appModuleContents = computed(() =>
+    this.config()?.moduleContents.filter((ep) => ep.category === 'applications' && ep.active !== false) ?? [],
   );
 
   protected readonly activeAppKey = computed(() => {
@@ -63,7 +65,7 @@ export class Shell implements OnDestroy {
     const groups = this.wb.groups();
     if (!gid || !groups[gid] || groups[gid].activeId == null) return null;
     const tab = groups[gid].tabs.find((t) => t.id === groups[gid].activeId);
-    return tab ? entryPointId(tab.entryPoint) : null;
+    return tab ? moduleContentId(tab.content) : null;
   });
 
   /** True when the focused tab is the unclosable Home fixture (sidebar highlight). */
@@ -89,10 +91,11 @@ export class Shell implements OnDestroy {
   async ngOnInit(): Promise<void> {
     try {
       const i18n = this.i18n.init();
+      void this.branding.load();
       const config = await this.configService.load();
       this.config.set(config);
-      this.wb.setEntryPoints(config.entryPoints);
-      this.wb.setEntryPointGroups(config.entryPointGroups);
+      this.wb.setModuleContents(config.moduleContents);
+      this.wb.setNavigationGroups(config.navigationGroups);
       this.settings.init(config.user);
       this.i18nAdmin.init(config.user);
       this.navAdmin.init(config.user);
@@ -102,8 +105,9 @@ export class Shell implements OnDestroy {
       await this.nav.load();
       this.wb.setWorkspacesEnabled(this.nav.features().workspacesEnabled);
       await i18n;
-      // Boot-time preference correction (DB > localStorage > browser > default).
-      // Deliberately NOT re-applied in refresh() — boot-time only.
+      // Tenant theme policy (config-owned) narrows the selectable set before the
+      // boot-time preference correction (DB > localStorage > tenant default).
+      this.theme.setPolicy(this.settings.themePolicy());
       const prefs = config.preferences ?? {};
       this.theme.initFromPreferences(prefs);
       this.i18n.applyServerPreference(prefs);
@@ -123,14 +127,14 @@ export class Shell implements OnDestroy {
     try {
       const config = await this.configService.load();
       this.config.set(config);
-      this.wb.setEntryPoints(config.entryPoints);
-      this.wb.setEntryPointGroups(config.entryPointGroups);
+      this.wb.setModuleContents(config.moduleContents);
+      this.wb.setNavigationGroups(config.navigationGroups);
     } catch {
       // session still valid; ignore transient failures
     }
   }
 
-  openApp(ep: PortalEntryPoint): void {
+  openApp(ep: PortalModuleContent): void {
     if (this.wb.activeWorkspace() !== null) {
       this.wb.openHomeWorkspace();
     }

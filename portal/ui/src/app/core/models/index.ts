@@ -2,11 +2,11 @@ export type ModuleType = 'iframe' | 'embedded' | 'mfe' | 'link';
 
 export type EntryCategory = 'applications' | 'settings' | 'features' | 'user-settings';
 
-// ── Entry Point ────────────────────────────────────────────────────────
+// ── Module Content ────────────────────────────────────────────────────
 
-export interface PortalEntryPoint {
+export interface PortalModuleContent {
   moduleKey: string;
-  entryKey: string;
+  contentKey: string;
   category: EntryCategory;
   name: string;
   description?: string;
@@ -17,7 +17,7 @@ export interface PortalEntryPoint {
   element?: string;
   sandbox?: string[];
   allow?: string;
-  parentEntryKey: string | null;
+  parentContentKey: string | null;
   groupKey: string | null;
   sortOrder: number;
   icon?: string;
@@ -27,20 +27,20 @@ export interface PortalEntryPoint {
   multi?: boolean;
 }
 
-export function entryPointId(ep: PortalEntryPoint): string {
-  return `${ep.moduleKey}:${ep.entryKey}`;
+export function moduleContentId(ep: PortalModuleContent): string {
+  return `${ep.moduleKey}:${ep.contentKey}`;
 }
 
-export function parseEntryPointId(id: string): { moduleKey: string; entryKey: string } {
+export function parseModuleContentId(id: string): { moduleKey: string; contentKey: string } {
   const idx = id.indexOf(':');
   return idx >= 0
-    ? { moduleKey: id.substring(0, idx), entryKey: id.substring(idx + 1) }
-    : { moduleKey: id, entryKey: 'main' };
+    ? { moduleKey: id.substring(0, idx), contentKey: id.substring(idx + 1) }
+    : { moduleKey: id, contentKey: 'main' };
 }
 
-// ── Entry Point Group (sections) ───────────────────────────────────────
+// ── Navigation Group (sections) ───────────────────────────────────────
 
-export interface EntryPointGroup {
+export interface NavigationGroup {
   groupKey: string;
   category: EntryCategory;
   name: string;
@@ -71,8 +71,8 @@ export interface PortalConfig {
   user: PortalUser;
   /** Portal-owned basic preferences (scope 'general' of user_settings); absent keys mean "no DB preference". */
   preferences?: UserPreferences;
-  entryPoints: PortalEntryPoint[];
-  entryPointGroups: EntryPointGroup[];
+  moduleContents: PortalModuleContent[];
+  navigationGroups: NavigationGroup[];
   services: PortalService[];
 }
 
@@ -85,7 +85,7 @@ export interface UserPreferences {
 
 export interface Tab {
   id: number;
-  entryPoint: PortalEntryPoint;
+  content: PortalModuleContent;
   instance: number;
 }
 
@@ -141,7 +141,7 @@ export interface WorkspaceSnapshot {
   locked: boolean;
 }
 
-// ── Form values (App Registry) ────────────────────────────────────────
+// ── Form values (Module Registry) ─────────────────────────────────────
 
 export interface ModuleFormValue {
   key: string;
@@ -149,9 +149,9 @@ export interface ModuleFormValue {
   active?: boolean;
 }
 
-export interface EntryPointFormValue {
+export interface ModuleContentFormValue {
   moduleKey: string;
-  entryKey: string;
+  contentKey: string;
   category: EntryCategory;
   name: string;
   description?: string;
@@ -162,7 +162,7 @@ export interface EntryPointFormValue {
   loadPath?: string;
   entryUrl?: string;
   element?: string;
-  parentEntryKey?: string;
+  parentContentKey?: string;
   active?: boolean;
   color?: string;
   multi?: boolean;
@@ -233,7 +233,7 @@ export interface RoleDiff {
 
 export interface InstallDiff {
   moduleAction: 'create' | 'update' | 'unchanged';
-  entryPoints: EntryDiff[];
+  moduleContents: EntryDiff[];
   roles: RoleDiff[];
   digest: string;
 }

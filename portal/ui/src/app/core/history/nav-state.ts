@@ -4,8 +4,8 @@
 //   Home:      /?app=<tabKey>&path=<modulePath>
 //   Workspace: /w/<encodeURIComponent(name)>?app=<tabKey>&path=<modulePath>
 //
-// `app`  = entryPointId[:instance] of the focused group's active tab
-//          (entryPointId = `moduleKey:entryKey`, instance >= 2 for duplicates).
+// `app`  = moduleContentId[:instance] of the focused group's active tab
+//          (moduleContentId = `moduleKey:contentKey`, instance >= 2 for duplicates).
 // `path` = module-internal path of that same tab. Both params are omitted
 // when not applicable, producing clean URLs like `/w/orders`.
 
@@ -54,7 +54,7 @@ export function serializeNavUrl(state: NavState): string {
 }
 
 /**
- * Legacy hash grammar (D9): `#<epId>[:n][/path]` where epId = `moduleKey:entryKey`.
+ * Legacy hash grammar (D9): `#<epId>[:n][/path]` where epId = `moduleKey:contentKey`.
  * Bare `moduleKey` hashes (the pre-fix bridge format) are tolerated too — the
  * coordinator resolves unknown app keys against `moduleKey:main` on cold load.
  */
@@ -73,7 +73,7 @@ export function parseLegacyNav(loc: { pathname: string; hash: string }): NavStat
 }
 
 /**
- * Stable session key for a tab: `moduleKey:entryKey`, or `moduleKey:entryKey:n`
+ * Stable session key for a tab: `moduleKey:contentKey`, or `moduleKey:contentKey:n`
  * for duplicated multi tabs. Used for the tabPaths map and the `app` URL param.
  */
 export function tabKeyOf(epId: string, instance: number): string {

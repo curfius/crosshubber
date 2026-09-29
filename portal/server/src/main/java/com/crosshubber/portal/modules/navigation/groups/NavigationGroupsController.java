@@ -1,4 +1,4 @@
-package com.crosshubber.portal.modules.registry.entrypointgroups;
+package com.crosshubber.portal.modules.navigation.groups;
 
 import java.util.List;
 import java.util.Map;
@@ -16,21 +16,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.crosshubber.portal.modules.registry.dto.EntryPointGroupDto;
-import com.crosshubber.portal.modules.registry.dto.EntryPointGroupUpsertRequest;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 
-/** Entry point groups routes. */
+/** Navigation group routes (shell-nav sections). */
 @RestController
 @Validated
-@RequestMapping("/api/registry/entry-point-groups")
-public class EntryPointGroupsController {
+@RequestMapping("/api/navigation/groups")
+public class NavigationGroupsController {
 
-  private final EntryPointGroupsService groupsService;
+  private final NavigationGroupsService groupsService;
 
-  public EntryPointGroupsController(EntryPointGroupsService groupsService) {
+  public NavigationGroupsController(NavigationGroupsService groupsService) {
     this.groupsService = groupsService;
   }
 
@@ -41,26 +38,26 @@ public class EntryPointGroupsController {
               regexp = "applications|settings|features|admin-settings|user-settings",
               message = "must be applications|settings|features|admin-settings|user-settings")
           String category) {
-    List<EntryPointGroupDto> groups =
-        groupsService.list(category).stream().map(EntryPointGroupsService::toOutput).toList();
+    List<NavigationGroupDto> groups =
+        groupsService.list(category).stream().map(NavigationGroupsService::toOutput).toList();
     return ResponseEntity.ok(Map.of("groups", groups));
   }
 
   @PostMapping
   @PreAuthorize("hasRole('portal-registry-edit')")
-  public ResponseEntity<?> create(@Valid @RequestBody EntryPointGroupUpsertRequest body) {
-    EntryPointGroupEntity group = groupsService.upsert(body);
+  public ResponseEntity<?> create(@Valid @RequestBody NavigationGroupUpsertRequest body) {
+    NavigationGroupEntity group = groupsService.upsert(body);
     return ResponseEntity.status(201)
-        .body(Map.of("ok", true, "group", EntryPointGroupsService.toOutput(group)));
+        .body(Map.of("ok", true, "group", NavigationGroupsService.toOutput(group)));
   }
 
   @PutMapping("/{key}")
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> update(
-      @PathVariable String key, @Valid @RequestBody EntryPointGroupUpsertRequest body) {
+      @PathVariable String key, @Valid @RequestBody NavigationGroupUpsertRequest body) {
     // Path wins over body: the group key is the resource identity.
-    EntryPointGroupUpsertRequest input =
-        new EntryPointGroupUpsertRequest(
+    NavigationGroupUpsertRequest input =
+        new NavigationGroupUpsertRequest(
             key,
             body.category(),
             body.name(),
@@ -68,8 +65,8 @@ public class EntryPointGroupsController {
             body.sortOrder(),
             body.icon(),
             body.roles());
-    EntryPointGroupEntity group = groupsService.upsert(input);
-    return ResponseEntity.ok(Map.of("ok", true, "group", EntryPointGroupsService.toOutput(group)));
+    NavigationGroupEntity group = groupsService.upsert(input);
+    return ResponseEntity.ok(Map.of("ok", true, "group", NavigationGroupsService.toOutput(group)));
   }
 
   @DeleteMapping("/{key}")
@@ -82,7 +79,7 @@ public class EntryPointGroupsController {
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> reorder(@RequestBody Map<String, Object> body) {
     Object keys = body == null ? null : body.get("keys");
-    // Missing or empty keys → 200 {ok:true} (no-op)
+    // Missing or empty keys â†’ 200 {ok:true} (no-op)
     if (keys == null) {
       return ResponseEntity.ok(Map.of("ok", true));
     }

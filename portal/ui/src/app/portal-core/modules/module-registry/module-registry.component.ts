@@ -2,9 +2,9 @@ import { ChangeDetectionStrategy, Component, inject, signal, computed, type Writ
 import { FormsModule } from '@angular/forms';
 import { SlicePipe, UpperCasePipe, JsonPipe } from '@angular/common';
 import { EMBEDDED_LOAD_PATHS } from '../../workarea/embedded-modules';
-import type { ModuleType, EntryCategory, EntryPointFormValue, PortalModuleManifest, VersionOutput, ManifestContentEntry } from '../../../core/models';
+import type { ModuleType, EntryCategory, ModuleContentFormValue, PortalModuleManifest, VersionOutput, ManifestContentEntry } from '../../../core/models';
 import { I18nService } from '../../../core/i18n/i18n.service';
-import { RegistryService, type ModuleOutput, type EntryPointOutput } from './module-registry.store';
+import { RegistryService, type ModuleOutput, type ModuleContentOutput } from './module-registry.store';
 import { buildDiffSections, type PreviewSection } from './manifest-diff';
 import { DsTree, DsTreeNode } from '../../../shared/components/ds-tree/ds-tree.component';
 import { Switch } from '../../../shared/components/switch/switch.component';
@@ -34,8 +34,8 @@ export class ModuleRegistry {
   // ── State ──────────────────────────────────────────────────────────
   protected readonly modules = signal<ModuleOutput[]>([]);
   protected readonly selectedModule = signal<ModuleOutput | null>(null);
-  protected readonly entryPoints = signal<EntryPointOutput[]>([]);
-  protected readonly allEntryPoints = signal<EntryPointOutput[]>([]);
+  protected readonly moduleContents = signal<ModuleContentOutput[]>([]);
+  protected readonly allModuleContents = signal<ModuleContentOutput[]>([]);
   protected readonly versions = signal<VersionOutput[]>([]);
   protected readonly activeManifest = signal<PortalModuleManifest | null>(null);
   protected readonly error = signal('');
@@ -135,20 +135,20 @@ export class ModuleRegistry {
 
   // ── Entry point form (now edits workingManifest when isEditing, legacy fallback otherwise)
   protected readonly showEpForm = signal(false);
-  protected readonly editingEpId = signal<number | null>(null);
+  protected readonly editingContentId = signal<number | null>(null);
   protected readonly editingContentKey = signal<string | null>(null);
   protected readonly editingContentCategory = signal<EntryCategory | null>(null);
-  protected readonly epForm = signal<EntryPointFormValue>(this.emptyEpForm());
+  protected readonly contentForm = signal<ModuleContentFormValue>(this.emptyContentForm());
 
   protected readonly loadPaths = [...EMBEDDED_LOAD_PATHS];
   protected readonly colors = COLORS;
 
   protected readonly pendingDeleteModule = signal<ModuleOutput | null>(null);
-  protected readonly pendingDeleteEp = signal<EntryPointOutput | null>(null);
+  protected readonly pendingDeleteContent = signal<ModuleContentOutput | null>(null);
   protected readonly showColorPicker = signal(false);
 
   async ngOnInit(): Promise<void> {
-    await Promise.all([this.reloadModules(), this.reloadAllEntryPoints()]);
+    await Promise.all([this.reloadModules(), this.reloadAllModuleContents()]);
     const first = this.modules()[0];
     if (first) this.selectModule(first);
   }
@@ -178,15 +178,15 @@ export class ModuleRegistry {
     return this.reload(this.modules, [], () => this.registry.listModules(), 'registry.error.loadModules');
   }
 
-  private reloadAllEntryPoints(): Promise<void> {
-    return this.reload(this.allEntryPoints, [], () => this.registry.listAllEntryPoints());
+  private reloadAllModuleContents(): Promise<void> {
+    return this.reload(this.allModuleContents, [], () => this.registry.listAllModuleContents());
   }
 
-  private reloadEntryPoints(): Promise<void> {
-    return this.reload(this.entryPoints, [], () => {
+  private reloadModuleContents(): Promise<void> {
+    return this.reload(this.moduleContents, [], () => {
       const mod = this.selectedModule();
-      return mod ? this.registry.listEntryPoints(mod.key) : Promise.resolve([]);
-    }, 'registry.error.loadEntryPoints');
+      return mod ? this.registry.listModuleContents(mod.key) : Promise.resolve([]);
+    }, 'registry.error.loadModuleContents');
   }
 
   private reloadVersions(): Promise<void> {
@@ -205,7 +205,7 @@ export class ModuleRegistry {
 
   protected moduleStatus(mod: ModuleOutput): 'disabled' | 'empty' | 'active' {
     if (!mod.active) return 'disabled';
-    const hasActiveEp = this.allEntryPoints().some((ep) => ep.moduleKey === mod.key && ep.active);
+    const hasActiveEp = this.allModuleContents().some((ep) => ep.moduleKey === mod.key && ep.active);
     return hasActiveEp ? 'active' : 'empty';
   }
 
@@ -232,7 +232,7 @@ export class ModuleRegistry {
         this.isEditing.set(true);
         this.showManifestInfo.set(true);
       }
-      await Promise.all([this.reloadModules(), this.reloadEntryPoints(), this.reloadVersions()]);
+      await Promise.all([this.reloadModules(), this.reloadModuleContents(), this.reloadVersions()]);
     } catch (err) {
       this.error.set((err as Error).message);
     } finally {
@@ -329,7 +329,7 @@ export class ModuleRegistry {
     // Clear stale activation proposal when switching modules — only show when viewing active major & disabled
     this.showActivationProposal.set(false);
     this.activationResult.set(null);
-    await Promise.all([this.reloadEntryPoints(), this.reloadVersions(), this.reloadActiveManifest()]);
+    await Promise.all([this.reloadModuleContents(), this.reloadVersions(), this.reloadActiveManifest()]);
     // Check for pending drafts more recent than live
     const vers = this.versions();
     const drafts = vers.filter((v) => v.status === 'draft');
@@ -477,7 +477,7 @@ export class ModuleRegistry {
       await this.registry.removeModule(mod.key);
       if (this.selectedModule()?.key === mod.key) {
         this.selectedModule.set(null);
-        this.entryPoints.set([]);
+        this.moduleContents.set([]);
       }
       await this.reloadModules();
     } catch (err) {
@@ -579,7 +579,7 @@ export class ModuleRegistry {
       }
       this.isEditing.set(false);
       this.workingManifest.set(null);
-      await Promise.all([this.reloadModules(), this.reloadEntryPoints(), this.reloadVersions(), this.reloadActiveManifest()]);
+      await Promise.all([this.reloadModules(), this.reloadModuleContents(), this.reloadVersions(), this.reloadActiveManifest()]);
     } catch (err) {
       this.error.set((err as Error).message);
     } finally {
@@ -821,13 +821,13 @@ export class ModuleRegistry {
 
   // ── Entry Point CRUD (legacy: now gated, but kept for outside-edit fallback) ───────────────────────────────────────────────
 
-  newEntryPoint(): void {
+  newModuleContent(): void {
     // Both paths delegate to manifest content add (applications default) — kept as a
     // thin alias because the template binds it directly.
     this.addContent('applications');
   }
 
-  editEntryPoint(ep: EntryPointOutput): void {
+  editModuleContent(ep: ModuleContentOutput): void {
     if (!this.isEditing()) {
       this.error.set(this.i18n.t('registry.error.enableEditContent'));
       return;
@@ -837,14 +837,14 @@ export class ModuleRegistry {
     if (!m) return;
     for (const cat of CONTENT_GROUPS) {
       const list = (m.content?.[cat.key as keyof typeof m.content] ?? []) as ManifestContentEntry[];
-      const idx = list.findIndex((e) => e.key === ep.entryKey);
+      const idx = list.findIndex((e) => e.key === ep.contentKey);
       if (idx >= 0) {
-        this.editingContentKey.set(ep.entryKey);
+        this.editingContentKey.set(ep.contentKey);
         this.editingContentCategory.set(cat.key as unknown as EntryCategory);
-        // Map to epForm for modal reuse? Instead open content edit inline
-        this.epForm.set({
+        // Map to contentForm for modal reuse? Instead open content edit inline
+        this.contentForm.set({
           moduleKey: ep.moduleKey,
-          entryKey: ep.entryKey,
+          contentKey: ep.contentKey,
           category: cat.key as unknown as EntryCategory,
           name: ep.name,
           description: ep.description ?? '',
@@ -855,12 +855,12 @@ export class ModuleRegistry {
           loadPath: ep.loadPath ?? '',
           entryUrl: ep.entryUrl ?? '',
           element: ep.element ?? '',
-          parentEntryKey: ep.parentEntryKey ?? '',
+          parentContentKey: ep.parentContentKey ?? '',
           active: ep.active,
           color: ep.color ?? COLORS[0],
           multi: ep.multi,
         });
-        this.editingEpId.set(ep.id);
+        this.editingContentId.set(ep.id);
         this.showEpForm.set(true);
         return;
       }
@@ -875,23 +875,23 @@ export class ModuleRegistry {
     this.error.set('');
   }
 
-  setEpField<K extends keyof EntryPointFormValue>(key: K, value: EntryPointFormValue[K]): void {
-    this.epForm.update((f) => ({ ...f, [key]: value }));
+  setContentField<K extends keyof ModuleContentFormValue>(key: K, value: ModuleContentFormValue[K]): void {
+    this.contentForm.update((f) => ({ ...f, [key]: value }));
   }
 
   setEpType(type: ModuleType): void {
-    this.epForm.update((f) => ({ ...f, type }));
+    this.contentForm.update((f) => ({ ...f, type }));
   }
 
   setEpCategory(category: EntryCategory): void {
-    this.epForm.update((f) => ({ ...f, category }));
+    this.contentForm.update((f) => ({ ...f, category }));
   }
 
   onNameInput(name: string): void {
-    this.epForm.update((f) => ({
+    this.contentForm.update((f) => ({
       ...f,
       name,
-      entryKey: f.entryKey && !this.autoKeyGenerated ? f.entryKey : this.toKebabCase(name),
+      contentKey: f.contentKey && !this.autoKeyGenerated ? f.contentKey : this.toKebabCase(name),
     }));
   }
 
@@ -905,16 +905,16 @@ export class ModuleRegistry {
       .toLowerCase();
   }
 
-  async saveEntryPoint(): Promise<void> {
+  async saveModuleContent(): Promise<void> {
     // When editing, save to workingManifest instead of direct API
     if (this.isEditing()) {
-      const f = this.epForm();
-      if (!f.entryKey.trim()) { this.error.set(this.i18n.t('registry.error.entryKeyRequired')); return; }
+      const f = this.contentForm();
+      if (!f.contentKey.trim()) { this.error.set(this.i18n.t('registry.error.contentKeyRequired')); return; }
       if (!f.name.trim()) { this.error.set(this.i18n.t('registry.error.nameRequired')); return; }
       const catKeyMap: Record<string, string> = { applications: 'applications', features: 'features', 'admin-settings': 'adminSettings', 'adminSettings': 'adminSettings', 'user-settings': 'userSettings', 'userSettings': 'userSettings', settings: 'adminSettings' };
       const cat = catKeyMap[f.category] ?? 'applications';
       const entry: ManifestContentEntry = {
-        key: f.entryKey.trim(),
+        key: f.contentKey.trim(),
         name: f.name.trim(),
         description: f.description?.trim() || undefined,
         type: f.type,
@@ -943,7 +943,7 @@ export class ModuleRegistry {
         if (!editingKey) {
           const allKeys = new Set<string>();
           for (const k of Object.keys(content)) for (const e of content[k] ?? []) allKeys.add(e.key);
-          if (allKeys.has(entry.key)) { this.error.set(this.i18n.t('registry.error.entryKeyExists', { key: entry.key })); return prev; }
+          if (allKeys.has(entry.key)) { this.error.set(this.i18n.t('registry.error.contentKeyExists', { key: entry.key })); return prev; }
         }
         content[cat] = [...(content[cat] ?? []), entry];
         return { ...prev, content: content as unknown as PortalModuleManifest['content'] };
@@ -953,8 +953,8 @@ export class ModuleRegistry {
       return;
     }
     // Legacy non-editing path (should be blocked, but keep for safety)
-    const f = this.epForm();
-    if (!f.entryKey.trim()) { this.error.set(this.i18n.t('registry.error.entryKeyRequired')); return; }
+    const f = this.contentForm();
+    if (!f.contentKey.trim()) { this.error.set(this.i18n.t('registry.error.contentKeyRequired')); return; }
     if (!f.name.trim()) { this.error.set(this.i18n.t('registry.error.nameRequired')); return; }
     if (f.type === 'iframe' && !f.url?.trim()) { this.error.set(this.i18n.t('registry.error.iframeRequiresUrl')); return; }
     if (f.type === 'embedded' && !f.loadPath?.trim()) { this.error.set(this.i18n.t('registry.error.embeddedRequiresLoadPath')); return; }
@@ -965,9 +965,9 @@ export class ModuleRegistry {
     this.busy.set(true);
     this.error.set('');
     try {
-      await this.registry.saveEntryPoint({
+      await this.registry.saveModuleContent({
         moduleKey: f.moduleKey,
-        entryKey: f.entryKey.trim(),
+        contentKey: f.contentKey.trim(),
         category: f.category,
         name: f.name.trim(),
         description: f.description?.trim() || undefined,
@@ -978,13 +978,13 @@ export class ModuleRegistry {
         loadPath: f.type === 'embedded' ? f.loadPath?.trim() : undefined,
         entryUrl: f.type === 'mfe' ? f.entryUrl?.trim() : undefined,
         element: f.type === 'mfe' ? f.element?.trim() : undefined,
-        parentEntryKey: f.parentEntryKey?.trim() || null,
+        parentContentKey: f.parentContentKey?.trim() || null,
         active: f.active,
         color: f.color?.trim() || undefined,
         multi: f.category === 'applications' ? (f.multi ?? false) : false,
       });
       this.closeEpForm();
-      await Promise.all([this.reloadEntryPoints(), this.reloadAllEntryPoints()]);
+      await Promise.all([this.reloadModuleContents(), this.reloadAllModuleContents()]);
     } catch (err) {
       this.error.set((err as Error).message);
     } finally {
@@ -992,54 +992,54 @@ export class ModuleRegistry {
     }
   }
 
-  requestRemoveEntryPoint(ep: EntryPointOutput): void {
-    this.pendingDeleteEp.set(ep);
+  requestRemoveModuleContent(ep: ModuleContentOutput): void {
+    this.pendingDeleteContent.set(ep);
   }
 
-  cancelRemoveEntryPoint(): void {
-    this.pendingDeleteEp.set(null);
+  cancelRemoveModuleContent(): void {
+    this.pendingDeleteContent.set(null);
   }
 
-  async confirmRemoveEntryPoint(): Promise<void> {
-    const ep = this.pendingDeleteEp();
+  async confirmRemoveModuleContent(): Promise<void> {
+    const ep = this.pendingDeleteContent();
     if (!ep) return;
-    this.pendingDeleteEp.set(null);
+    this.pendingDeleteContent.set(null);
     if (this.isEditing()) {
       // Remove from workingManifest
       const m = this.workingManifest();
       if (!m) return;
       for (const cat of CONTENT_GROUPS) {
         const list = (m.content?.[cat.key as keyof typeof m.content] ?? []) as ManifestContentEntry[];
-        const idx = list.findIndex((e) => e.key === ep.entryKey);
+        const idx = list.findIndex((e) => e.key === ep.contentKey);
         if (idx >= 0) { this.removeContent(cat.key as never, idx); break; }
       }
       return;
     }
     try {
-      await this.registry.removeEntryPoint(ep.id);
-      await Promise.all([this.reloadEntryPoints(), this.reloadAllEntryPoints()]);
+      await this.registry.removeModuleContent(ep.id);
+      await Promise.all([this.reloadModuleContents(), this.reloadAllModuleContents()]);
     } catch (err) {
       this.error.set((err as Error).message);
     }
   }
 
   selectColor(c: string): void {
-    this.setEpField('color', c);
+    this.setContentField('color', c);
     this.showColorPicker.set(false);
   }
 
-  async toggleEpActive(ep: EntryPointOutput): Promise<void> {
+  async toggleContentActive(ep: ModuleContentOutput): Promise<void> {
     if (this.isEditing()) {
       this.error.set(this.i18n.t('registry.error.toggleViaManifest'));
       return;
     }
     try {
-      await this.registry.saveEntryPoint({
+      await this.registry.saveModuleContent({
         ...ep,
         active: !ep.active,
         sandbox: ep.sandbox,
       });
-      await Promise.all([this.reloadEntryPoints(), this.reloadAllEntryPoints()]);
+      await Promise.all([this.reloadModuleContents(), this.reloadAllModuleContents()]);
     } catch (err) {
       this.error.set((err as Error).message);
     }
@@ -1358,7 +1358,7 @@ export class ModuleRegistry {
       this.installResult.set(result);
       this.installStep.set('done');
       await this.reloadModules();
-      await this.reloadAllEntryPoints();
+      await this.reloadAllModuleContents();
       const fresh = this.modules().find((m) => m.key === result.moduleKey);
       if (fresh) {
         await this.selectModule(fresh);
@@ -1377,10 +1377,10 @@ export class ModuleRegistry {
 
   // ── Helpers ────────────────────────────────────────────────────────
 
-  private emptyEpForm(): EntryPointFormValue {
+  private emptyContentForm(): ModuleContentFormValue {
     return {
       moduleKey: '',
-      entryKey: '',
+      contentKey: '',
       category: 'applications',
       name: '',
       description: '',
@@ -1391,7 +1391,7 @@ export class ModuleRegistry {
       loadPath: EMBEDDED_LOAD_PATHS[0] ?? '',
       entryUrl: '',
       element: '',
-      parentEntryKey: '',
+      parentContentKey: '',
       active: true,
       color: COLORS[0],
       multi: false,
@@ -1407,14 +1407,14 @@ export class ModuleRegistry {
     }
   }
 
-  epTarget(ep: EntryPointOutput): string {
+  contentTarget(ep: ModuleContentOutput): string {
     if (ep.type === 'iframe') return ep.url ?? '';
     if (ep.type === 'embedded') return `loadPath:${ep.loadPath}`;
     if (ep.type === 'link') return ep.url ?? '';
     return ep.element ?? '';
   }
 
-  contentTarget(entry: ManifestContentEntry, baseUrl: string): string {
+  manifestContentTarget(entry: ManifestContentEntry, baseUrl: string): string {
     if (entry.type === 'iframe' || entry.type === 'link') return entry.url ?? entry.path ?? '';
     if (entry.type === 'embedded') return `loadPath:${entry.loadPath}`;
     return entry.element ?? entry.entryUrl ?? entry.path ?? '';

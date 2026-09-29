@@ -12,7 +12,7 @@ import com.crosshubber.portal.auth.kcadmin.KcAdminClient;
 import com.crosshubber.portal.config.JacksonConfig;
 import com.crosshubber.portal.config.PortalProperties;
 import com.crosshubber.portal.modules.registry.dto.ModuleVersionDto;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointRepository;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
 import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
 
 class InstallServiceVersionsTest {
@@ -21,7 +21,7 @@ class InstallServiceVersionsTest {
   private final InstallService svc =
       new InstallService(
           Mockito.mock(ModuleRepository.class),
-          Mockito.mock(EntryPointRepository.class),
+          Mockito.mock(ModuleContentRepository.class),
           versionRepo,
           new ManifestValidator(new PortalProperties(), new JacksonConfig().jsonMapper()),
           Mockito.mock(KcAdminClient.class),

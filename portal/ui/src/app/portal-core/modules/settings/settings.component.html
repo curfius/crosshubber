@@ -18,7 +18,7 @@
   <div class="flex-1 overflow-y-auto">
     @if (activeEntry(); as ep) {
       <div class="p-6">
-        <app-outlet [entryPoint]="ep" [user]="user()" />
+        <app-outlet [content]="ep" [user]="user()" />
       </div>
     } @else {
       <div class="flex h-full items-center justify-center text-sm text-[var(--portal-text-muted)]">

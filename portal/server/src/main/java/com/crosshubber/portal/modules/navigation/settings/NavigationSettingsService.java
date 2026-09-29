@@ -1,4 +1,4 @@
-package com.crosshubber.portal.modules.settings.instance;
+package com.crosshubber.portal.modules.navigation.settings;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -11,13 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 import com.crosshubber.portal.common.JsonUtils;
 
 /**
- * Instance settings (singleton row id=1): defaults merged under the stored JSONB, partial updates
+ * Navigation settings (singleton row id=1): defaults merged under the stored JSONB, partial updates
  * merge on top.
  */
 @Service
-public class InstanceSettingsService {
+public class NavigationSettingsService {
 
-  private static final Logger log = LoggerFactory.getLogger(InstanceSettingsService.class);
+  private static final Logger log = LoggerFactory.getLogger(NavigationSettingsService.class);
 
   /** Mirrors DEFAULT_SETTINGS in settings.repository.ts. */
   static final Map<String, Object> DEFAULT_SETTINGS;
@@ -29,10 +29,10 @@ public class InstanceSettingsService {
     DEFAULT_SETTINGS.put("workspacesEnabled", true);
   }
 
-  private final InstanceSettingsRepository repo;
+  private final NavigationSettingsRepository repo;
   private final JsonUtils jsonUtils;
 
-  public InstanceSettingsService(InstanceSettingsRepository repo, JsonUtils jsonUtils) {
+  public NavigationSettingsService(NavigationSettingsRepository repo, JsonUtils jsonUtils) {
     this.repo = repo;
     this.jsonUtils = jsonUtils;
   }
@@ -40,9 +40,9 @@ public class InstanceSettingsService {
   /** Effective settings: stored JSONB merged over defaults. */
   @Transactional
   public Map<String, Object> get() {
-    InstanceSettingsEntity entity = repo.findById(1).orElse(null);
+    NavigationSettingsEntity entity = repo.findById(1).orElse(null);
     if (entity == null) {
-      InstanceSettingsEntity created = new InstanceSettingsEntity();
+      NavigationSettingsEntity created = new NavigationSettingsEntity();
       created.setId(1);
       created.setSettings(writeJson(DEFAULT_SETTINGS));
       repo.save(created);
@@ -58,17 +58,17 @@ public class InstanceSettingsService {
   public Map<String, Object> update(Map<String, Object> partial) {
     Map<String, Object> merged = get();
     merged.putAll(partial);
-    InstanceSettingsEntity entity =
+    NavigationSettingsEntity entity =
         repo.findById(1)
             .orElseGet(
                 () -> {
-                  InstanceSettingsEntity created = new InstanceSettingsEntity();
+                  NavigationSettingsEntity created = new NavigationSettingsEntity();
                   created.setId(1);
                   return created;
                 });
     entity.setSettings(writeJson(merged));
     repo.save(entity);
-    log.info("[settings] updated instance settings: {}", merged);
+    log.info("[settings] updated navigation settings: {}", merged);
     return merged;
   }
 

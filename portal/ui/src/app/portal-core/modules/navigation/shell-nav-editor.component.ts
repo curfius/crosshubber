@@ -12,7 +12,7 @@ interface ShellGroupMeta {
 
 interface ShellItemMeta {
   moduleKey: string;
-  entryKey: string;
+  contentKey: string;
 }
 
 function slugify(name: string): string {
@@ -39,12 +39,12 @@ export function shellTreeFromResponse(resp: ShellTreeResponse): EditableTreeNode
   }
   for (const item of resp.items) {
     const node: EditableTreeNode = {
-      id: `item:${item.moduleKey}:${item.entryKey}`,
+      id: `item:${item.moduleKey}:${item.contentKey}`,
       label: item.name,
       kind: 'item',
       color: item.color,
       hidden: item.hidden === true ? true : undefined,
-      meta: { moduleKey: item.moduleKey, entryKey: item.entryKey } satisfies ShellItemMeta,
+      meta: { moduleKey: item.moduleKey, contentKey: item.contentKey } satisfies ShellItemMeta,
       children: [],
     };
     if (item.groupKey && groupNodes.has(item.groupKey)) groupNodes.get(item.groupKey)!.children.push(node);
@@ -76,7 +76,7 @@ export function shellTreeToPayload(nodes: EditableTreeNode[], reservedKeys: Set<
         const meta = node.meta as ShellItemMeta;
         items.push({
           moduleKey: meta.moduleKey,
-          entryKey: meta.entryKey,
+          contentKey: meta.contentKey,
           groupKey: parentKey,
           hidden: !!node.hidden,
         });

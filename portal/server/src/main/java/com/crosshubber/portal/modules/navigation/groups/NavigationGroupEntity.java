@@ -1,8 +1,8 @@
-package com.crosshubber.portal.modules.registry.entrypointgroups;
+package com.crosshubber.portal.modules.navigation.groups;
 
 import java.time.Instant;
 
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentCategory;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -14,10 +14,10 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
-/** JPA entity for {@code entry_point_groups} table. */
+/** JPA entity for {@code navigation_groups} table (shell-nav sections). */
 @Entity
-@Table(name = "entry_point_groups")
-public class EntryPointGroupEntity {
+@Table(name = "navigation_groups")
+public class NavigationGroupEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,9 +27,9 @@ public class EntryPointGroupEntity {
   @Column(name = "group_key", nullable = false, unique = true)
   private String groupKey;
 
-  @Convert(converter = EntryPointCategory.DbConverter.class)
+  @Convert(converter = ModuleContentCategory.DbConverter.class)
   @Column(name = "category", nullable = false)
-  private EntryPointCategory category;
+  private ModuleContentCategory category;
 
   @Column(name = "name", nullable = false)
   private String name;
@@ -46,7 +46,7 @@ public class EntryPointGroupEntity {
   @Column(name = "roles", columnDefinition = "text")
   private String roles;
 
-  /** Nav-tree eye toggle: hidden sections hide all entry points within them. */
+  /** Nav-tree eye toggle: hidden sections hide all module content within them. */
   @Column(name = "hidden", nullable = false)
   private Boolean hidden = false;
 
@@ -91,11 +91,11 @@ public class EntryPointGroupEntity {
     this.groupKey = groupKey;
   }
 
-  public EntryPointCategory getCategory() {
+  public ModuleContentCategory getCategory() {
     return category;
   }
 
-  public void setCategory(EntryPointCategory category) {
+  public void setCategory(ModuleContentCategory category) {
     this.category = category;
   }
 

@@ -216,7 +216,7 @@ public class AiHubProvidersService {
     } else if (t.getEncryptedKey() != null) {
       // Deliberate: the mask derives from the plaintext key, so listing requires a decrypt
       // per token. AES over these short payloads is cheap; avoiding it needs a schema change
-      // (stored mask column + backfill) — tracked in OPTIMIZATIONS.md.
+      // (stored mask column + backfill) — tracked in plan/archive/OPTIMIZATIONS.md.
       try {
         masked = cryptoService.maskApiKey(cryptoService.decryptApiKey(t.getEncryptedKey()));
       } catch (Exception e) {

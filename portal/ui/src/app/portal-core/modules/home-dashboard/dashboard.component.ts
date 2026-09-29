@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { PortalEntryPoint, WorkspaceMeta } from '../../../core/models';
-import { entryPointId } from '../../../core/models';
+import type { PortalModuleContent, WorkspaceMeta } from '../../../core/models';
+import { moduleContentId } from '../../../core/models';
 import { WorkbenchService } from '../../features/workspaces/workspaces.store';
 import { NavigationStore } from '../../../core/navigation/navigation.store';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -18,7 +18,7 @@ export class PortalDashboard implements OnInit {
   protected readonly nav = inject(NavigationStore);
   protected readonly i18n = inject(I18nService);
 
-  protected readonly entryPoints = signal<PortalEntryPoint[]>([]);
+  protected readonly moduleContents = signal<PortalModuleContent[]>([]);
   protected readonly workspaces = signal<WorkspaceMeta[]>([]);
   protected readonly search = signal('');
 
@@ -40,21 +40,21 @@ export class PortalDashboard implements OnInit {
   protected readonly filteredFavApps = computed(() => {
     const q = this.search().toLowerCase();
     const pinned = new Set(this.pinnedRefs());
-    return this.entryPoints()
-      .filter((ep) => ep.category === 'applications' && ep.type !== 'link' && pinned.has(entryPointId(ep)) && this.matchesApp(ep, q))
+    return this.moduleContents()
+      .filter((ep) => ep.category === 'applications' && ep.type !== 'link' && pinned.has(moduleContentId(ep)) && this.matchesApp(ep, q))
       .sort((a, b) => a.name.localeCompare(b.name));
   });
 
   protected readonly filteredAllApps = computed(() => {
     const q = this.search().toLowerCase();
-    return this.entryPoints()
+    return this.moduleContents()
       .filter((ep) => ep.category === 'applications' && ep.type !== 'link' && this.matchesApp(ep, q))
       .sort((a, b) => a.name.localeCompare(b.name));
   });
 
   async ngOnInit(): Promise<void> {
     if (!this.nav.loaded()) await this.nav.load();
-    this.entryPoints.set(this.wb.getEntryPoints());
+    this.moduleContents.set(this.wb.getModuleContents());
     this.workspaces.set(this.wb.workspaces());
   }
 
@@ -67,15 +67,15 @@ export class PortalDashboard implements OnInit {
     await this.nav.togglePin(key);
   }
 
-  protected favKey(ep: PortalEntryPoint): string {
-    return entryPointId(ep);
+  protected favKey(ep: PortalModuleContent): string {
+    return moduleContentId(ep);
   }
 
-  protected openApp(ep: PortalEntryPoint): void {
+  protected openApp(ep: PortalModuleContent): void {
     this.wb.openApp(ep);
   }
 
-  protected openInNewTab(ep: PortalEntryPoint, event: Event): void {
+  protected openInNewTab(ep: PortalModuleContent, event: Event): void {
     event.stopPropagation();
     this.wb.openApp(ep, false);
   }
@@ -115,7 +115,7 @@ export class PortalDashboard implements OnInit {
     return ws.name.toLowerCase().includes(q) || (ws.description ?? '').toLowerCase().includes(q);
   }
 
-  private matchesApp(ep: PortalEntryPoint, q: string): boolean {
+  private matchesApp(ep: PortalModuleContent, q: string): boolean {
     if (!q) return true;
     return ep.name.toLowerCase().includes(q) || ep.moduleKey.toLowerCase().includes(q);
   }

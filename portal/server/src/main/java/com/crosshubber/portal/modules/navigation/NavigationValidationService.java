@@ -11,9 +11,9 @@ import java.util.Map;
 import java.util.Set;
 
 import com.crosshubber.portal.common.Keys;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointType;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentCategory;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentType;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ArrayNode;
@@ -48,11 +48,12 @@ public final class NavigationValidationService {
     }
   }
 
-  public static String entryPointRef(EntryPointEntity ep) {
-    return ep.getModuleKey() + ":" + ep.getEntryKey();
+  public static String entryPointRef(ModuleContentEntity ep) {
+    return ep.getModuleKey() + ":" + ep.getContentKey();
   }
 
-  // ── Pinned apps tree ─────────────────────────────────────────────────
+  // — Pinned apps tree
+  // —
 
   public static Validation validatePinnedTree(JsonNode nodes, Set<String> knownRefs) {
     Set<String> seenRefs = new LinkedHashSet<>();
@@ -112,7 +113,7 @@ public final class NavigationValidationService {
       } else {
         String ref = node.path("ref").asText(null);
         if (ref == null || !ref.matches(Keys.REF_RE)) {
-          return Validation.fail("items require a ref of the form \"moduleKey:entryKey\"");
+          return Validation.fail("items require a ref of the form \"moduleKey:contentKey\"");
         }
         if (ref.length() > 255) {
           return Validation.fail("ref: Too big: expected string to have <=255 characters");
@@ -157,7 +158,8 @@ public final class NavigationValidationService {
     return "null";
   }
 
-  // ── Portal Navigation layout ─────────────────────────────────────────
+  // — Portal Navigation layout
+  // —
 
   /** Strips unknown keys from a layout payload before persisting (strict-schema). */
   public static JsonNode stripLayout(JsonNode layout) {
@@ -250,7 +252,7 @@ public final class NavigationValidationService {
       if ("item".equals(node.path("type").asText(null))) {
         String ref = node.path("ref").asText(null);
         if (ref == null || !ref.matches(Keys.REF_RE)) {
-          return Validation.fail("layout items require a ref of the form \"moduleKey:entryKey\"");
+          return Validation.fail("layout items require a ref of the form \"moduleKey:contentKey\"");
         }
         if (ref.length() > 255) {
           return Validation.fail("ref: Too big: expected string to have <=255 characters");
@@ -282,11 +284,12 @@ public final class NavigationValidationService {
     return Validation.ok();
   }
 
-  // ── Shell nav trees (groups + items) ─────────────────────────────────
+  // — Shell nav trees (groups + items)
+  // —
 
   public record ShellGroup(String groupKey, String name, String parentKey) {}
 
-  public record ShellItem(String moduleKey, String entryKey, String groupKey) {}
+  public record ShellItem(String moduleKey, String contentKey, String groupKey) {}
 
   public static Validation validateShellTree(List<ShellGroup> groups, List<ShellItem> items) {
     Map<String, ShellGroup> byKey = new LinkedHashMap<>();
@@ -319,7 +322,7 @@ public final class NavigationValidationService {
             "item "
                 + item.moduleKey()
                 + ":"
-                + item.entryKey()
+                + item.contentKey()
                 + " references unknown group \""
                 + item.groupKey()
                 + "\"");
@@ -343,29 +346,30 @@ public final class NavigationValidationService {
     return depth < 0 ? -1 : depth + 1;
   }
 
-  // ── Computed defaults (D5 / D12) ─────────────────────────────────────
+  // — Computed defaults (D5 / D12)
+  // —
 
-  public static boolean isDefaultSidebarApp(EntryPointEntity ep) {
-    return ep.getCategory() == EntryPointCategory.APPLICATIONS
-        && ep.getType() != EntryPointType.LINK
+  public static boolean isDefaultSidebarApp(ModuleContentEntity ep) {
+    return ep.getCategory() == ModuleContentCategory.APPLICATIONS
+        && ep.getType() != ModuleContentType.LINK
         && Boolean.TRUE.equals(ep.getActive());
   }
 
-  /** D12: every visible app entry point, ordered by sortOrder then name. */
-  public static List<String> buildDefaultSidebarApps(List<EntryPointEntity> entryPoints) {
-    return entryPoints.stream()
+  /** D12: every visible app module content, ordered by sortOrder then name. */
+  public static List<String> buildDefaultSidebarApps(List<ModuleContentEntity> moduleContents) {
+    return moduleContents.stream()
         .filter(NavigationValidationService::isDefaultSidebarApp)
         .sorted(
-            Comparator.comparingInt(EntryPointEntity::getSortOrder)
-                .thenComparing(EntryPointEntity::getName, NAME_COLLATOR))
+            Comparator.comparingInt(ModuleContentEntity::getSortOrder)
+                .thenComparing(ModuleContentEntity::getName, NAME_COLLATOR))
         .map(NavigationValidationService::entryPointRef)
         .toList();
   }
 
   /** D5: single "Applications" section listing every app ref by sortOrder. */
-  public static Map<String, Object> buildDefaultLayout(List<EntryPointEntity> entryPoints) {
+  public static Map<String, Object> buildDefaultLayout(List<ModuleContentEntity> moduleContents) {
     List<Map<String, Object>> children = new ArrayList<>();
-    for (EntryPointEntity ep : entryPoints) {
+    for (ModuleContentEntity ep : moduleContents) {
       if (!isDefaultSidebarApp(ep)) {
         continue;
       }
@@ -376,15 +380,15 @@ public final class NavigationValidationService {
       children.add(item);
     }
     // Reorder deterministically by sortOrder/name
-    List<EntryPointEntity> sorted =
-        entryPoints.stream()
+    List<ModuleContentEntity> sorted =
+        moduleContents.stream()
             .filter(NavigationValidationService::isDefaultSidebarApp)
             .sorted(
-                Comparator.comparingInt(EntryPointEntity::getSortOrder)
-                    .thenComparing(EntryPointEntity::getName, NAME_COLLATOR))
+                Comparator.comparingInt(ModuleContentEntity::getSortOrder)
+                    .thenComparing(ModuleContentEntity::getName, NAME_COLLATOR))
             .toList();
     children.clear();
-    for (EntryPointEntity ep : sorted) {
+    for (ModuleContentEntity ep : sorted) {
       Map<String, Object> item = new LinkedHashMap<>();
       item.put("id", "item:" + entryPointRef(ep));
       item.put("type", "item");

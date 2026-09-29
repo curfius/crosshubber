@@ -5,20 +5,20 @@ import java.util.List;
 
 import com.crosshubber.portal.common.Roles;
 import com.crosshubber.portal.common.Texts;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointEntity;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 /**
- * Entry point output ({@code /api/registry/entry-points}, shell trees, shell config). Blank/empty
- * optional fields are omitted; {@code sandbox} and {@code roles} are stored comma-joined and
- * re-emitted as arrays; {@code hidden} is emitted only when {@code true}.
+ * Module content output ({@code /api/registry/module-contents}, shell trees, shell config).
+ * Blank/empty optional fields are omitted; {@code sandbox} and {@code roles} are stored
+ * comma-joined and re-emitted as arrays; {@code hidden} is emitted only when {@code true}.
  */
 @JsonInclude(Include.NON_NULL)
-public record EntryPointDto(
+public record ModuleContentDto(
     Long id,
     String moduleKey,
-    String entryKey,
+    String contentKey,
     String category,
     String name,
     String type,
@@ -32,14 +32,14 @@ public record EntryPointDto(
     String loadPath,
     String entryUrl,
     String element,
-    String parentEntryKey,
+    String parentContentKey,
     String groupKey,
     List<String> roles,
     String icon,
     String color,
     Boolean hidden) {
 
-  public static EntryPointDto fromEntity(EntryPointEntity ep) {
+  public static ModuleContentDto fromEntity(ModuleContentEntity ep) {
     List<String> roles = Roles.parse(ep.getRoles());
     List<String> sandbox = null;
     if (Texts.notBlank(ep.getSandbox())) {
@@ -48,10 +48,10 @@ public record EntryPointDto(
         sandbox = Arrays.asList(tokens);
       }
     }
-    return new EntryPointDto(
+    return new ModuleContentDto(
         ep.getId(),
         ep.getModuleKey(),
-        ep.getEntryKey(),
+        ep.getContentKey(),
         ep.getCategory() == null ? null : ep.getCategory().value(),
         ep.getName(),
         ep.getType() == null ? null : ep.getType().value(),
@@ -65,7 +65,7 @@ public record EntryPointDto(
         Texts.blankToNull(ep.getLoadPath()),
         Texts.blankToNull(ep.getEntryUrl()),
         Texts.blankToNull(ep.getElement()),
-        Texts.blankToNull(ep.getParentEntryKey()),
+        Texts.blankToNull(ep.getParentContentKey()),
         Texts.blankToNull(ep.getGroupKey()),
         roles.isEmpty() ? null : roles,
         Texts.blankToNull(ep.getIcon()),

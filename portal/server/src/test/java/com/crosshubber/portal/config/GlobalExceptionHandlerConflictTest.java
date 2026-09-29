@@ -11,7 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import com.crosshubber.portal.modules.navigation.layout.NavigationLayoutEntity;
-import com.crosshubber.portal.modules.settings.instance.InstanceSettingsEntity;
+import com.crosshubber.portal.modules.navigation.settings.NavigationSettingsEntity;
 import com.crosshubber.portal.modules.settings.modules.ModuleSettingsEntity;
 import com.crosshubber.portal.workspaces.WorkspaceEntity;
 
@@ -36,7 +36,7 @@ class GlobalExceptionHandlerConflictTest {
   @Test
   void versionedEntitiesCarryVersionField() throws Exception {
     assertNotNull(
-        InstanceSettingsEntity.class.getDeclaredField("version").getAnnotation(Version.class));
+        NavigationSettingsEntity.class.getDeclaredField("version").getAnnotation(Version.class));
     assertNotNull(
         NavigationLayoutEntity.class.getDeclaredField("version").getAnnotation(Version.class));
     assertNotNull(

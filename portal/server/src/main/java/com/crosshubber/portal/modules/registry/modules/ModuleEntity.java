@@ -12,9 +12,9 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
-/** JPA entity for {@code modules} table. */
+/** JPA entity for {@code registry_modules} table. */
 @Entity
-@Table(name = "modules")
+@Table(name = "registry_modules")
 public class ModuleEntity {
 
   @Id

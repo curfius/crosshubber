@@ -60,7 +60,7 @@ export interface ShellGroupPayload {
 
 export interface ShellItemPayload {
   moduleKey: string;
-  entryKey: string;
+  contentKey: string;
   groupKey: string | null;
   hidden?: boolean;
 }
@@ -84,7 +84,7 @@ export interface ShellTreeResponse {
   }>;
   items: Array<{
     moduleKey: string;
-    entryKey: string;
+    contentKey: string;
     name: string;
     category: string;
     type: string;

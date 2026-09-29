@@ -1,4 +1,4 @@
-package com.crosshubber.portal.modules.registry.entrypointgroups;
+package com.crosshubber.portal.modules.navigation.groups;
 
 import java.util.List;
 
@@ -7,50 +7,48 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.crosshubber.portal.common.Texts;
-import com.crosshubber.portal.modules.registry.dto.EntryPointGroupDto;
-import com.crosshubber.portal.modules.registry.dto.EntryPointGroupUpsertRequest;
-import com.crosshubber.portal.modules.registry.entrypoints.EntryPointCategory;
+import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentCategory;
 
-/** Entry point groups domain service. */
+/** Navigation groups domain service (shell-nav sections). */
 @Service
-public class EntryPointGroupsService {
+public class NavigationGroupsService {
 
-  private final EntryPointGroupRepository repo;
+  private final NavigationGroupRepository repo;
 
-  public EntryPointGroupsService(EntryPointGroupRepository repo) {
+  public NavigationGroupsService(NavigationGroupRepository repo) {
     this.repo = repo;
   }
 
   /** Output DTO. */
-  public static EntryPointGroupDto toOutput(EntryPointGroupEntity g) {
-    return EntryPointGroupDto.fromEntity(g);
+  public static NavigationGroupDto toOutput(NavigationGroupEntity g) {
+    return NavigationGroupDto.fromEntity(g);
   }
 
   @Transactional(readOnly = true)
-  public List<EntryPointGroupEntity> list(String category) {
+  public List<NavigationGroupEntity> list(String category) {
     if (category != null) {
-      return repo.findByCategoryOrderBySortOrderAscNameAsc(EntryPointCategory.parse(category));
+      return repo.findByCategoryOrderBySortOrderAscNameAsc(ModuleContentCategory.parse(category));
     }
     return repo.findAll(Sort.by(Sort.Order.asc("sortOrder"), Sort.Order.asc("name")));
   }
 
   @Transactional(readOnly = true)
-  public EntryPointGroupEntity get(String groupKey) {
+  public NavigationGroupEntity get(String groupKey) {
     return repo.findByGroupKey(groupKey).orElse(null);
   }
 
-  /** Upsert on groupKey — mirrors repo.upsert (full replace). */
+  /** Upsert on groupKey Ã¢â‚¬â€ mirrors repo.upsert (full replace). */
   @Transactional
-  public EntryPointGroupEntity upsert(EntryPointGroupUpsertRequest input) {
-    EntryPointGroupEntity group =
+  public NavigationGroupEntity upsert(NavigationGroupUpsertRequest input) {
+    NavigationGroupEntity group =
         repo.findByGroupKey(input.groupKey())
             .orElseGet(
                 () -> {
-                  EntryPointGroupEntity created = new EntryPointGroupEntity();
+                  NavigationGroupEntity created = new NavigationGroupEntity();
                   created.setGroupKey(input.groupKey());
                   return created;
                 });
-    group.setCategory(EntryPointCategory.parse(input.category()));
+    group.setCategory(ModuleContentCategory.parse(input.category()));
     group.setName(input.name());
     group.setParentKey(input.parentKey());
     group.setSortOrder(input.sortOrder() != null ? input.sortOrder() : 0);
@@ -70,7 +68,7 @@ public class EntryPointGroupsService {
     return true;
   }
 
-  /** Mirrors repo.reorder — sort_order = i*10 in payload order. */
+  /** Mirrors repo.reorder Ã¢â‚¬â€ sort_order = i*10 in payload order. */
   @Transactional
   public void reorder(List<String> groupKeys) {
     for (int i = 0; i < groupKeys.size(); i++) {

@@ -108,6 +108,10 @@ public class ModulesService {
         repo.findById(key)
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "module not found"));
+    if (Boolean.TRUE.equals(entity.getBuiltin())) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "builtin module availability is tenant-config-owned");
+    }
     entity.setActive(active);
     return repo.save(entity);
   }
