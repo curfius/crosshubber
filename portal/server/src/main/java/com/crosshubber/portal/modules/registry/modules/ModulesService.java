@@ -2,8 +2,6 @@ package com.crosshubber.portal.modules.registry.modules;
 
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -19,8 +17,6 @@ import com.crosshubber.portal.modules.registry.dto.SecurityRoleDto;
 @Service
 public class ModulesService {
 
-  private static final Logger log = LoggerFactory.getLogger(ModulesService.class);
-
   private final ModuleRepository repo;
   private final JsonUtils jsonUtils;
 
@@ -33,7 +29,7 @@ public class ModulesService {
   @Transactional(readOnly = true)
   public List<ModuleEntity> list(boolean includeInactive) {
     List<ModuleEntity> modules = repo.findAll(Sort.by(Sort.Order.asc("name")));
-    return includeInactive ? modules : modules.stream().filter(ModuleEntity::getActive).toList();
+    return includeInactive ? modules : modules.stream().filter(m -> m.getActive()).toList();
   }
 
   /** Output DTO. */
@@ -136,7 +132,7 @@ public class ModulesService {
   @Transactional(readOnly = true)
   public List<String> securityRoleKeys(String key) {
     return repo.findById(key)
-        .map(ModuleEntity::getSecurityRoles)
+        .map(m -> m.getSecurityRoles())
         .map(this::parseSecurityRoleKeys)
         .orElse(List.of());
   }
@@ -146,7 +142,7 @@ public class ModulesService {
   }
 
   private List<String> parseSecurityRoleKeys(String json) {
-    return parseSecurityRoleDtos(json).stream().map(SecurityRoleDto::key).toList();
+    return parseSecurityRoleDtos(json).stream().map(r -> r.key()).toList();
   }
 
   private String writeJson(Object value) {

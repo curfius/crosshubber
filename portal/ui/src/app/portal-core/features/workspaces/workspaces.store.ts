@@ -10,7 +10,7 @@ const ACTIVE_KEY = 'portal.activeWorkspace';
 const HOME_SNAPSHOT_KEY = 'portal.homeSnapshot';
 
 /** Default home-app ref (instance setting `homeApp` overrides it). */
-const DEFAULT_HOME_REF = 'portal-navigation:portal';
+const DEFAULT_HOME_REF = 'navigation:portal';
 const FALLBACK_HOME_REF = 'portal-dashboard:main';
 
 function withInstances(tabs: Tab[]): Tab[] {

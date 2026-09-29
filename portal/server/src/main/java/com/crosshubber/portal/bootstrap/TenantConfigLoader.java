@@ -190,16 +190,14 @@ public class TenantConfigLoader {
     }
     for (JsonNode e : externalList) {
       JsonNode keyNode = e.get("key");
-      if (keyNode == null || !keyNode.isTextual()) {
+      if (keyNode == null || !keyNode.isString()) {
         continue;
       }
       String key = keyNode.asString();
       JsonNode manifestUrlNode = e.get("manifestUrl");
       JsonNode manifestNode = e.get("manifest");
       String manifestUrl =
-          manifestUrlNode != null && manifestUrlNode.isTextual()
-              ? manifestUrlNode.asString()
-              : null;
+          manifestUrlNode != null && manifestUrlNode.isString() ? manifestUrlNode.asString() : null;
       JsonNode manifest = manifestNode != null && manifestNode.isObject() ? manifestNode : null;
       if ((manifestUrl == null || manifestUrl.isBlank()) && manifest == null) {
         log.warn(
@@ -208,7 +206,7 @@ public class TenantConfigLoader {
       }
       JsonNode serviceKeyNode = e.get("serviceKey");
       String serviceKey =
-          serviceKeyNode != null && serviceKeyNode.isTextual() ? serviceKeyNode.asString() : null;
+          serviceKeyNode != null && serviceKeyNode.isString() ? serviceKeyNode.asString() : null;
       boolean active =
           !e.has("active") || !e.get("active").isBoolean() || e.get("active").asBoolean();
       external.add(new DesiredExternalModule(key, serviceKey, manifestUrl, manifest, active));
@@ -255,10 +253,10 @@ public class TenantConfigLoader {
     JsonNode langs = i18n.get("enabledLanguages");
     JsonNode def = i18n.get("defaultLanguage");
     JsonNode fallback = i18n.get("fallbackLanguage");
-    if (def != null && !(def.isNull() || def.isTextual())) {
+    if (def != null && !(def.isNull() || def.isString())) {
       throw new IllegalArgumentException("i18n.defaultLanguage must be a string");
     }
-    if (fallback != null && !(fallback.isNull() || fallback.isTextual())) {
+    if (fallback != null && !(fallback.isNull() || fallback.isString())) {
       throw new IllegalArgumentException("i18n.fallbackLanguage must be a string");
     }
     List<String> enabledLanguages = null;
@@ -282,9 +280,9 @@ public class TenantConfigLoader {
     JsonNode name = branding.get("name");
     JsonNode title = branding.get("title");
     JsonNode logoUrl = branding.get("logoUrl");
-    if ((name != null && !(name.isNull() || name.isTextual()))
-        || (title != null && !(title.isNull() || title.isTextual()))
-        || (logoUrl != null && !(logoUrl.isNull() || logoUrl.isTextual()))) {
+    if ((name != null && !(name.isNull() || name.isString()))
+        || (title != null && !(title.isNull() || title.isString()))
+        || (logoUrl != null && !(logoUrl.isNull() || logoUrl.isString()))) {
       throw new IllegalArgumentException(
           "branding.name/title/logoUrl must be strings (logoUrl may be null)");
     }
@@ -304,7 +302,7 @@ public class TenantConfigLoader {
     }
     List<String> out = new ArrayList<>();
     for (JsonNode e : list) {
-      if (!e.isTextual() || e.asString().isBlank()) {
+      if (!e.isString() || e.asString().isBlank()) {
         throw new IllegalArgumentException(field + " entries must be non-blank strings");
       }
       out.add(e.asString());

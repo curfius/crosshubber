@@ -1,0 +1,121 @@
+{
+  "manifestVersion": 1,
+  "key": "solutions",
+  "name": "Solutions",
+  "baseUrl": "http://solutions:8090",
+  "health": "/healthz",
+  "content": {
+    "applications": [
+      {
+        "key": "pipeline",
+        "name": "Project Pipeline",
+        "description": "Track engagements from market lead to closed delivery.",
+        "type": "mfe",
+        "path": "/mfe/main.js",
+        "element": "solutions-pipeline",
+        "requiredRoles": ["solutions-user"]
+      }
+    ],
+    "features": [],
+    "adminSettings": [
+      {
+        "key": "settings",
+        "name": "Solutions Settings",
+        "description": "Configure the Projects Agent, tools and the document source.",
+        "type": "mfe",
+        "path": "/mfe/settings.js",
+        "element": "solutions-settings",
+        "requiredRoles": ["solutions-admin"]
+      }
+    ],
+    "userSettings": []
+  },
+  "security": {
+    "roles": [
+      { "key": "solutions-user", "name": "Solutions User" },
+      { "key": "solutions-admin", "name": "Solutions Admin" }
+    ]
+  },
+  "capabilities": [],
+  "events": { "published": [], "consumed": [] },
+  "agentContributions": {
+    "tools": [
+      {
+        "name": "list_projects",
+        "description": "List delivery projects with optional stage/health/client filters.",
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "stage": { "type": "string", "description": "Filter by workflow stage" },
+            "health": { "type": "string", "description": "Filter by health (on-track|at-risk|delayed)" },
+            "clientId": { "type": "string", "description": "Filter by client UUID" }
+          }
+        },
+        "mutates": false,
+        "roles": ["solutions-user"]
+      },
+      {
+        "name": "get_project",
+        "description": "Get a full project record including stage data.",
+        "arguments": {
+          "type": "object",
+          "properties": { "projectId": { "type": "string" } },
+          "required": ["projectId"]
+        },
+        "mutates": false,
+        "roles": ["solutions-user"]
+      },
+      {
+        "name": "get_stage_history",
+        "description": "Get the immutable workflow transition history of a project.",
+        "arguments": {
+          "type": "object",
+          "properties": { "projectId": { "type": "string" } },
+          "required": ["projectId"]
+        },
+        "mutates": false,
+        "roles": ["solutions-user"]
+      },
+      {
+        "name": "update_project_stage",
+        "description": "Move a project to an allowed next workflow stage (validated transition + stage gates).",
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "projectId": { "type": "string" },
+            "toStage": { "type": "string" },
+            "note": { "type": "string" },
+            "stageData": { "type": "object", "description": "Stage-gate fields required by the target stage" }
+          },
+          "required": ["projectId", "toStage"]
+        },
+        "mutates": true,
+        "roles": ["solutions-user"]
+      },
+      {
+        "name": "search_project_docs",
+        "description": "Search the RAG-enabled documents linked to a project; returns snippets with citations.",
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "projectId": { "type": "string" },
+            "query": { "type": "string" }
+          },
+          "required": ["projectId", "query"]
+        },
+        "mutates": false,
+        "roles": ["solutions-user"]
+      }
+    ],
+    "skills": [],
+    "agents": [
+      {
+        "name": "projects-agent",
+        "description": "Answers project delivery status questions and narrates stage history from live data.",
+        "endpoint": "/agent/tasks",
+        "roles": ["solutions-user"]
+      }
+    ],
+    "knowledge": []
+  }
+}

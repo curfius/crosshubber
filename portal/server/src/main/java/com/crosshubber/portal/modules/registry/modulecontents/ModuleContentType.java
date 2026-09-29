@@ -24,7 +24,7 @@ public enum ModuleContentType {
     return valueOf(raw.toUpperCase(Locale.ROOT));
   }
 
-  /** Maps enum â†” lowercase column values. */
+  /** Maps enum ↔ lowercase column values. */
   @Converter
   public static class DbConverter implements AttributeConverter<ModuleContentType, String> {
 

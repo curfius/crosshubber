@@ -10,7 +10,9 @@ import {
   type ChatModelOption,
 } from '../../../../core/ai-hub/chat-models';
 import { I18nService } from '../../../../core/i18n/i18n.service';
+import { WorkbenchService } from '../../../features/workspaces/workspaces.store';
 import { ChatCoreService, type ChatMessage, type Conversation } from '../shared/chat-core.service';
+import { buildClientContext } from '../shared/session-context';
 
 const MODULE_KEY = 'ai-hub';
 
@@ -25,6 +27,7 @@ export class AiHubChat implements OnInit, AfterViewChecked {
   private readonly moduleSettings = inject(ModuleSettingsService);
   private readonly aiHub = inject(AiHubService);
   private readonly chatCore = inject(ChatCoreService);
+  private readonly workbench = inject(WorkbenchService);
   protected readonly i18n = inject(I18nService);
 
   @ViewChild('messagesContainer') messagesContainer?: ElementRef<HTMLDivElement>;
@@ -165,6 +168,7 @@ export class AiHubChat implements OnInit, AfterViewChecked {
       const result = await this.chatCore.streamChat({
         conversationId: this.currentConversationId(),
         message: text,
+        context: buildClientContext(this.workbench),
         onContent: (chunk) => {
           assistantContent += chunk;
           this.messages.update((msgs) => {

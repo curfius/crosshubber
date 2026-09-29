@@ -14,7 +14,7 @@ import com.crosshubber.portal.modules.navigation.settings.NavigationSettingsServ
 import com.crosshubber.portal.security.PortalUser;
 
 /**
- * Navigation feature switches (backed by instance settings) â€” mirrors the features endpoints in
+ * Navigation feature switches (backed by instance settings) — mirrors the features endpoints in
  * navigation.routes.ts (D11).
  */
 @RestController

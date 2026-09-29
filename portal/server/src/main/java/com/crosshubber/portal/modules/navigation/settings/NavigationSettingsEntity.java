@@ -29,7 +29,7 @@ public class NavigationSettingsEntity {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
-  /** Optimistic-lock version â€” concurrent singleton writes fail with 409 (OPTIMIZATIONS #12). */
+  /** Optimistic-lock version — concurrent singleton writes fail with 409 (OPTIMIZATIONS #12). */
   @Version
   @Column(name = "version", nullable = false)
   private Integer version;

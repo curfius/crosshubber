@@ -28,7 +28,7 @@ public enum ModuleContentCategory {
     return valueOf(raw.toUpperCase(Locale.ROOT).replace('-', '_'));
   }
 
-  /** Maps enum â†” lowercase-hyphen column values. */
+  /** Maps enum ↔ lowercase-hyphen column values. */
   @Converter
   public static class DbConverter implements AttributeConverter<ModuleContentCategory, String> {
 

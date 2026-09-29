@@ -31,7 +31,8 @@ public class AiHubChatController {
       return ResponseEntity.badRequest().build();
     }
     AiHubChatService.ChatStream stream =
-        chatService.streamChat(user.sub(), body.conversationId(), message);
+        chatService.streamChat(
+            user, body.conversationId(), message, body.context(), body.toolConfirmation());
     return ResponseEntity.ok()
         .header("X-Conversation-Id", stream.conversationId())
         .body(stream.frames());

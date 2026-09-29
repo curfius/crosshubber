@@ -24,7 +24,7 @@ public class NavigationSettingsService {
 
   static {
     DEFAULT_SETTINGS = new LinkedHashMap<>();
-    DEFAULT_SETTINGS.put("homeApp", "portal-navigation:portal");
+    DEFAULT_SETTINGS.put("homeApp", "navigation:portal");
     DEFAULT_SETTINGS.put("pinnedAppsEnabled", true);
     DEFAULT_SETTINGS.put("workspacesEnabled", true);
   }

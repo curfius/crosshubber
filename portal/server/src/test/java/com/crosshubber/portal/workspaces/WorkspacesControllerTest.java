@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -74,6 +75,22 @@ class WorkspacesControllerTest {
     assertNull(dto.focusedGroupId());
     assertEquals(false, dto.hideSingleTabToolbar());
     assertEquals(false, dto.locked());
+  }
+
+  @Test
+  void createReturnsBadRequestWhenBodyMissing() {
+    var response = controller.create(authUser(), null);
+
+    assertEquals(400, response.getStatusCode().value());
+    assertEquals(Map.of("error", "name is required"), response.getBody());
+  }
+
+  @Test
+  void updateReturnsBadRequestWhenBodyMissing() {
+    var response = controller.update(authUser(), UUID.randomUUID().toString(), null);
+
+    assertEquals(400, response.getStatusCode().value());
+    assertEquals(Map.of("error", "name is required"), response.getBody());
   }
 
   private static com.crosshubber.portal.security.PortalUser authUser() {

@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: crosshubber-staffing
+  datasource:
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:25432}/${PGDATABASE:crosshubber_dev}
+    username: ${PGUSER:portal}
+    password: ${PGPASSWORD:}
+    hikari:
+      maximum-pool-size: 5
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: ${PGSCHEMA:staffing}
+  flyway:
+    schemas: ${PGSCHEMA:staffing}
+
+server:
+  port: ${PORT:8091}
+
+staffing:
+  # Shared secret for validating portal-minted agent-call tokens (X-Portal-Agent).
+  # Resolves to the same SESSION_SECRET the portal gets (env_file); must never differ.
+  agent-shared-secret: ${AGENT_SHARED_SECRET:${SESSION_SECRET:dev-insecure-shared-secret}}
+  docsource:
+    kind: ${STAFFING_DOCSOURCE_KIND:fake}
+
+logging:
+  level:
+    com.crosshubber.staffing: INFO

@@ -17,8 +17,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Per-user navigation settings (sidebar) â€” read/write the user-settings document with
- * merge-on-save semantics.
+ * Per-user navigation settings (sidebar) — read/write the user-settings document with merge-on-save
+ * semantics.
  */
 @Service
 public class NavigationUserSettingsService {
@@ -90,7 +90,7 @@ public class NavigationUserSettingsService {
     repo.save(entity);
   }
 
-  /** Validates the partial PUT body â€” returns error message or null. */
+  /** Validates the partial PUT body — returns error message or null. */
   public String validatePartial(JsonNode body) {
     if (body == null || !body.isObject()) {
       return "body must be an object";
@@ -127,7 +127,7 @@ public class NavigationUserSettingsService {
           return "sidebar.apps: must be an array of at most 500 strings";
         }
         for (JsonNode app : apps) {
-          if (!app.isTextual() || app.asString().length() > 255) {
+          if (!app.isString() || app.asString().length() > 255) {
             return "sidebar.apps: must be an array of at most 500 strings";
           }
         }
@@ -142,7 +142,7 @@ public class NavigationUserSettingsService {
         return "sidebarExpanded: must be an array of at most 500 strings";
       }
       for (JsonNode item : expanded) {
-        if (!item.isTextual() || item.asString().length() > 255) {
+        if (!item.isString() || item.asString().length() > 255) {
           return "sidebarExpanded: must be an array of at most 500 strings";
         }
       }
@@ -184,7 +184,7 @@ public class NavigationUserSettingsService {
     return next;
   }
 
-  /** Default sidebar settings â€” every visible app ref ordered by sortOrder. */
+  /** Default sidebar settings — every visible app ref ordered by sortOrder. */
   public Map<String, Object> defaultUserSettings(List<ModuleContentEntity> moduleContents) {
     Map<String, Object> sidebar = new LinkedHashMap<>();
     sidebar.put("showPinned", true);

@@ -85,7 +85,7 @@ export class RegistryService {
   }
 
   async saveModule(input: ModulePayload): Promise<ModuleOutput> {
-    const body = await this.request('/api/registry/modules', this.jsonInit(input), 'save failed');
+    const body = await this.request('/api/registry/modules', this.jsonInit('POST', input), 'save failed');
     this.changed.next();
     return (body as { module: ModuleOutput }).module;
   }
@@ -96,12 +96,7 @@ export class RegistryService {
   }
 
   async setModuleActive(key: string, active: boolean): Promise<void> {
-    await this.request(`${this.moduleUrl(key)}/active`, this.jsonInit({ active }), 'update failed');
-    this.changed.next();
-  }
-
-  async reorderModules(keys: string[]): Promise<void> {
-    await this.request('/api/registry/modules/reorder', this.jsonInit({ keys }), 'reorder failed');
+    await this.request(`${this.moduleUrl(key)}/active`, this.jsonInit('PATCH', { active }), 'update failed');
     this.changed.next();
   }
 
@@ -140,7 +135,7 @@ export class RegistryService {
     color?: string;
     multi?: boolean;
   }): Promise<ModuleContentOutput> {
-    const body = await this.request('/api/registry/module-contents', this.jsonInit(input), 'save failed');
+    const body = await this.request('/api/registry/module-contents', this.jsonInit('POST', input), 'save failed');
     this.changed.next();
     return (body as { moduleContent: ModuleContentOutput }).moduleContent;
   }
@@ -151,7 +146,7 @@ export class RegistryService {
   }
 
   async reorderModuleContents(ids: number[]): Promise<void> {
-    await this.request('/api/registry/module-contents/reorder', this.jsonInit({ ids }), 'reorder failed');
+    await this.request('/api/registry/module-contents/reorder', this.jsonInit('POST', { ids }), 'reorder failed');
     this.changed.next();
   }
 
@@ -173,7 +168,7 @@ export class RegistryService {
     sortOrder?: number;
     icon?: string;
   }): Promise<NavigationGroup> {
-    const body = await this.request('/api/navigation/groups', this.jsonInit(input), 'save failed');
+    const body = await this.request('/api/navigation/groups', this.jsonInit('POST', input), 'save failed');
     this.changed.next();
     return (body as { group: NavigationGroup[] } & { group: NavigationGroup }).group;
   }
@@ -184,14 +179,14 @@ export class RegistryService {
   }
 
   async reorderGroups(keys: string[]): Promise<void> {
-    await this.request('/api/navigation/groups/reorder', this.jsonInit({ keys }), 'reorder failed');
+    await this.request('/api/navigation/groups/reorder', this.jsonInit('POST', { keys }), 'reorder failed');
     this.changed.next();
   }
 
   // ── Install Wizard ──────────────────────────────────────────────────
 
   async fetchManifestFromUrl(url: string): Promise<{ manifest: PortalModuleManifest }> {
-    const body = await this.request('/api/registry/fetch', this.jsonInit({ url }), 'fetch failed');
+    const body = await this.request('/api/registry/fetch', this.jsonInit('POST', { url }), 'fetch failed');
     return { manifest: (body as { manifest: PortalModuleManifest }).manifest };
   }
 
@@ -216,7 +211,7 @@ export class RegistryService {
   }
 
   async installManifest(manifest: PortalModuleManifest): Promise<{ ok: boolean; moduleKey: string; version: string }> {
-    const body = await this.request('/api/registry/install', this.jsonInit({ manifest }), 'install failed');
+    const body = await this.request('/api/registry/install', this.jsonInit('POST', { manifest }), 'install failed');
     this.changed.next();
     const payload = body as { moduleKey?: string; version?: string };
     return { ok: true, moduleKey: payload.moduleKey!, version: payload.version! };
@@ -261,14 +256,14 @@ export class RegistryService {
 
   async saveDraft(moduleKey: string, manifest: PortalModuleManifest): Promise<{ version: string }> {
     const body = await this.request(
-      `/api/registry/draft/${encodeURIComponent(moduleKey)}`, this.jsonInit({ manifest }), 'save draft failed');
+      `/api/registry/draft/${encodeURIComponent(moduleKey)}`, this.jsonInit('PUT', { manifest }), 'save draft failed');
     return { version: (body as { version: string }).version };
   }
 
   async applyDraft(moduleKey: string, manifest?: PortalModuleManifest): Promise<{ ok: boolean; moduleKey: string; version: string; shouldActivate: boolean; errors?: string[] }> {
     const body = await this.request(
       `/api/registry/draft/${encodeURIComponent(moduleKey)}/apply`,
-      manifest ? this.jsonInit({ manifest }) : { method: 'POST' },
+      manifest ? this.jsonInit('POST', { manifest }) : { method: 'POST' },
       'apply draft failed');
     this.changed.next();
     const payload = body as { moduleKey?: string; version?: string; shouldActivate?: boolean; errors?: string[] };
@@ -318,8 +313,9 @@ export class RegistryService {
 
   // ── Helpers ────────────────────────────────────────────────────────
 
-  private jsonInit(body: unknown): RequestInit {
+  private jsonInit(method: 'POST' | 'PUT' | 'PATCH', body: unknown): RequestInit {
     return {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     };

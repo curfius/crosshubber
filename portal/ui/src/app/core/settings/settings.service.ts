@@ -19,7 +19,7 @@ export interface NavigationSettings {
  */
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
-  readonly homeApp = signal<string>('portal-navigation:portal');
+  readonly homeApp = signal<string>('navigation:portal');
   readonly isAdmin = signal(false);
   readonly themePolicy = signal<ThemePolicy | null>(null);
 

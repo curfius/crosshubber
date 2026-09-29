@@ -29,8 +29,8 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * Settings-shell tree editor (groups + items): group key resolution (slugified {@code nav-*} keys),
- * per-bucket renumbering, ungrouping of unlisted items and cascade cleanup of removed groups â€”
- * one transaction.
+ * per-bucket renumbering, ungrouping of unlisted items and cascade cleanup of removed groups — one
+ * transaction.
  */
 @Service
 public class ShellTreeService {
@@ -78,17 +78,17 @@ public class ShellTreeService {
     // Validate each group
     for (int i = 0; i < groupInputs.size(); i++) {
       JsonNode g = groupInputs.get(i);
-      String groupKey = g.path("groupKey").asText(null);
+      String groupKey = g.path("groupKey").asString(null);
       if (groupKey != null && !groupKey.isEmpty() && !groupKey.matches(Keys.KEY_RE)) {
         throw new IllegalArgumentException(
             "groups[" + i + "].groupKey: must match [a-z0-9][a-z0-9-]{0,63}");
       }
-      String parentKey = g.path("parentKey").asText(null);
+      String parentKey = g.path("parentKey").asString(null);
       if (parentKey != null && !parentKey.isEmpty() && !parentKey.matches(Keys.KEY_RE)) {
         throw new IllegalArgumentException(
             "groups[" + i + "].parentKey: must match [a-z0-9][a-z0-9-]{0,63}");
       }
-      String name = g.path("name").asText(null);
+      String name = g.path("name").asString(null);
       if (name == null || name.isEmpty()) {
         throw new IllegalArgumentException("groups[" + i + "].name: Required");
       }
@@ -96,7 +96,7 @@ public class ShellTreeService {
         throw new IllegalArgumentException(
             "groups[" + i + "].name: must not be longer than 256 characters");
       }
-      String icon = g.path("icon").asText(null);
+      String icon = g.path("icon").asString(null);
       if (icon != null && icon.length() > 64) {
         throw new IllegalArgumentException(
             "groups[" + i + "].icon: must not be longer than 64 characters");
@@ -108,7 +108,7 @@ public class ShellTreeService {
     // Validate each item
     for (int i = 0; i < itemInputs.size(); i++) {
       JsonNode item = itemInputs.get(i);
-      String moduleKey = item.path("moduleKey").asText(null);
+      String moduleKey = item.path("moduleKey").asString(null);
       if (moduleKey == null || moduleKey.isEmpty()) {
         throw new IllegalArgumentException("items[" + i + "].moduleKey: Required");
       }
@@ -116,7 +116,7 @@ public class ShellTreeService {
         throw new IllegalArgumentException(
             "items[" + i + "].moduleKey: must match [a-z0-9][a-z0-9-]{0,63}");
       }
-      String contentKey = item.path("contentKey").asText(null);
+      String contentKey = item.path("contentKey").asString(null);
       if (contentKey == null || contentKey.isEmpty()) {
         throw new IllegalArgumentException("items[" + i + "].contentKey: Required");
       }
@@ -157,11 +157,11 @@ public class ShellTreeService {
     List<ResolvedGroup> resolved = new ArrayList<>();
     for (JsonNode g : groupInputs) {
       String key;
-      String provided = g.path("groupKey").asText(null);
+      String provided = g.path("groupKey").asString(null);
       if (provided != null && !provided.isEmpty()) {
         key = provided;
       } else {
-        key = slugify(g.path("name").asText(""), allGroupKeys);
+        key = slugify(g.path("name").asString(""), allGroupKeys);
       }
       boolean isNew = !byExistingKey.containsKey(key);
       if (!isNew) {
@@ -171,8 +171,8 @@ public class ShellTreeService {
           new ResolvedGroup(
               key,
               g.path("name").asString(),
-              g.path("parentKey").isTextual() ? g.get("parentKey").asString() : null,
-              g.path("icon").isTextual() ? g.get("icon").asString() : null,
+              g.path("parentKey").isString() ? g.get("parentKey").asString() : null,
+              g.path("icon").isString() ? g.get("icon").asString() : null,
               g.path("hidden").asBoolean(false),
               isNew ? "" : Texts.orEmpty(byExistingKey.get(key).getRoles())));
     }
@@ -212,7 +212,7 @@ public class ShellTreeService {
 
     // Groups: upsert in payload order, renumbering per parent bucket.
     // Roles are never touched (preserved on conflict, empty on insert).
-    // Lookups use the preloaded global map â€” no per-key SELECT in the loop.
+    // Lookups use the preloaded global map — no per-key SELECT in the loop.
     Map<String, Integer> bucketCounter = new LinkedHashMap<>();
     for (ResolvedGroup g : resolved) {
       String bucket = g.parentKey() == null ? "" : g.parentKey();
@@ -268,7 +268,7 @@ public class ShellTreeService {
     List<ModuleContentEntity> unlisted =
         categoryRows.stream()
             .filter(r -> !listedRefs.contains(r.getModuleKey() + ":" + r.getContentKey()))
-            .sorted(java.util.Comparator.comparingInt(ModuleContentEntity::getSortOrder))
+            .sorted(java.util.Comparator.comparingInt(r -> r.getSortOrder()))
             .toList();
     for (ModuleContentEntity row : unlisted) {
       int order = itemBucket.getOrDefault("", 0);
@@ -297,7 +297,7 @@ public class ShellTreeService {
     return shellTreePayload(category);
   }
 
-  /** Mirrors the route slugify: nav-<base>, de-duplicated with -2, -3â€¦ */
+  /** Mirrors the route slugify: nav-<base>, de-duplicated with -2, -3… */
   private static String slugify(String name, Set<String> takenKeys) {
     String base = name.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-+|-+$", "");
     if (base.length() > 40) {

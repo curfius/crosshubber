@@ -2,7 +2,7 @@ package com.crosshubber.portal.bootstrap;
 
 import java.util.List;
 
-/** Builtin module catalog â€” single source of truth for portal-owned modules. */
+/** Builtin module catalog — single source of truth for portal-owned modules. */
 public final class EmbeddedCatalog {
 
   private EmbeddedCatalog() {}
@@ -241,5 +241,5 @@ public final class EmbeddedCatalog {
 
   /** Registered load paths for embedded module content (mirrors EMBEDDED_LOAD_PATHS). */
   public static final List<String> EMBEDDED_LOAD_PATHS =
-      CATALOG.stream().flatMap(m -> m.moduleContents().stream()).map(Entry::loadPath).toList();
+      CATALOG.stream().flatMap(m -> m.moduleContents().stream()).map(m -> m.loadPath()).toList();
 }

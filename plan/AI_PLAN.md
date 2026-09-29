@@ -152,13 +152,19 @@ without the portal indexing the world.
 | G4 | Privacy | Knowledge is tenant-scoped (per-schema), never cross-tenant; URL fetches go through `SsrfGuard` + existing HTTP client config. |
 | G5 | Tests | Retrieval ranking fixtures; SSRF rejection; tenant isolation. |
 
+Phase H refinement (2026-09-29): module-owned knowledge is retrieved through
+module-declared tools — G1/G2/G4/G5 become module-internal concerns, and the
+portal-side scope of this phase reduces to G3 (citation frames + transparency).
+
 ## Phase H — Dogfood modules (solutions & staffing)
 
 Two remote MFE modules planned 2026-09-29 as concrete consumers of A/B/D/F/G —
 `solutions` (project delivery tracking, module-owned agent, OneDrive RAG) and
-`staffing` (RFP→CV matching, tools-only). Full spec, manifest v2 examples, portal
-prerequisite deltas (remote tool dispatch, module auth, `modules/docsource`
-abstraction) and E2E acceptance scenarios live in **`plan/AI_MODULES_PLAN.md`**.
+`staffing` (RFP→CV matching, tools-only). Modules are fully self-contained (own
+datasources, credentials, and LLM access); the only portal↔module coupling is the
+manifest contract plus the portal-issued agent-call token. Full spec, manifest v2
+examples, portal prerequisite deltas (remote tool dispatch, module auth) and E2E
+acceptance scenarios live in **`plan/AI_MODULES_PLAN.md`**.
 Phase H drives the sequencing below; A/B/D land before the module domain work, F/G
 land as H0b/H5.
 
@@ -189,8 +195,9 @@ A→B is the vertical slice that proves value with zero external dependencies.
 D unlocks module contributions; E/F/G each need an explicit go decision.
 
 **Phase H ordering (2026-09-29, dogfood-driven):** A + B (+ remote dispatch) + D
-first, then `modules/docsource`, module domain builds in parallel, then F (HTTP
-sub-agents) + G as H0b/H5. E stays deferred (open question 4). See
+first, then module domain builds in parallel (modules own their datasources and LLM
+access — no portal prerequisites remain), then F (HTTP sub-agents) + G (citations)
+as H0b/H5. E stays deferred (open question 4). See
 `plan/AI_MODULES_PLAN.md` § Sequencing.
 
 ## Open questions
@@ -216,3 +223,5 @@ sub-agents) + G as H0b/H5. E stays deferred (open question 4). See
 | 2026-09-29 | Status re-verified against code: no A–G work started; chat/quick-chat merge (C2 prerequisite) confirmed done via `ChatCoreService`. |
 | 2026-09-29 | Phase A go: scope A1–A3 + A5, A4 (pack snapshot persistence) deferred. Identity fields (`user`, `tenant`, `contentVersion`) are server-authoritative; the client supplies only `location`/`openTabs`/`workspace`. |
 | 2026-09-29 | Phase H planned: dogfood modules `solutions` + `staffing` as remote MFEs (see `plan/AI_MODULES_PLAN.md`). Resolves open questions 2 (`modules/agent` package) and 4 (D before E). F3/F4 transport: HTTP-first with forwarded user tokens. Portal-side `modules/docsource` abstraction with OneDrive adapter first. |
+| 2026-09-29 | Supersedes the docsource part of the previous entry: **module-owned datasources** — each module implements its own connectors, holds its own credentials, and configures its own LLM provider keys; the portal hosts no module-domain infrastructure. Portal-side Phase G scope reduces to citations/transparency. See AI_MODULES_PLAN decision log. |
+| 2026-09-29 | H0a implemented: A1–A3+A5 (context pack, server-authoritative identity), B1–B6 portal core (`modules/agent`: tool registry, builtin tools, RBAC dispatcher, pending confirmations, audit table `agent_tool_calls` V29, SSE tool frames), manifest v2 (tools/skills/agents/knowledge; snake-case names via `Keys.AGENT_NAME_RE`), remote dispatch + portal-signed `X-Portal-Agent` tokens. Protocol doc: `docs/agent-protocol.md`. UI sends `context` and parses typed frames. |

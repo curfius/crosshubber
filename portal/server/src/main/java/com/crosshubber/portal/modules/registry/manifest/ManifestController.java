@@ -255,7 +255,7 @@ public class ManifestController {
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("error", "invalid manifest");
     out.put("issues", issues);
-    return ResponseEntity.unprocessableEntity().body(out);
+    return ResponseEntity.unprocessableContent().body(out);
   }
 
   /** Audit actor for install/rollback bookkeeping. */

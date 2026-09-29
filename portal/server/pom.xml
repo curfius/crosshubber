@@ -205,5 +205,37 @@
         </dependencies>
       </plugin>
     </plugins>
+
+    <!-- m2e (Eclipse/VS Code Java) only: marks checkstyle execution as ignored for the IDE
+         build. Real Maven builds still run checkstyle at the validate phase. -->
+    <pluginManagement>
+      <plugins>
+        <!-- This plugin's configuration is consumed by m2e (lifecycle mapping metadata). -->
+        <plugin>
+          <groupId>org.eclipse.m2e</groupId>
+          <artifactId>lifecycle-mapping</artifactId>
+          <version>1.0.0</version>
+          <configuration>
+            <lifecycleMappingMetadata>
+              <pluginExecutions>
+                <pluginExecution>
+                  <pluginExecutionFilter>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <versionRange>[3.0,)</versionRange>
+                    <goals>
+                      <goal>check</goal>
+                    </goals>
+                  </pluginExecutionFilter>
+                  <action>
+                    <ignore/>
+                  </action>
+                </pluginExecution>
+              </pluginExecutions>
+            </lifecycleMappingMetadata>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
   </build>
 </project>

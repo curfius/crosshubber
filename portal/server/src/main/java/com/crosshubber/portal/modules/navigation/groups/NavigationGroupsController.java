@@ -79,7 +79,7 @@ public class NavigationGroupsController {
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> reorder(@RequestBody Map<String, Object> body) {
     Object keys = body == null ? null : body.get("keys");
-    // Missing or empty keys â†’ 200 {ok:true} (no-op)
+    // Missing or empty keys → 200 {ok:true} (no-op)
     if (keys == null) {
       return ResponseEntity.ok(Map.of("ok", true));
     }

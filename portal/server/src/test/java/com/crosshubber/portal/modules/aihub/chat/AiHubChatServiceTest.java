@@ -19,6 +19,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.crosshubber.portal.config.JacksonConfig;
+import com.crosshubber.portal.modules.agent.AgentToolCallbacks;
+import com.crosshubber.portal.modules.agent.ToolDispatcher;
+import com.crosshubber.portal.modules.agent.ToolRegistry;
+import com.crosshubber.portal.modules.aihub.context.AgentPromptAssembler;
+import com.crosshubber.portal.modules.aihub.context.SessionContextBuilder;
 import com.crosshubber.portal.modules.aihub.conversations.AiHubConversationsService;
 import com.crosshubber.portal.modules.aihub.providers.AiHubProvidersService;
 import com.crosshubber.portal.modules.settings.modules.ModuleSettingsService;
@@ -39,10 +44,16 @@ class AiHubChatServiceTest {
             providers,
             mock(AiHubConversationsService.class),
             mock(ChatMemory.class),
-            mapper);
+            mapper,
+            mock(SessionContextBuilder.class),
+            mock(AgentPromptAssembler.class),
+            mock(ToolRegistry.class),
+            mock(AgentToolCallbacks.class),
+            mock(ToolDispatcher.class));
 
     AiHubChatService.EffectiveConfig cfg =
-        new AiHubChatService.EffectiveConfig("anthropic", "claude-sonnet-4", "t1", null, 0.7, 4096);
+        new AiHubChatService.EffectiveConfig(
+            "anthropic", "claude-sonnet-4", "t1", null, 0.7, 4096, true);
     ChatModel model =
         svc.createChatModel(
             cfg, new AiHubProvidersService.ResolvedKey("sk-test", "https://api.anthropic.com"));
@@ -60,7 +71,12 @@ class AiHubChatServiceTest {
             providers,
             mock(AiHubConversationsService.class),
             mock(ChatMemory.class),
-            mapper);
+            mapper,
+            mock(SessionContextBuilder.class),
+            mock(AgentPromptAssembler.class),
+            mock(ToolRegistry.class),
+            mock(AgentToolCallbacks.class),
+            mock(ToolDispatcher.class));
 
     // OpenAI-compatible base URLs keep their version segment: the openai-java SDK
     // appends /chat/completions to the version-scoped root itself.
@@ -71,7 +87,7 @@ class AiHubChatServiceTest {
             "https://api.x.ai/v1",
             "https://api.deepseek.com")) {
       AiHubChatService.EffectiveConfig cfg =
-          new AiHubChatService.EffectiveConfig("openai", "gpt-4o", "t1", null, 0.7, 4096);
+          new AiHubChatService.EffectiveConfig("openai", "gpt-4o", "t1", null, 0.7, 4096, true);
       ChatModel model =
           svc.createChatModel(cfg, new AiHubProvidersService.ResolvedKey("sk-test", base));
       assertEquals(OpenAiChatModel.class, model.getClass(), "base URL: " + base);
@@ -89,7 +105,12 @@ class AiHubChatServiceTest {
         mock(AiHubProvidersService.class),
         mock(AiHubConversationsService.class),
         mock(ChatMemory.class),
-        mapper);
+        mapper,
+        mock(SessionContextBuilder.class),
+        mock(AgentPromptAssembler.class),
+        mock(ToolRegistry.class),
+        mock(AgentToolCallbacks.class),
+        mock(ToolDispatcher.class));
   }
 
   @Test
@@ -132,6 +153,21 @@ class AiHubChatServiceTest {
 
     assertEquals(0.7, cfg.temperature());
     assertEquals(4096, cfg.maxTokens());
+    assertEquals(true, cfg.agentEnabled(), "agent loop is enabled by default");
+  }
+
+  @Test
+  void resolveConfigHonorsAgentEnabledFlag() {
+    Map<String, Object> settings =
+        Map.of(
+            "defaultModel",
+            Map.of("providerId", "openai", "modelId", "gpt-4o", "tokenId", "t"),
+            "agent.enabled",
+            false);
+
+    AiHubChatService.EffectiveConfig cfg = newService(settings).resolveConfig();
+
+    assertEquals(false, cfg.agentEnabled());
   }
 
   @Test

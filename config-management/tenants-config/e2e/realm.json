@@ -1,0 +1,143 @@
+{
+  "realm": "e2e",
+  "enabled": true,
+  "displayName": "crosshubber — e2e",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": false,
+  "verifyEmail": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "sslRequired": "none",
+  "accessTokenLifespan": 300,
+  "defaultSignatureAlgorithm": "RS256",
+  "roles": {
+    "realm": [
+      {
+        "name": "portal-settings-edit",
+        "description": "Can manage portal instance settings"
+      },
+      {
+        "name": "portal-registry-edit",
+        "description": "Can manage the tenant module registry"
+      },
+      {
+        "name": "portal-i18n-edit",
+        "description": "Can manage portal languages and translated labels"
+      },
+      {
+        "name": "portal-navigation-edit",
+        "description": "Can manage portal navigation configuration"
+      },
+      {
+        "name": "portal-ai-hub-edit",
+        "description": "Can manage the AI Hub (providers, tokens, channels)"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "portal-admins",
+      "path": "/portal-admins",
+      "realmRoles": [
+        "portal-settings-edit",
+        "portal-registry-edit",
+        "portal-i18n-edit",
+        "portal-navigation-edit",
+        "portal-ai-hub-edit"
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "portal",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "secret": "${PORTAL_CLIENT_SECRET}",
+      "clientAuthenticatorType": "client-secret",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:28094/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:28094/*"
+      },
+      "defaultClientScopes": [
+        "profile",
+        "email",
+        "roles",
+        "web-origins"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "portal-admin",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "secret": "${KC_ADMIN_CLIENT_SECRET}",
+      "clientAuthenticatorType": "client-secret",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [],
+      "webOrigins": []
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-portal-admin",
+      "enabled": true,
+      "serviceAccountClientId": "portal-admin",
+      "clientRoles": {
+        "realm-management": [
+          "manage-realm",
+          "view-users",
+          "query-users"
+        ]
+      }
+    },
+    {
+      "username": "e2e-admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "E2E",
+      "lastName": "Admin",
+      "email": "e2e-admin@crosshubber.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_USER_E2EADMIN_PASSWORD}"
+        }
+      ],
+      "groups": [
+        "/portal-admins"
+      ]
+    },
+    {
+      "username": "e2e-user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "E2E",
+      "lastName": "Plain",
+      "email": "e2e-user@crosshubber.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_USER_E2EUSER_PASSWORD}"
+        }
+      ]
+    }
+  ]
+}

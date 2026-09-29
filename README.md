@@ -181,6 +181,11 @@ mvn verify              # build + checkstyle + tests
 cd portal/ui
 npm ci
 npm run build           # or ng serve for dev
+
+# E2E (Playwright — boots the ephemeral crosshubber-e2e tenant stack, needs Docker)
+cd test/e2e
+npm ci
+npx playwright test     # E2E_KEEP_STACK=1 to keep the stack up for debugging
 ```
 
 **Code style:** Google Java Style (2 spaces, 100 col) — enforced via `mvn spotless:check` + `mvn checkstyle:check`.

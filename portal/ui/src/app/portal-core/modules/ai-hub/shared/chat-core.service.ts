@@ -3,7 +3,8 @@ import { Injectable } from '@angular/core';
 // Shared chat core for the AI Hub chat surface and the quick-chat flyout
 // (extracted from the ~80% duplicated implementations). Owns conversation
 // persistence and the normalized SSE streaming protocol
-// (`data: {"content": "..."}` frames, terminated by `data: [DONE]`).
+// (`data: {"content": "..."}` frames, terminated by `data: [DONE]`; typed
+// tool frames per docs/agent-protocol.md).
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -18,12 +19,50 @@ export interface Conversation {
   updated_at: string;
 }
 
+// ── Session context pack (client portion; AI plan A2) ────────────────
+
+export interface ClientContextLocation {
+  tabKey?: string | null;
+  appKey?: string | null;
+  modulePath?: string | null;
+}
+
+export interface ClientContextOpenTab {
+  key: string;
+  title?: string | null;
+}
+
+export interface ClientContext {
+  location?: ClientContextLocation | null;
+  openTabs?: ClientContextOpenTab[] | null;
+  workspace?: string | null;
+}
+
+// ── Typed tool frames (docs/agent-protocol.md) ────────────────────────
+
+/** Unknown frames/fields must be ignored by consumers. */
+export interface ChatStreamEvent {
+  type: string;
+  tool?: string;
+  module?: string | null;
+  mutates?: boolean;
+  status?: string;
+  callId?: string;
+  [key: string]: unknown;
+}
+
 export interface StreamChatParams {
   /** Existing conversation id; omitted to let the server create one. */
   conversationId?: string | null;
   message: string;
+  /** Client-supplied navigation context (identity fields are server-authoritative). */
+  context?: ClientContext;
+  /** Confirms a pending mutating tool call (AI plan B6). */
+  toolConfirmation?: { callId: string };
   /** Called for every content delta (leading newlines of the first chunk are stripped). */
   onContent: (chunk: string) => void;
+  /** Called for every typed frame (tool_call/tool_result/confirmation_required/…). */
+  onEvent?: (event: ChatStreamEvent) => void;
 }
 
 export interface StreamChatResult {
@@ -70,11 +109,10 @@ export class ChatCoreService {
   // ── Streaming ────────────────────────────────────────────────────────
 
   /**
-   * Streams a chat completion. The provider, model, token, system prompt and
-   * generation parameters all come from the server-side `ai-hub` module
-   * settings; the request only carries the user's message. Resolves when the
-   * stream ends; throws `Error` with the upstream message when the request
-   * fails before streaming starts.
+   * Streams a chat completion. The provider, model, token and generation parameters
+   * come from the server-side `ai-hub` module settings; the request carries the user's
+   * message plus the optional session context. Resolves when the stream ends; throws
+   * `Error` with the upstream message when the request fails before streaming starts.
    */
   async streamChat(params: StreamChatParams): Promise<StreamChatResult> {
     const res = await fetch('/api/ai-hub/chat', {
@@ -83,6 +121,8 @@ export class ChatCoreService {
       body: JSON.stringify({
         conversationId: params.conversationId || undefined,
         message: params.message,
+        context: params.context ?? undefined,
+        toolConfirmation: params.toolConfirmation ?? undefined,
       }),
     });
     if (!res.ok) {
@@ -117,9 +157,9 @@ export class ChatCoreService {
   }
 
   /**
-   * Consumes complete SSE lines and forwards content deltas. Handles both
-   * `data:{...}` (Spring's SSE writer omits the space after the colon) and
-   * `data: {...}`. Returns true when the stream was terminated by `[DONE]`.
+   * Consumes complete SSE lines and forwards content deltas + typed frames. Handles both
+   * `data:{...}` (Spring's SSE writer omits the space after the colon) and `data: {...}`.
+   * Returns true when the stream was terminated by `[DONE]`.
    */
   private consumeFrames(
     lines: string[],
@@ -131,11 +171,15 @@ export class ChatCoreService {
       if (!trimmed.startsWith('data:')) continue;
       const data = trimmed.slice(5).replace(/^ /, '');
       if (data === '[DONE]') return true;
-      let parsed: { content?: string; error?: string };
+      let parsed: ({ content?: string; error?: string; type?: string });
       try {
-        parsed = JSON.parse(data) as { content?: string; error?: string };
+        parsed = JSON.parse(data) as { content?: string; error?: string; type?: string };
       } catch { continue; /* skip unparseable lines */ }
       if (parsed.error) throw new Error(parsed.error);
+      if (typeof parsed.type === 'string') {
+        params.onEvent?.(parsed as ChatStreamEvent);
+        continue;
+      }
       if (parsed.content) {
         const chunk = state.first ? parsed.content.replace(/^\n+/, '') : parsed.content;
         state.first = false;

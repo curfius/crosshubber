@@ -117,7 +117,7 @@ public class Reconciler implements ApplicationRunner {
 
   @Override
   public void run(ApplicationArguments args) {
-    // Fail-fast: a seeding error must abort boot â€” never serve an empty portal.
+    // Fail-fast: a seeding error must abort boot — never serve an empty portal.
     // Transaction layout: remote I/O (manifest fetches with retry/sleep, KC role sync) runs
     // OUTSIDE any transaction; everything DB-bound is one atomic phase via TransactionTemplate
     // so a failure rolls back all seeding instead of leaving a half-populated tenant.
@@ -231,7 +231,7 @@ public class Reconciler implements ApplicationRunner {
         entity.setSecurityRoles("[]");
       }
       moduleRepo.save(entity);
-      // Module content â€” preserve group_key/sort_order/parent_content_key for builtins (D4):
+      // Module content — preserve group_key/sort_order/parent_content_key for builtins (D4):
       // navigation edits made via the UI must survive restarts.
       for (EmbeddedCatalog.Entry ep : mod.moduleContents()) {
         Optional<ModuleContentEntity> epExisting =
@@ -307,7 +307,7 @@ public class Reconciler implements ApplicationRunner {
         lastError = e instanceof RuntimeException runtime ? runtime : new IllegalStateException(e);
         if (attempt < attempts) {
           log.warn(
-              "[reconcile] manifest fetch failed (attempt {}/{}) for {} â€” retrying in {}s",
+              "[reconcile] manifest fetch failed (attempt {}/{}) for {} — retrying in {}s",
               attempt,
               attempts,
               url,
@@ -320,6 +320,9 @@ public class Reconciler implements ApplicationRunner {
           }
         }
       }
+    }
+    if (lastError == null) {
+      throw new IllegalStateException("manifest fetch failed for " + url);
     }
     throw lastError;
   }
@@ -362,7 +365,7 @@ public class Reconciler implements ApplicationRunner {
     }
   }
 
-  /** Seeds the AI Hub provider catalog â€” add-only, never overwrites existing rows. */
+  /** Seeds the AI Hub provider catalog — add-only, never overwrites existing rows. */
   private void reconcileProviders(TenantConfigLoader.EffectiveTenantConfig tenant) {
     int created = 0;
     for (String[] p : SEED_PROVIDERS) {
@@ -435,7 +438,7 @@ public class Reconciler implements ApplicationRunner {
   }
 
   private void reconcileI18n(TenantConfigLoader.EffectiveTenantConfig tenant) {
-    // Load existing rows once â€” up to hundreds of per-label findById SELECTs at every boot
+    // Load existing rows once — up to hundreds of per-label findById SELECTs at every boot
     // were the reconciler's largest hidden cost (227 KB seed catalog).
     java.util.Set<String> existingLanguages = new java.util.HashSet<>();
     for (I18nLanguageEntity row : languageRepo.findAll()) {
@@ -456,9 +459,9 @@ public class Reconciler implements ApplicationRunner {
         existingLanguages.add(lang.code());
       }
     }
-    // Seed labels (insert-if-absent â‰™ ON CONFLICT DO NOTHING); bump content_version
+    // Seed labels (insert-if-absent ≥ ON CONFLICT DO NOTHING); bump content_version
     // so clients invalidate their label cache when new seed labels appear on an
-    // EXISTING install â€” fresh installs skip the bump.
+    // EXISTING install — fresh installs skip the bump.
     boolean existed = i18nSettingsRepo.findById(1).isPresent();
     I18nSettingsEntity s =
         i18nSettingsRepo
@@ -499,7 +502,7 @@ public class Reconciler implements ApplicationRunner {
     if (!toInsert.isEmpty()) {
       labelRepo.saveAll(toInsert);
     }
-    // Language policy ("present = config-owned"): applies to seeded catalog rows only â€”
+    // Language policy ("present = config-owned"): applies to seeded catalog rows only —
     // admin-added languages (seeded=false) stay runtime-owned.
     TenantConfigLoader.I18nPolicy policy = tenant.i18n();
     if (policy != null) {
@@ -516,7 +519,7 @@ public class Reconciler implements ApplicationRunner {
           policy,
           languageRepo.findAll(),
           I18nCatalog.LANGUAGES.stream()
-              .map(I18nCatalog.Language::code)
+              .map(lang -> lang.code())
               .collect(java.util.stream.Collectors.toSet()),
           s);
     }
@@ -537,7 +540,7 @@ public class Reconciler implements ApplicationRunner {
    * <p>Enabled set: asserted only for catalog-seeded rows (matched by code); admin-added rows
    * (seeded=false) are never touched, so runtime language management for custom languages keeps
    * working. Default/fallback override the settings row only when mentioned. No content_version
-   * bump â€” policy changes never alter labels.
+   * bump — policy changes never alter labels.
    */
   private void applyI18nPolicy(
       TenantConfigLoader.I18nPolicy policy,

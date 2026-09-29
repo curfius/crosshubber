@@ -15,27 +15,22 @@ import com.crosshubber.portal.modules.aihub.dto.ProviderDto;
 import com.crosshubber.portal.modules.aihub.dto.TokenDto;
 import com.crosshubber.portal.security.CryptoService;
 
-import tools.jackson.databind.ObjectMapper;
-
 @Service
 public class AiHubProvidersService {
 
   private final AiHubProviderRepository providerRepo;
   private final AiHubTokenRepository tokenRepo;
   private final CryptoService cryptoService;
-  private final ObjectMapper objectMapper;
   private final JsonUtils jsonUtils;
 
   public AiHubProvidersService(
       AiHubProviderRepository providerRepo,
       AiHubTokenRepository tokenRepo,
       CryptoService cryptoService,
-      ObjectMapper objectMapper,
       JsonUtils jsonUtils) {
     this.providerRepo = providerRepo;
     this.tokenRepo = tokenRepo;
     this.cryptoService = cryptoService;
-    this.objectMapper = objectMapper;
     this.jsonUtils = jsonUtils;
   }
 
@@ -52,7 +47,7 @@ public class AiHubProvidersService {
             p -> {
               List<TokenDto> tokens =
                   tokensByProvider.getOrDefault(p.getId(), List.of()).stream()
-                      .sorted(java.util.Comparator.comparing(AiHubTokenEntity::getName))
+                      .sorted(java.util.Comparator.comparing(t -> t.getName()))
                       .map(this::toTokenDto)
                       .toList();
               return new ProviderDto(

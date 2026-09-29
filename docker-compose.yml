@@ -4,7 +4,7 @@ services:
   postgres:
     image: postgres:16-alpine
     env_file:
-      - ./config-management/tenants-config/dev/secrets.env
+      - ${TENANT_SECRETS_FILE:-./config-management/tenants-config/dev/secrets.env}
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-crosshubber_dev}
       POSTGRES_USER: ${POSTGRES_USER:-portal}
@@ -27,14 +27,14 @@ services:
     image: quay.io/keycloak/keycloak:26.7
     command: ["start-dev", "--import-realm"]
     env_file:
-      - ./config-management/tenants-config/dev/secrets.env
+      - ${TENANT_SECRETS_FILE:-./config-management/tenants-config/dev/secrets.env}
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_HEALTH_ENABLED: "true"
       KC_HOSTNAME: ${KC_PUBLIC_URL:-http://localhost:28080}
       KC_DB: dev-file
     volumes:
-      - ./config-management/tenants-config/dev/realm.json:/opt/keycloak/data/import/realm.json:ro
+      - ${TENANT_REALM_FILE:-./config-management/tenants-config/dev/realm.json}:/opt/keycloak/data/import/realm.json:ro
     ports:
       - "${KC_HOST_PORT:-28080}:8080"
     healthcheck:
@@ -62,7 +62,7 @@ services:
     extra_hosts:
       - "localhost:host-gateway"
     env_file:
-      - ./config-management/tenants-config/dev/secrets.env
+      - ${TENANT_SECRETS_FILE:-./config-management/tenants-config/dev/secrets.env}
     environment:
       TENANT_SLUG: ${TENANT_SLUG:-dev}
       TENANT_CONFIG_DIR: /app/tenants
@@ -96,6 +96,58 @@ services:
       timeout: 5s
       retries: 12
       start_period: 60s
+    networks: [tenant]
+
+  # Dogfood modules (AI_MODULES_PLAN H2/H3) — remote MFEs on the shared Postgres,
+  # own schemas; agent-call tokens signed with the portal's session secret.
+  solutions:
+    build:
+      context: ./modules/solutions/server
+    env_file:
+      - ${TENANT_SECRETS_FILE:-./config-management/tenants-config/dev/secrets.env}
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-crosshubber_dev}
+      PGUSER: ${POSTGRES_USER:-portal}
+      PGSCHEMA: solutions
+      PORT: 8090
+    ports:
+      - "${SOLUTIONS_HOST_PORT:-28090}:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8090/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks: [tenant]
+
+  staffing:
+    build:
+      context: ./modules/staffing/server
+    env_file:
+      - ${TENANT_SECRETS_FILE:-./config-management/tenants-config/dev/secrets.env}
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-crosshubber_dev}
+      PGUSER: ${POSTGRES_USER:-portal}
+      PGSCHEMA: staffing
+      PORT: 8091
+    ports:
+      - "${STAFFING_HOST_PORT:-28091}:8091"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8091/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     networks: [tenant]
 
 networks:

@@ -121,15 +121,19 @@ public class ManifestValidator {
       ObjectNode agent = objectMapper.createObjectNode();
       agent.set("tools", objectMapper.createArrayNode());
       agent.set("skills", objectMapper.createArrayNode());
+      agent.set("agents", objectMapper.createArrayNode());
+      agent.set("knowledge", objectMapper.createArrayNode());
       manifest.set("agentContributions", agent);
     } else {
       ObjectNode agent = (ObjectNode) manifest.get("agentContributions");
-      if (!agent.has("tools") || !agent.get("tools").isArray()) {
-        agent.set("tools", objectMapper.createArrayNode());
-      }
-      if (!agent.has("skills") || !agent.get("skills").isArray()) {
-        agent.set("skills", objectMapper.createArrayNode());
-      }
+      normalizeArray(agent, "tools");
+      normalizeArray(agent, "skills");
+      normalizeArray(agent, "agents");
+      normalizeArray(agent, "knowledge");
+      validateTools((ArrayNode) agent.get("tools"), issues);
+      validateSkills((ArrayNode) agent.get("skills"), issues);
+      validateAgents((ArrayNode) agent.get("agents"), issues);
+      validateKnowledge((ArrayNode) agent.get("knowledge"), issues);
     }
 
     Set<String> seenKeys = new LinkedHashSet<>();
@@ -139,7 +143,7 @@ public class ManifestValidator {
         JsonNode entry = entries.get(i);
         String prefix = "content." + groupEntry.getKey() + "[" + i + "]";
         validateEntry(entry, prefix, issues);
-        String key = entry.path("key").asText(null);
+        String key = entry.path("key").asString(null);
         if (key != null) {
           if (!seenKeys.add(key)) {
             issues.add("content: duplicate entry key \"" + key + "\" across content groups");
@@ -187,7 +191,7 @@ public class ManifestValidator {
     if (!nonEmptyString(entry.path("name"))) {
       issues.add(prefix + ".name: required");
     }
-    String type = entry.path("type").asText(null);
+    String type = entry.path("type").asString(null);
     if (type == null || !Keys.TYPES.contains(type)) {
       issues.add(prefix + ".type: must be iframe|embedded|mfe|link");
       return;
@@ -247,7 +251,7 @@ public class ManifestValidator {
     if (!hasContent) {
       errors.add("content: At least one content entry is required");
     }
-    String baseUrl = manifest.path("baseUrl").asText("");
+    String baseUrl = manifest.path("baseUrl").asString("");
     for (FlatEntry flat : flattenEntries(manifest)) {
       JsonNode entry = flat.entry();
       String url = resolveUrl(entry, baseUrl);
@@ -328,18 +332,166 @@ public class ManifestValidator {
     return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
   }
 
+  // ── agentContributions v2 ────────────────────────────────────────────
+
+  private static final List<String> KNOWLEDGE_KINDS = List.of("markdown", "url", "docsource");
+
+  private void normalizeArray(ObjectNode parent, String field) {
+    if (!parent.has(field) || !parent.get(field).isArray()) {
+      parent.set(field, objectMapper.createArrayNode());
+    }
+  }
+
+  /**
+   * Validates {@code tools[]} entries: {@code {name, description, arguments (JSON Schema object),
+   * mutates, roles[], path}}. Unknown nested fields are ignored (validator style — only top-level
+   * fields have an allow-list).
+   */
+  private void validateTools(ArrayNode tools, List<String> issues) {
+    Set<String> seen = new LinkedHashSet<>();
+    for (int i = 0; i < tools.size(); i++) {
+      JsonNode tool = tools.get(i);
+      String prefix = "agentContributions.tools[" + i + "]";
+      if (!tool.isObject()) {
+        issues.add(prefix + ": must be an object");
+        continue;
+      }
+      if (!matches(tool.path("name"), Keys.AGENT_NAME_RE)) {
+        issues.add(prefix + ".name: must match [a-z][a-z0-9_-]*");
+      } else if (!seen.add(tool.path("name").asString())) {
+        issues.add(prefix + ".name: duplicate tool name \"" + tool.path("name").asString() + "\"");
+      }
+      if (!nonEmptyString(tool.path("description"))) {
+        issues.add(prefix + ".description: required");
+      }
+      if (tool.has("arguments") && !tool.get("arguments").isObject()) {
+        issues.add(prefix + ".arguments: must be an object (JSON Schema)");
+      }
+      if (tool.has("mutates") && !tool.get("mutates").isBoolean()) {
+        issues.add(prefix + ".mutates: must be a boolean");
+      }
+      validateRoleArray(tool, prefix, issues);
+      if (tool.hasNonNull("path") && !tool.path("path").asString().startsWith("/")) {
+        issues.add(prefix + ".path: must start with \"/\"");
+      }
+    }
+  }
+
+  /** Validates {@code skills[]} entries: {@code {name, description, prompts[] | promptRef}}. */
+  private void validateSkills(ArrayNode skills, List<String> issues) {
+    for (int i = 0; i < skills.size(); i++) {
+      JsonNode skill = skills.get(i);
+      String prefix = "agentContributions.skills[" + i + "]";
+      if (!skill.isObject()) {
+        issues.add(prefix + ": must be an object");
+        continue;
+      }
+      if (!matches(skill.path("name"), Keys.AGENT_NAME_RE)) {
+        issues.add(prefix + ".name: must match [a-z][a-z0-9_-]*");
+      }
+      if (!nonEmptyString(skill.path("description"))) {
+        issues.add(prefix + ".description: required");
+      }
+      if (skill.has("prompts")) {
+        JsonNode prompts = skill.get("prompts");
+        boolean allStrings = prompts.isArray() && prompts.size() > 0;
+        if (prompts.isArray()) {
+          for (JsonNode prompt : prompts) {
+            if (!prompt.isString() || prompt.asString().isBlank()) {
+              allStrings = false;
+            }
+          }
+        }
+        if (!allStrings) {
+          issues.add(prefix + ".prompts: must be a non-empty array of strings");
+        }
+      }
+      if (skill.hasNonNull("promptRef") && !nonEmptyString(skill.path("promptRef"))) {
+        issues.add(prefix + ".promptRef: must be a non-empty string");
+      }
+    }
+  }
+
+  /**
+   * Validates {@code agents[]} entries (sub-agents): {@code {name, description, endpoint,
+   * roles[]}}.
+   */
+  private void validateAgents(ArrayNode agents, List<String> issues) {
+    for (int i = 0; i < agents.size(); i++) {
+      JsonNode agentEntry = agents.get(i);
+      String prefix = "agentContributions.agents[" + i + "]";
+      if (!agentEntry.isObject()) {
+        issues.add(prefix + ": must be an object");
+        continue;
+      }
+      if (!matches(agentEntry.path("name"), Keys.AGENT_NAME_RE)) {
+        issues.add(prefix + ".name: must match [a-z][a-z0-9_-]*");
+      }
+      if (!nonEmptyString(agentEntry.path("description"))) {
+        issues.add(prefix + ".description: required");
+      }
+      if (!nonEmptyString(agentEntry.path("endpoint"))
+          || !agentEntry.path("endpoint").asString().startsWith("/")) {
+        issues.add(prefix + ".endpoint: must start with \"/\"");
+      }
+      validateRoleArray(agentEntry, prefix, issues);
+    }
+  }
+
+  /** Validates {@code knowledge[]} entries: {@code {id, title, kind, ref}}. */
+  private void validateKnowledge(ArrayNode knowledge, List<String> issues) {
+    for (int i = 0; i < knowledge.size(); i++) {
+      JsonNode doc = knowledge.get(i);
+      String prefix = "agentContributions.knowledge[" + i + "]";
+      if (!doc.isObject()) {
+        issues.add(prefix + ": must be an object");
+        continue;
+      }
+      if (!matches(doc.path("id"), Keys.KEY_RE)) {
+        issues.add(prefix + ".id: must match [a-z0-9][a-z0-9-]{0,63}");
+      }
+      if (!nonEmptyString(doc.path("title"))) {
+        issues.add(prefix + ".title: required");
+      }
+      String kind = doc.path("kind").asString(null);
+      if (kind == null || !KNOWLEDGE_KINDS.contains(kind)) {
+        issues.add(prefix + ".kind: must be markdown|url|docsource");
+      }
+      if (!nonEmptyString(doc.path("ref"))) {
+        issues.add(prefix + ".ref: required");
+      }
+    }
+  }
+
+  /** {@code roles}, when present, must be an array of kebab-case keys. */
+  private void validateRoleArray(JsonNode node, String prefix, List<String> issues) {
+    if (!node.has("roles")) {
+      return;
+    }
+    JsonNode roles = node.get("roles");
+    if (!roles.isArray()) {
+      issues.add(prefix + ".roles: must be an array of strings");
+      return;
+    }
+    for (int r = 0; r < roles.size(); r++) {
+      if (!matches(roles.get(r), Keys.KEY_RE)) {
+        issues.add(prefix + ".roles[" + r + "]: must match [a-z0-9][a-z0-9-]{0,63}");
+      }
+    }
+  }
+
   // ── Shared helpers ───────────────────────────────────────────────────
 
   private static boolean matches(JsonNode node, String regex) {
-    return node.isTextual() && node.asString().matches(regex);
+    return node.isString() && node.asString().matches(regex);
   }
 
   private static boolean nonEmptyString(JsonNode node) {
-    return node.isTextual() && !node.asString().isBlank();
+    return node.isString() && !node.asString().isBlank();
   }
 
   private static boolean isUrl(JsonNode node) {
-    if (!node.isTextual()) {
+    if (!node.isString()) {
       return false;
     }
     try {

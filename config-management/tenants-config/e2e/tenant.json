@@ -1,0 +1,37 @@
+{
+  "configVersion": 2,
+  "slug": "e2e",
+  "name": "E2E Tenant",
+  "description": "Deterministic test tenant for Playwright E2E: restricted themes/languages, one hidden builtin, distinctive branding, one pre-enabled AI provider. Booted ephemerally via compose project crosshubber-e2e; never used for real data.",
+  "lifecycle": "ephemeral",
+  "modules": {
+    "builtin": {
+      "portal-dashboard": true,
+      "module-registry": true,
+      "settings": true,
+      "user-settings": true,
+      "navigation": true,
+      "i18n-settings": true,
+      "ai-hub": true,
+      "sample-embedded": false
+    },
+    "external": []
+  },
+  "settings": {
+    "homeApp": "navigation:portal",
+    "defaultTheme": "ocean",
+    "enabledThemes": ["ocean", "light", "nord"]
+  },
+  "i18n": {
+    "enabledLanguages": ["en-GB", "pt-PT"],
+    "defaultLanguage": "pt-PT",
+    "fallbackLanguage": "en-GB"
+  },
+  "branding": {
+    "name": "Crosshubber E2E",
+    "title": "Crosshubber E2E Portal"
+  },
+  "aiHub": {
+    "enabledProviders": ["anthropic"]
+  }
+}

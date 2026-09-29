@@ -76,7 +76,14 @@ class PortalSmokeTest {
 
   @Test
   void allFlywayMigrationsApplied() {
-    assertTrue(flyway.info().applied().length >= 18, "all V1..V18 migrations should be applied");
+    assertTrue(
+        java.util.Arrays.stream(flyway.info().applied())
+            .anyMatch(
+                info -> {
+                  org.flywaydb.core.api.MigrationVersion version = info.getVersion();
+                  return version != null && "28".equals(version.getVersion());
+                }),
+        "V28 should be applied (all V1..V28 migrations run)");
   }
 
   @Test

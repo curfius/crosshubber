@@ -12,7 +12,7 @@ import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntit
 
 import jakarta.servlet.http.HttpServletRequest;
 
-/** MFE asset proxy route â€” mirrors GET /api/mfe/:key/* in proxy.routes.ts. */
+/** MFE asset proxy route — mirrors GET /api/mfe/:key/* in proxy.routes.ts. */
 @RestController
 public class ProxyController {
 

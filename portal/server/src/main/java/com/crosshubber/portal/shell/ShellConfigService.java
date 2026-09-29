@@ -92,7 +92,7 @@ public class ShellConfigService {
         services());
   }
 
-  /** Active modules whose role list matches the user â€” single {@code findAll}, key set result. */
+  /** Active modules whose role list matches the user — single {@code findAll}, key set result. */
   private Set<String> visibleModuleKeys(List<String> userRoles) {
     Set<String> keys = new LinkedHashSet<>();
     for (ModuleEntity m : moduleRepo.findAll()) {
@@ -106,7 +106,7 @@ public class ShellConfigService {
 
   /**
    * Groups whose role list matches the user, keyed by {@code group_key} in find order. Nav-tree
-   * hidden sections (and their descendants) are removed from the runtime view â€” module content
+   * hidden sections (and their descendants) are removed from the runtime view — module content
    * referencing them fall away with the same rule used for role-blocked groups.
    */
   private Map<String, NavigationGroupEntity> allowedGroups(List<String> userRoles) {
@@ -119,7 +119,7 @@ public class ShellConfigService {
     Set<String> hiddenKeys =
         byKey.values().stream()
             .filter(g -> Boolean.TRUE.equals(g.getHidden()))
-            .map(NavigationGroupEntity::getGroupKey)
+            .map(g -> g.getGroupKey())
             .collect(Collectors.toSet());
     if (!hiddenKeys.isEmpty()) {
       boolean changed = true;
@@ -181,7 +181,7 @@ public class ShellConfigService {
       List<ModuleContentDto> visibleEps, Map<String, NavigationGroupEntity> allowedGroups) {
     Set<String> referencedKeys =
         visibleEps.stream()
-            .map(ModuleContentDto::groupKey)
+            .map(ep -> ep.groupKey())
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
     return allowedGroups.values().stream()
@@ -193,11 +193,11 @@ public class ShellConfigService {
 
   private static final Comparator<ModuleContentDto> BY_CATEGORY_THEN_ORDER_THEN_NAME =
       Comparator.comparingInt((ModuleContentDto ep) -> CATEGORY_ORDER.indexOf(ep.category()))
-          .thenComparingInt(ModuleContentDto::orderOf)
+          .thenComparingInt(ep -> ep.orderOf())
           .thenComparing(ep -> ep.name(), String.CASE_INSENSITIVE_ORDER);
 
   private static final Comparator<NavigationGroupDto> BY_ORDER_THEN_NAME =
-      Comparator.comparingInt(NavigationGroupDto::orderOf)
+      Comparator.comparingInt((NavigationGroupDto g) -> g.orderOf())
           .thenComparing(g -> g.name(), String.CASE_INSENSITIVE_ORDER);
 
   /** User settings {@code general} scope as a JSON object (or empty). */

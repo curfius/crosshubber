@@ -79,7 +79,10 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
    tests). There is no parity harness.
 4. **Secrets are never committed**. `config-management/tenants-config/dev/secrets.env`
    and `.env` are gitignored. `application.yml` holds insecure dev defaults by design —
-   real secrets come from env/compose, never from code.
+   real secrets come from env/compose, never from code. **Sole exception:**
+   `tenants-config/e2e/secrets.env` is a committed file of throwaway dummy values that
+   are only valid inside the ephemeral `crosshubber-e2e` compose project (test stack,
+   `down -v` teardown) — never reuse those values anywhere real.
 5. **No TODO/FIXME comments** in either codebase (existing policy; Checkstyle and review
    enforce it). Prefer fixing or documenting in the backlog file.
 6. **Formatting before done**: `mvn spotless:apply` then `mvn verify` for Java; Prettier
@@ -123,11 +126,19 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
 
 ## Testing expectations
 
-- Server: 1 integration test (`PortalSmokeTest`, Testcontainers — needs Docker) + unit
-  tests per service. When editing a service, add/extend its test class. No H2 — DB
-  tests are Testcontainers only.
+- Server: 2 integration tests (`PortalSmokeTest` = absent-block tenant path,
+  `TenantPolicySmokeTest` = policy-tenant path; both Testcontainers — needs Docker) +
+  unit tests per service. When editing a service, add/extend its test class. No H2 —
+  DB tests are Testcontainers only.
 - UI: specs colocated `*.spec.ts`. Feature stores (signals) and pure helpers (diff
   engine, tree builders) are the highest-value test targets — they hold the most logic.
+- E2E (`test/e2e/`, Playwright): browser regression pack against the ephemeral `e2e`
+  tenant stack — `cd test/e2e && npx playwright test` (boots `crosshubber-e2e` compose
+  project, tears it down with `down -v`; `E2E_KEEP_STACK=1` keeps it for debugging).
+  Tenant policy lives in `config-management/tenants-config/e2e/`. Specs that assert
+  English copy call `ensureEnglish` first; mutation specs (language/theme/labels)
+  must restore their state — user preferences persist in the DB across runs.
+  See `plan/TEST_PLAN.md`.
 
 ## Gotchas / historical landmines
 

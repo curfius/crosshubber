@@ -71,7 +71,7 @@ public class ModuleSettingsController {
 
   private List<String> declaredManagerRoles(String securityRolesJson) {
     return jsonUtils.parseList(securityRolesJson, SecurityRoleDto.class).stream()
-        .map(SecurityRoleDto::key)
+        .map(r -> r.key())
         .filter(Objects::nonNull)
         .toList();
   }

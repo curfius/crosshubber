@@ -21,6 +21,13 @@ public final class Keys {
   /** Web component (mfe element) name. */
   public static final String ELEMENT_RE = "^[a-z][a-z0-9-]*$";
 
+  /**
+   * Agent contribution name (manifest {@code agentContributions.tools[]/skills[]/agents[]}). Snake
+   * case is allowed because these names surface to LLM providers as function names, where
+   * underscores are the norm (OpenAI: {@code ^[a-zA-Z0-9_-]{1,64}$}).
+   */
+  public static final String AGENT_NAME_RE = "^[a-z][a-z0-9_-]*$";
+
   /** Client-supplied UUIDs for pinned-tree nodes. */
   public static final Pattern UUID_PATTERN =
       Pattern.compile(

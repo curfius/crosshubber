@@ -1,0 +1,37 @@
+{
+  "configVersion": 2,
+  "name": "Policy Tenant",
+  "lifecycle": "persistent",
+  "modules": {
+    "builtin": {
+      "portal-dashboard": true,
+      "module-registry": true,
+      "settings": true,
+      "user-settings": true,
+      "navigation": true,
+      "i18n-settings": true,
+      "ai-hub": true,
+      "sample-embedded": false
+    },
+    "external": []
+  },
+  "settings": {
+    "homeApp": "navigation:portal",
+    "pinnedAppsEnabled": true,
+    "workspacesEnabled": true,
+    "defaultTheme": "ocean",
+    "enabledThemes": ["ocean", "light", "nord"]
+  },
+  "i18n": {
+    "enabledLanguages": ["en-GB", "pt-PT"],
+    "defaultLanguage": "pt-PT",
+    "fallbackLanguage": "en-GB"
+  },
+  "branding": {
+    "name": "Policy Tenant",
+    "title": "Policy Tenant Portal"
+  },
+  "aiHub": {
+    "enabledProviders": ["anthropic"]
+  }
+}

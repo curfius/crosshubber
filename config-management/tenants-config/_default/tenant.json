@@ -22,7 +22,7 @@
     ]
   },
   "settings": {
-    "homeApp": "portal-navigation:portal",
+    "homeApp": "navigation:portal",
     "pinnedAppsEnabled": true,
     "workspacesEnabled": true,
     "defaultTheme": "dark-slate"

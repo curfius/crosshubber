@@ -1,9 +1,9 @@
 # TEST_PLAN — tenant-driven regression testing
 
-Status: **approved plan** (2026-09-29). Uses the tenant-deploy capacity
-(`config-management/tenants-config/<slug>/`) to launch a temporary, deterministic `e2e` tenant for
-automated regression testing. CI is explicitly deferred; everything here runs locally via
-`mvn` / `npm` / `docker compose`.
+Status: **implemented** (2026-09-29). Layer 1 = `TenantPolicySmokeTest` (policy fixture,
+`mvn verify` 130 green). Layer 2 = Playwright pack in `test/e2e/` — 28 specs green against the
+ephemeral `crosshubber-e2e` tenant stack, full lifecycle verified (boot → test → `down -v`, zero
+containers left). CI remains deferred.
 
 ---
 

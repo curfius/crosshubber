@@ -75,14 +75,14 @@ public final class NavigationValidationService {
       // id: optional, string, <=64 chars (numeric ids must not be coerced)
       JsonNode id = node.get("id");
       if (id != null && !id.isNull()) {
-        if (!id.isTextual()) {
+        if (!id.isString()) {
           return Validation.fail("id: Invalid input: expected string, received " + jsonType(id));
         }
         if (id.asString().length() > 64) {
           return Validation.fail("id: Too big: expected string to have <=64 characters");
         }
       }
-      String nodeType = node.path("nodeType").asText(null);
+      String nodeType = node.path("nodeType").asString(null);
       if (!"folder".equals(nodeType) && !"item".equals(nodeType)) {
         return Validation.fail("nodeType must be \"folder\" or \"item\"");
       }
@@ -111,7 +111,7 @@ public final class NavigationValidationService {
           return res;
         }
       } else {
-        String ref = node.path("ref").asText(null);
+        String ref = node.path("ref").asString(null);
         if (ref == null || !ref.matches(Keys.REF_RE)) {
           return Validation.fail("items require a ref of the form \"moduleKey:contentKey\"");
         }
@@ -140,7 +140,7 @@ public final class NavigationValidationService {
 
   /** JSON type name for "expected X, received Y" messages. */
   private static String jsonType(JsonNode node) {
-    if (node.isTextual()) {
+    if (node.isString()) {
       return "string";
     }
     if (node.isNumber()) {
@@ -235,7 +235,7 @@ public final class NavigationValidationService {
       if (node == null || !node.isObject()) {
         return Validation.fail("layout nodes must be objects");
       }
-      String id = node.path("id").asText(null);
+      String id = node.path("id").asString(null);
       if (id == null || id.isBlank()) {
         return Validation.fail("layout nodes require an id");
       }
@@ -249,8 +249,8 @@ public final class NavigationValidationService {
       if (node.has("hidden") && !node.path("hidden").isBoolean()) {
         return Validation.fail("hidden: Invalid input: expected boolean");
       }
-      if ("item".equals(node.path("type").asText(null))) {
-        String ref = node.path("ref").asText(null);
+      if ("item".equals(node.path("type").asString(null))) {
+        String ref = node.path("ref").asString(null);
         if (ref == null || !ref.matches(Keys.REF_RE)) {
           return Validation.fail("layout items require a ref of the form \"moduleKey:contentKey\"");
         }
@@ -360,8 +360,8 @@ public final class NavigationValidationService {
     return moduleContents.stream()
         .filter(NavigationValidationService::isDefaultSidebarApp)
         .sorted(
-            Comparator.comparingInt(ModuleContentEntity::getSortOrder)
-                .thenComparing(ModuleContentEntity::getName, NAME_COLLATOR))
+            Comparator.comparingInt((ModuleContentEntity ep) -> ep.getSortOrder())
+                .thenComparing(ep -> ep.getName(), NAME_COLLATOR))
         .map(NavigationValidationService::entryPointRef)
         .toList();
   }
@@ -384,8 +384,8 @@ public final class NavigationValidationService {
         moduleContents.stream()
             .filter(NavigationValidationService::isDefaultSidebarApp)
             .sorted(
-                Comparator.comparingInt(ModuleContentEntity::getSortOrder)
-                    .thenComparing(ModuleContentEntity::getName, NAME_COLLATOR))
+                Comparator.comparingInt((ModuleContentEntity ep) -> ep.getSortOrder())
+                    .thenComparing(ep -> ep.getName(), NAME_COLLATOR))
             .toList();
     children.clear();
     for (ModuleContentEntity ep : sorted) {
@@ -406,6 +406,6 @@ public final class NavigationValidationService {
   }
 
   private static boolean nonBlank(JsonNode node) {
-    return node.isTextual() && !node.asString().isBlank();
+    return node.isString() && !node.asString().isBlank();
   }
 }

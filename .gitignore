@@ -14,6 +14,14 @@ portal/ui/.angular/
 .env
 secrets.env
 **/secrets.env
+# Exception: e2e tenant secrets are committed DUMMY values (ephemeral test stack only)
+!config-management/tenants-config/e2e/secrets.env
+
+# Playwright
+test/e2e/test-results/
+test/e2e/playwright-report/
+test/e2e/storageState-*.json
+test/e2e/.stack-owned
 
 portal/server/src/main/resources/static/
 

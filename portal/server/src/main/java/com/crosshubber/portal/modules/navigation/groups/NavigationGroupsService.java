@@ -37,7 +37,7 @@ public class NavigationGroupsService {
     return repo.findByGroupKey(groupKey).orElse(null);
   }
 
-  /** Upsert on groupKey Ã¢â‚¬â€ mirrors repo.upsert (full replace). */
+  /** Upsert on groupKey — mirrors repo.upsert (full replace). */
   @Transactional
   public NavigationGroupEntity upsert(NavigationGroupUpsertRequest input) {
     NavigationGroupEntity group =
@@ -68,7 +68,7 @@ public class NavigationGroupsService {
     return true;
   }
 
-  /** Mirrors repo.reorder Ã¢â‚¬â€ sort_order = i*10 in payload order. */
+  /** Mirrors repo.reorder — sort_order = i*10 in payload order. */
   @Transactional
   public void reorder(List<String> groupKeys) {
     for (int i = 0; i < groupKeys.size(); i++) {

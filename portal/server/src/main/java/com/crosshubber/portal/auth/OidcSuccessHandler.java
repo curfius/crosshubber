@@ -6,7 +6,6 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
@@ -74,7 +73,7 @@ public class OidcSuccessHandler implements AuthenticationSuccessHandler {
     String email = oidcUser.getEmail();
     List<String> roles =
         authentication.getAuthorities().stream()
-            .map(GrantedAuthority::getAuthority)
+            .map(a -> a.getAuthority())
             .filter(a -> a.startsWith("ROLE_"))
             .map(a -> a.substring("ROLE_".length()))
             .toList();

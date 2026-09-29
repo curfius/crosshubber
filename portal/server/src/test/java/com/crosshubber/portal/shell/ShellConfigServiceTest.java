@@ -109,10 +109,7 @@ class ShellConfigServiceTest {
 
     ShellConfigDto config = svc.buildConfig(user());
 
-    List<String> contentKeys =
-        config.moduleContents().stream()
-            .map(com.crosshubber.portal.modules.registry.dto.ModuleContentDto::contentKey)
-            .toList();
+    List<String> contentKeys = config.moduleContents().stream().map(c -> c.contentKey()).toList();
     assertEquals(List.of("app", "z", "a"), contentKeys);
   }
 

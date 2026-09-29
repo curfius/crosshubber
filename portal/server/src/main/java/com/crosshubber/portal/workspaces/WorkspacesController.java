@@ -66,11 +66,10 @@ public class WorkspacesController {
   public ResponseEntity<?> create(
       @AuthenticationPrincipal PortalUser user,
       @RequestBody(required = false) Map<String, Object> body) {
-    String name =
-        body != null && body.get("name") instanceof String s && !s.isBlank() ? s.trim() : null;
-    if (name == null) {
+    if (body == null || !(body.get("name") instanceof String nameRaw) || nameRaw.isBlank()) {
       return ResponseEntity.badRequest().body(Map.of("error", "name is required"));
     }
+    String name = nameRaw.trim();
     String description = body.get("description") instanceof String s ? s : "";
     String layout = body.get("layout") != null ? writeJson(body.get("layout")) : null;
     String groups = body.get("groups") != null ? writeJson(body.get("groups")) : "{}";
@@ -110,11 +109,10 @@ public class WorkspacesController {
       @AuthenticationPrincipal PortalUser user,
       @PathVariable String id,
       @RequestBody(required = false) Map<String, Object> body) {
-    String name =
-        body != null && body.get("name") instanceof String s && !s.isBlank() ? s.trim() : null;
-    if (name == null) {
+    if (body == null || !(body.get("name") instanceof String nameRaw) || nameRaw.isBlank()) {
       return ResponseEntity.badRequest().body(Map.of("error", "name is required"));
     }
+    String name = nameRaw.trim();
     UUID workspaceId;
     try {
       workspaceId = UUID.fromString(id);

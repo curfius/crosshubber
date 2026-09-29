@@ -1,5 +1,6 @@
 package com.crosshubber.portal.modules.aihub.chat;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -13,44 +14,54 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.crosshubber.portal.modules.agent.AgentToolCallbacks;
+import com.crosshubber.portal.modules.agent.ToolDispatcher;
+import com.crosshubber.portal.modules.agent.ToolRegistry;
+import com.crosshubber.portal.modules.aihub.context.AgentPromptAssembler;
+import com.crosshubber.portal.modules.aihub.context.ClientContext;
+import com.crosshubber.portal.modules.aihub.context.SessionContextBuilder;
+import com.crosshubber.portal.modules.aihub.context.SessionContextPack;
 import com.crosshubber.portal.modules.aihub.conversations.AiHubConversationsService;
+import com.crosshubber.portal.modules.aihub.dto.ChatStreamRequest;
 import com.crosshubber.portal.modules.aihub.providers.AiHubProvidersService;
 import com.crosshubber.portal.modules.settings.modules.ModuleSettingsService;
+import com.crosshubber.portal.security.PortalUser;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Sinks;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Chat orchestrator for the AI Hub module. On each user message this service:
+ * Chat orchestrator for the AI Hub module — the portal agent loop (AI plan A3/B3). On each user
+ * message this service:
  *
  * <ol>
  *   <li>Reads the selected provider/model/token from the {@code ai-hub} module settings (1 DB
- *       query).
- *   <li>Resolves the API key for the selected token (2 DB queries: provider + token).
- *   <li>Looks up or creates the conversation (1 DB query).
- *   <li>Builds or retrieves a cached {@link ChatClient} configured with a {@link
- *       MessageChatMemoryAdvisor} that automatically loads conversation history from and persists
- *       messages to the {@code ai_hub_chat_memory} table via {@link ChatMemory}.
- *   <li>Streams the LLM completion as SSE frames ({@code {"content":"..."}}) and appends a {@code
- *       [DONE]} sentinel.
+ *       query) plus the {@code agent.enabled} flag (default on).
+ *   <li>Builds the {@link SessionContextPack} — server-authoritative identity + client-supplied
+ *       navigation state — and assembles the agent system message (persona, configured prompt,
+ *       context JSON, tool catalogue).
+ *   <li>Executes a pending tool confirmation, when the request carries one, folding the result into
+ *       the turn (AI plan B6).
+ *   <li>Looks up or creates the conversation; builds or retrieves a cached {@link ChatClient}
+ *       configured with a {@link MessageChatMemoryAdvisor} ({@code ai_hub_chat_memory}).
+ *   <li>Streams the completion as SSE frames: {@code {"content":"..."}} deltas, typed {@code
+ *       tool_call}/{@code tool_result}/{@code confirmation_required} frames emitted by the tool
+ *       loop (see {@code docs/agent-protocol.md}), {@code {"error":"..."}} and the {@code [DONE]}
+ *       sentinel.
  * </ol>
  *
  * <p>The {@link ChatClient} is cached per {@code (providerId, tokenId, model)} tuple for 60
- * seconds. Since provider tokens, base URLs, and model options only change on admin actions, a
- * short-lived cache avoids reconstructing the Spring AI client and decrypting API keys on every
- * request. Cache entries are evicted after 60s or when the maximum size (64) is reached.
- *
- * <p>Spring AI does not provide built-in SSE framing or controller utilities — the {@code Flux}
- * return type combined with {@code produces = TEXT_EVENT_STREAM_VALUE} on the controller causes
- * Spring WebFlux to emit each element as an SSE {@code data:} frame automatically. The JSON
- * wrapping ({@code {"content":"..."}}) and error handling are application-level protocol handled
- * here.
+ * seconds. Tool callbacks are request-scoped: they carry the caller's identity, a per-turn
+ * iteration budget and the frame emitter — never shared across requests.
  */
 @Service
 public class AiHubChatService {
@@ -64,13 +75,17 @@ public class AiHubChatService {
   private final AiHubConversationsService conversationsService;
   private final ChatMemory chatMemory;
   private final ObjectMapper objectMapper;
+  private final SessionContextBuilder contextBuilder;
+  private final AgentPromptAssembler promptAssembler;
+  private final ToolRegistry toolRegistry;
+  private final AgentToolCallbacks toolCallbacks;
+  private final ToolDispatcher toolDispatcher;
 
   /**
    * Short-lived cache for {@link ChatClient} instances. Keyed by the model selection triple
    * (provider + token + model). Avoids repeated API key decryption and model construction on
-   * consecutive requests to the same model. Entries expire after 60 seconds — stale entries are
-   * safe because the next admin settings change will create a new entry with the updated
-   * configuration.
+   * consecutive requests to the same model. Entries expire after 60s — stale entries are safe
+   * because the next admin settings change will create a new entry with the updated configuration.
    */
   private final Cache<ChatClientKey, ChatClient> clientCache =
       Caffeine.newBuilder().expireAfterWrite(60, TimeUnit.SECONDS).maximumSize(64).build();
@@ -80,12 +95,22 @@ public class AiHubChatService {
       AiHubProvidersService providersService,
       AiHubConversationsService conversationsService,
       ChatMemory chatMemory,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      SessionContextBuilder contextBuilder,
+      AgentPromptAssembler promptAssembler,
+      ToolRegistry toolRegistry,
+      AgentToolCallbacks toolCallbacks,
+      ToolDispatcher toolDispatcher) {
     this.moduleSettings = moduleSettings;
     this.providersService = providersService;
     this.conversationsService = conversationsService;
     this.chatMemory = chatMemory;
     this.objectMapper = objectMapper;
+    this.contextBuilder = contextBuilder;
+    this.promptAssembler = promptAssembler;
+    this.toolRegistry = toolRegistry;
+    this.toolCallbacks = toolCallbacks;
+    this.toolDispatcher = toolDispatcher;
   }
 
   /** Cache key uniquely identifying a ChatClient configuration. */
@@ -97,7 +122,8 @@ public class AiHubChatService {
       String tokenId,
       String systemPrompt,
       Double temperature,
-      Integer maxTokens) {}
+      Integer maxTokens,
+      boolean agentEnabled) {}
 
   /** Stream frames plus the conversation the exchange belongs to. */
   public record ChatStream(String conversationId, Flux<String> frames) {}
@@ -106,11 +132,13 @@ public class AiHubChatService {
    * Entry point for a chat message. Returns a {@link ChatStream} containing the conversation ID and
    * a {@link Flux} of SSE frames. The caller (controller) returns this as {@code
    * TEXT_EVENT_STREAM_VALUE} so each element becomes an SSE {@code data:} frame.
-   *
-   * <p>Flow: resolve config → find/create conversation → build or cache client → stream with
-   * advisor-managed history → emit frames.
    */
-  public ChatStream streamChat(String userId, String conversationId, String message) {
+  public ChatStream streamChat(
+      PortalUser user,
+      String conversationId,
+      String message,
+      ClientContext context,
+      ChatStreamRequest.ToolConfirmation confirmation) {
     EffectiveConfig cfg = resolveConfig();
     log.info("[ai-hub] chat request provider={} model={}", cfg.providerId(), cfg.model());
 
@@ -119,7 +147,7 @@ public class AiHubChatService {
     // with the first 60 characters of the message as the title.
     String convId = conversationId;
     if (convId != null) {
-      if (conversationsService.getConversation(convId, userId) == null) {
+      if (conversationsService.getConversation(convId, user.sub()) == null) {
         return new ChatStream(
             null,
             Flux.error(
@@ -127,13 +155,12 @@ public class AiHubChatService {
       }
     } else {
       String title = message.length() > 60 ? message.substring(0, 60) : message;
-      convId = conversationsService.createConversation(userId, title).id();
+      convId = conversationsService.createConversation(user.sub(), title).id();
     }
     final String finalConvId = convId;
 
     // --- API key resolution ---
-    // Decrypts the token's API key and pairs it with the provider's base URL. The key is used
-    // both for the ChatModel constructor and (indirectly) for outgoing HTTP requests to the LLM.
+    // Decrypts the token's API key and pairs it with the provider's base URL.
     AiHubProvidersService.ResolvedKey key =
         providersService.resolveApiKey(cfg.providerId(), cfg.tokenId());
     if (key == null) {
@@ -141,37 +168,82 @@ public class AiHubChatService {
           HttpStatus.BAD_REQUEST, "provider or token is not configured");
     }
 
+    // --- Session context + agent system prompt (AI plan A3) ---
+    SessionContextPack pack = contextBuilder.build(user, context);
+    List<AgentPromptAssembler.ToolSummary> catalogue =
+        cfg.agentEnabled() ? toolSummaries() : List.of();
+    String systemPrompt = promptAssembler.build(cfg.systemPrompt(), pack, catalogue);
+
+    // --- Request-scoped tool loop wiring (AI plan B3) ---
+    // Frames from the tool loop ride the same SSE channel as content deltas: a request-scoped
+    // unicast sink merges into the output flux; the sink completes when the content flux does.
+    Sinks.Many<String> toolFrames = Sinks.many().unicast().onBackpressureBuffer();
+    List<ToolCallback> callbacks =
+        cfg.agentEnabled()
+            ? toolCallbacks.forRequest(user, finalConvId, toolFrames::tryEmitNext)
+            : List.of();
+
+    // --- Pending tool confirmation (AI plan B6) ---
+    // Executed before the model runs; the result is folded into the user message so the model can
+    // narrate the outcome and the transcript records the confirmation.
+    String userMessage = message;
+    if (confirmation != null && confirmation.callId() != null) {
+      userMessage =
+          withConfirmedToolResult(
+              user, confirmation.callId(), userMessage, toolFrames::tryEmitNext);
+    }
+
     // --- Build or retrieve cached client ---
-    // The ChatClient wraps the ChatModel + MessageChatMemoryAdvisor. The advisor automatically
-    // loads conversation history from SPRING_AI_CHAT_MEMORY before the prompt and persists both
-    // user and assistant messages after the LLM responds.
     ChatClient client = buildClient(cfg, key);
 
     // --- Stream the completion ---
-    // The advisor chain: MessageChatMemoryAdvisor (loads/saves history) → ChatModelStreamAdvisor
-    // (calls the LLM). Each raw text delta is wrapped in {"content":"..."} JSON. On completion a
-    // [DONE] sentinel is emitted. Errors are caught and emitted as {"error":"..."} frames.
-    Flux<String> frames =
+    Flux<String> content =
         client
             .prompt()
-            .system(
-                s -> {
-                  if (cfg.systemPrompt() != null && !cfg.systemPrompt().isBlank()) {
-                    s.text(cfg.systemPrompt());
-                  }
-                })
+            .system(systemPrompt)
             .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, finalConvId))
-            .user(message)
+            .user(userMessage)
+            .tools(callbacks.isEmpty() ? new Object[0] : callbacks.toArray())
             .stream()
             .content()
             .doOnSubscribe(s -> log.info("[ai-hub] stream subscribed"))
-            .doOnNext(content -> log.trace("[ai-hub] chunk: {}", content))
+            .doOnNext(c -> log.trace("[ai-hub] chunk: {}", c))
             .doOnComplete(() -> log.info("[ai-hub] stream complete"))
             .doOnError(error -> log.error("[ai-hub] stream error: {}", error.getMessage()))
             .map(this::contentFrame)
+            .doFinally(signal -> toolFrames.tryEmitComplete());
+    Flux<String> frames =
+        Flux.merge(content, toolFrames.asFlux())
             .concatWith(Flux.just("[DONE]"))
             .onErrorResume(error -> Flux.just(errorFrame(error)));
     return new ChatStream(finalConvId, frames);
+  }
+
+  /** Executes a confirmed pending tool call and folds a system note into the user message. */
+  private String withConfirmedToolResult(
+      PortalUser user, String callId, String message, java.util.function.Consumer<String> emit) {
+    ToolDispatcher.ToolResult result = toolDispatcher.executePending(callId, user);
+    if (emit != null) {
+      ObjectNode frame = objectMapper.createObjectNode();
+      frame.put("type", "tool_result");
+      frame.put("tool", "confirmed:" + callId);
+      frame.put("status", result.status());
+      emit.accept(objectMapper.writeValueAsString(frame));
+    }
+    return message
+        + "\n\n[System note: the user confirmed the pending tool call "
+        + callId
+        + ". It executed with status "
+        + result.status()
+        + " and result: "
+        + result.payload()
+        + ". Summarize the outcome for the user.]";
+  }
+
+  private List<AgentPromptAssembler.ToolSummary> toolSummaries() {
+    return toolRegistry.catalogue().stream()
+        .map(t -> new AgentPromptAssembler.ToolSummary(t.modelName(), t.description(), t.mutates()))
+        .toList();
   }
 
   /** Wraps a text delta in the application-level JSON frame format. */
@@ -195,7 +267,8 @@ public class AiHubChatService {
 
   /**
    * Reads the AI Hub module settings and extracts the selected model's provider/token/model IDs
-   * along with generation parameters (system prompt, temperature, max tokens).
+   * along with generation parameters (system prompt, temperature, max tokens) and the {@code
+   * agent.enabled} flag (default on).
    *
    * <p>The settings JSON stores the selected model in one of two formats:
    *
@@ -207,8 +280,6 @@ public class AiHubChatService {
    * </ul>
    *
    * <p>If neither is set, or the referenced provider/token is missing, a 400 error is thrown.
-   * Previously this method loaded ALL providers and tokens to build option lists — the new
-   * implementation reads the selection directly from the settings JSON, eliminating N+1 DB queries.
    */
   EffectiveConfig resolveConfig() {
     Map<String, Object> settings = moduleSettings.get(MODULE_KEY);
@@ -243,21 +314,13 @@ public class AiHubChatService {
         tokenId,
         stringSetting(settings.get("systemPrompt")),
         doubleSetting(settings.get("temperature"), 0.7),
-        intSetting(settings.get("maxTokens"), 4096));
+        intSetting(settings.get("maxTokens"), 4096),
+        booleanSetting(settings.get("agent.enabled"), true));
   }
 
   /**
    * Builds a {@link ChatClient} for the given configuration, using a cache to avoid repeated
    * construction. Each unique (providerId, tokenId, model) triple gets its own cached client.
-   *
-   * <p>The cache is safe because:
-   *
-   * <ul>
-   *   <li>The {@link MessageChatMemoryAdvisor} is stateless — it delegates to {@link ChatMemory}
-   *       per conversation ID, so sharing a client across requests is fine.
-   *   <li>The {@link ChatModel} is immutable once built — its API key and options don't change.
-   *   <li>Stale entries (e.g., after an admin changes a token's API key) are evicted within 60s.
-   * </ul>
    */
   private ChatClient buildClient(EffectiveConfig cfg, AiHubProvidersService.ResolvedKey key) {
     ChatClientKey cacheKey = new ChatClientKey(cfg.providerId(), cfg.tokenId(), cfg.model());
@@ -278,14 +341,6 @@ public class AiHubChatService {
    * Constructs a Spring AI {@link ChatModel} for the given provider. Anthropic models use {@link
    * AnthropicChatModel}; all other providers (OpenAI, OpenRouter, DeepSeek, xAI, etc.) use {@link
    * OpenAiChatModel} since they expose an OpenAI-compatible API.
-   *
-   * <p>Spring AI 2.0 delegates to the official vendor SDKs ({@code openai-java}, {@code
-   * anthropic-java}) and the SDK client is derived from the connection details embedded in the
-   * options ({@code apiKey}, {@code baseUrl}). Unlike Spring AI 1.x — which appended {@code
-   * /v1/chat/completions} to a bare host — the SDKs treat {@code baseUrl} as the full
-   * version-scoped OpenAI-compatible root ({@code https://api.openai.com/v1}) and append only
-   * {@code /chat/completions} themselves. Provider base URLs are therefore used as stored; the
-   * 1.x-era {@code stripVersionSuffix} workaround was removed.
    */
   ChatModel createChatModel(EffectiveConfig cfg, AiHubProvidersService.ResolvedKey key) {
     if ("anthropic".equals(cfg.providerId())) {
@@ -322,5 +377,9 @@ public class AiHubChatService {
 
   private static Integer intSetting(Object value, int fallback) {
     return value instanceof Number n ? n.intValue() : fallback;
+  }
+
+  private static boolean booleanSetting(Object value, boolean fallback) {
+    return value instanceof Boolean b ? b : fallback;
   }
 }

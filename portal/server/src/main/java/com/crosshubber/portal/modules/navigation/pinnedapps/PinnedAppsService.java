@@ -17,26 +17,20 @@ import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntit
 import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
 
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 /**
- * Pinned apps (per user) â€” tree save is a transactional delete+reinsert; client UUIDs are
- * honored.
+ * Pinned apps (per user) — tree save is a transactional delete+reinsert; client UUIDs are honored.
  */
 @Service
 public class PinnedAppsService {
 
   private final NavigationPinnedAppRepository repo;
   private final ModuleContentRepository contentRepo;
-  private final ObjectMapper objectMapper;
 
   public PinnedAppsService(
-      NavigationPinnedAppRepository repo,
-      ModuleContentRepository contentRepo,
-      ObjectMapper objectMapper) {
+      NavigationPinnedAppRepository repo, ModuleContentRepository contentRepo) {
     this.repo = repo;
     this.contentRepo = contentRepo;
-    this.objectMapper = objectMapper;
   }
 
   /** Known app refs "moduleKey:contentKey". */
@@ -81,11 +75,11 @@ public class PinnedAppsService {
   /** Transactional delete + reinsert of the user's pinned tree. */
   @Transactional
   public void savePinnedTree(String userId, JsonNode nodes) {
-    // Single bulk statement (see deleteAllForUser) â€” per-entity deletes break on
+    // Single bulk statement (see deleteAllForUser) — per-entity deletes break on
     // the self-referential ON DELETE CASCADE.
     repo.deleteAllForUser(userId);
     // IDs are client-generated (UUIDs set before persist), so the whole tree can be
-    // collected first and batch-saved â€” no per-row flush needed for parent resolution.
+    // collected first and batch-saved — no per-row flush needed for parent resolution.
     List<NavigationPinnedAppEntity> rows = new ArrayList<>();
     insertNodes(userId, nodes, null, rows);
     repo.saveAll(rows);
@@ -96,7 +90,7 @@ public class PinnedAppsService {
     int order = 0;
     for (JsonNode node : list) {
       boolean isFolder = "folder".equals(node.path("nodeType").asString());
-      String clientId = node.path("id").asText(null);
+      String clientId = node.path("id").asString(null);
       NavigationPinnedAppEntity entity = new NavigationPinnedAppEntity();
       entity.setId(
           clientId != null && Keys.UUID_PATTERN.matcher(clientId).matches()
@@ -105,8 +99,8 @@ public class PinnedAppsService {
       entity.setUserId(userId);
       entity.setParentId(parentId);
       entity.setNodeType(isFolder ? PinnedNodeType.FOLDER : PinnedNodeType.ITEM);
-      entity.setName(isFolder ? node.path("name").asText(null) : null);
-      entity.setRef(isFolder ? null : node.path("ref").asText(null));
+      entity.setName(isFolder ? node.path("name").asString(null) : null);
+      entity.setRef(isFolder ? null : node.path("ref").asString(null));
       entity.setSortOrder(order * 10);
       out.add(entity);
       JsonNode children = node.get("children");

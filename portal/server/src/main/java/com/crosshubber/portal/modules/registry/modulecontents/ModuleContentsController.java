@@ -62,7 +62,7 @@ public class ModuleContentsController {
     }
     ModuleContentEntity content = moduleContentsService.upsert(body);
     return ResponseEntity.status(201)
-        .body(Map.of("ok", true, "moduleContent", moduleContentsService.toOutput(content)));
+        .body(Map.of("ok", true, "moduleContent", ModuleContentsService.toOutput(content)));
   }
 
   @PutMapping("/{id}")
@@ -81,7 +81,7 @@ public class ModuleContentsController {
     }
     ModuleContentEntity content = moduleContentsService.upsert(body);
     return ResponseEntity.ok(
-        Map.of("ok", true, "moduleContent", moduleContentsService.toOutput(content)));
+        Map.of("ok", true, "moduleContent", ModuleContentsService.toOutput(content)));
   }
 
   @DeleteMapping("/{id}")
@@ -94,7 +94,7 @@ public class ModuleContentsController {
   @PreAuthorize("hasRole('portal-registry-edit')")
   public ResponseEntity<?> reorder(@RequestBody Map<String, Object> body) {
     Object idsRaw = body == null ? null : body.get("ids");
-    // Missing or empty ids â†’ 200 {ok:true} (no-op)
+    // Missing or empty ids → 200 {ok:true} (no-op)
     if (idsRaw == null) {
       return ResponseEntity.ok(Map.of("ok", true));
     }

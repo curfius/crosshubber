@@ -156,7 +156,7 @@ public class InstallService {
     versionRepo.save(versionRow);
 
     log.info(
-        "[install] module \"{}\" v{} installed (digest {}—¦)",
+        "[install] module \"{}\" v{} installed (digest {}—…)",
         moduleKey,
         version,
         digest.substring(0, Math.min(8, digest.length())));
@@ -224,7 +224,7 @@ public class InstallService {
   public String versionLabel(String moduleKey, long versionId) {
     return versionRepo
         .findByModuleKeyAndId(moduleKey, versionId)
-        .map(ModuleVersionEntity::getVersion)
+        .map(v -> v.getVersion())
         .orElse(null);
   }
 
@@ -555,7 +555,7 @@ public class InstallService {
       }
       return out;
     }
-    if (node.isTextual()) {
+    if (node.isString()) {
       return node.asString();
     }
     if (node.isBoolean()) {

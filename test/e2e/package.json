@@ -1,0 +1,17 @@
+{
+  "name": "crosshubber-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Playwright E2E regression pack for the Crosshubber portal, run against the ephemeral crosshubber-e2e tenant stack (plan/TEST_PLAN.md).",
+  "scripts": {
+    "stack:up": "node scripts/stack.mjs up",
+    "stack:down": "node scripts/stack.mjs down",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "typescript": "~5.9.2"
+  }
+}

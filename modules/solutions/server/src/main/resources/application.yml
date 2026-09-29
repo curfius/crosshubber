@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: crosshubber-solutions
+  datasource:
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:25432}/${PGDATABASE:crosshubber_dev}
+    username: ${PGUSER:portal}
+    password: ${PGPASSWORD:}
+    hikari:
+      maximum-pool-size: 5
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: ${PGSCHEMA:solutions}
+  flyway:
+    schemas: ${PGSCHEMA:solutions}
+
+server:
+  port: ${PORT:8090}
+
+solutions:
+  # Shared secret for validating portal-minted agent-call tokens (X-Portal-Agent).
+  # Resolves to the same SESSION_SECRET the portal gets (env_file); must never differ.
+  agent-shared-secret: ${AGENT_SHARED_SECRET:${SESSION_SECRET:dev-insecure-shared-secret}}
+  # Module-owned LLM credentials (OpenAI-compatible). Absent = agent tasks fail closed.
+  llm:
+    base-url: ${SOLUTIONS_LLM_BASE_URL:}
+    api-key: ${SOLUTIONS_LLM_API_KEY:}
+    model: ${SOLUTIONS_LLM_MODEL:}
+  # Document source: `fake` (in-repo stub, default) or `onedrive` (needs Azure creds).
+  docsource:
+    kind: ${SOLUTIONS_DOCSOURCE_KIND:fake}
+
+logging:
+  level:
+    com.crosshubber.solutions: INFO
