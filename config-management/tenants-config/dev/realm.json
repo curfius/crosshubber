@@ -32,6 +32,14 @@
       {
         "name": "portal-ai-hub-edit",
         "description": "Can manage the AI Hub (providers, tokens, channels)"
+      },
+      {
+        "name": "solutions-user",
+        "description": "Can use the solutions module (agent tools, project content)"
+      },
+      {
+        "name": "staffing-user",
+        "description": "Can use the staffing module (agent tools, RFP/CV matching)"
       }
     ]
   },
@@ -44,7 +52,9 @@
         "portal-registry-edit",
         "portal-i18n-edit",
         "portal-navigation-edit",
-        "portal-ai-hub-edit"
+        "portal-ai-hub-edit",
+        "solutions-user",
+        "staffing-user"
       ]
     }
   ],

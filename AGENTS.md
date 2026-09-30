@@ -173,6 +173,12 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
   (`llm-providers`, `ai-assistant`, 3 retired entry points) once every long-lived
   install has booted past the 2026-09 rename — they cost ~5 findById lookups per boot
   and exist only to delete stale rows on upgrades.
+- **Dev Keycloak is ephemeral**: `KC_DB: dev-file` with no data volume — every
+  `keycloak` recreate reimports `tenants-config/<tenant>/realm.json` and wipes manual
+  console changes (roles renamed or granted by hand vanish → agent dispatch fails with
+  a zero-duration `outcome=denied` row). Durable role grants belong in the realm import
+  file (e.g. `dev/realm.json`: `roles.realm` entries + group `realmRoles`); after
+  editing it, `docker compose up -d --force-recreate keycloak`.
 
 ## Backlog pointers
 

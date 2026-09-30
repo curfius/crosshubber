@@ -4,12 +4,15 @@ Roadmap for evolving the portal from a plain chat UI (AI Hub) into an agent-capa
 platform: a session-aware portal agent that can use module-contributed tools/skills,
 delegate work to module-owned sub-agents, and retrieve module-owned knowledge.
 
-Status: **backlog — nothing implemented yet** (re-verified against code 2026-09-29).
-Phases below are proposed; each needs its own go decision. Phase A go scope is
-A1–A3 + A5; A4 (pack snapshot persistence) is deferred. Two dogfood modules
-(`solutions`, `staffing`) were planned 2026-09-29 as concrete consumers of phases
-A/B/D/F/G — see `plan/AI_MODULES_PLAN.md` ("Phase H"); they are the reference
-sequencing driver for this plan. Related: `plan/UX_PLAN.md` (navigation),
+Status: **in progress** (re-verified 2026-09-30). Implemented: Phases A, B, D via
+H0a (2026-09-29); C3/C4/C5 via H6 (2026-09-30 — tool transparency rows, confirm
+dialog + admin "Agent tool calls" audit list, `agent.*` i18n); F1/F2/F3/F5 via H0b
+(2026-09-30 — HTTP sub-agent dispatch, depth structurally 1); C2 was already done
+(`ChatCoreService`). Not started: C1, E (deferred), F4 (portal-native sub-agents),
+portal-side G (G3 citations, with H5). Phase A go scope remains A1–A3 + A5 (A4
+deferred). Two dogfood modules (`solutions`, `staffing`) drive sequencing — see
+`plan/AI_MODULES_PLAN.md` ("Phase H"); there they are the reference consumer for
+phases A/B/D/F/G. Related: `plan/UX_PLAN.md` (navigation),
 `plan/archive/OPTIMIZATIONS.md` (backend, closed). Note: the AGENTS.md
 backlog item "merge chat/quick-chat duplicated logic" is done — `ChatCoreService`
 owns both surfaces.
@@ -225,3 +228,5 @@ as H0b/H5. E stays deferred (open question 4). See
 | 2026-09-29 | Phase H planned: dogfood modules `solutions` + `staffing` as remote MFEs (see `plan/AI_MODULES_PLAN.md`). Resolves open questions 2 (`modules/agent` package) and 4 (D before E). F3/F4 transport: HTTP-first with forwarded user tokens. Portal-side `modules/docsource` abstraction with OneDrive adapter first. |
 | 2026-09-29 | Supersedes the docsource part of the previous entry: **module-owned datasources** — each module implements its own connectors, holds its own credentials, and configures its own LLM provider keys; the portal hosts no module-domain infrastructure. Portal-side Phase G scope reduces to citations/transparency. See AI_MODULES_PLAN decision log. |
 | 2026-09-29 | H0a implemented: A1–A3+A5 (context pack, server-authoritative identity), B1–B6 portal core (`modules/agent`: tool registry, builtin tools, RBAC dispatcher, pending confirmations, audit table `agent_tool_calls` V29, SSE tool frames), manifest v2 (tools/skills/agents/knowledge; snake-case names via `Keys.AGENT_NAME_RE`), remote dispatch + portal-signed `X-Portal-Agent` tokens. Protocol doc: `docs/agent-protocol.md`. UI sends `context` and parses typed frames. |
+| 2026-09-30 | H6 implemented: C3 (tool-activity rows in chat/quick-chat via shared `ChatToolFlow`), C4 (confirm dialog for `needsConfirmation` dispatches + admin-gated "Agent tool calls" list under AI Hub settings — latest 200 rows, client-side search/outcome filters), C5 (27 `agent.*` labels × 4 languages, reconciler insert-if-absent — no migration needed for new keys). Fixed en route: `AiHubService.init(config.user)` was never called from Shell (`canManage` permanently false). Live-verified on dev: endpoint 401/200/403 matrix, confirm → audit `outcome=confirmed`, devuser → `outcome=denied` with no mutation. Details: AI_MODULES_PLAN decision log. |
+| 2026-09-30 | H0b implemented: F1 envelope (`SubAgentInvoker` — `task`/`expectedOutput` from tool args, `context.conversationId`, `timeoutMs` 25s inside the shared 30s read timeout), F2 (`agents[]` hydrates into the tool catalogue as `Kind.AGENT` entries named `moduleKey_name`, hyphens flattened for provider safety), F3 (dispatcher maps F1 `status:"done"`→`ok` else `error`; manifest `roles[]` enforced portal-side — modules only authenticate; depth structurally 1 since the module turn cannot re-enter the portal tool loop; no confirmation parking), F5 (delegations ride ordinary `tool_call`/`tool_result` frames + audit rows). Protocol doc: new "Sub-agent dispatch" section (also fixed the stale claim that modules enforce roles locally). Live-verified (S6): direct envelope probe `status=done` in 4.7s, chat delegation → `solutions_projects_agent` row → audit `outcome=ok` 3.8s → narration folded back. Tests: server 144 (+11: +6 dispatcher, +5 new `ToolRegistryTest`). |

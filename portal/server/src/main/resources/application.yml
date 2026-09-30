@@ -57,11 +57,12 @@ spring:
     baseline-on-migrate: true
   # Jackson config: see JacksonConfig.java (custom JsonMapper per-DTO null/empty control)
 
-# Keycloak Admin (optional — all 4 must be present)
+# Keycloak Admin (optional — all 4 must be present; the secret comes from secrets.env,
+# which uses Keycloak-style KC_* names)
 portal.kc-admin:
   base-url: ${KEYCLOAK_ADMIN_BASE_URL:}
   client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:}
-  client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:}
+  client-secret: ${KC_ADMIN_CLIENT_SECRET:}
   realm: ${KEYCLOAK_REALM:}
 
 logging:
