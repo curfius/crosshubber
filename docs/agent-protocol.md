@@ -2,7 +2,8 @@
 
 The single contract between the portal chat backend and its UIs (and future module
 agents). Server and UI versions evolve against this document. Current status:
-implemented in `AiHubChatService` + `ChatCoreService` (AI plan phases A/B, 2026-09-29).
+implemented in `AiHubChatService` + `ChatCoreService` (AI plan phases A/B, 2026-09-29;
+F sub-agent dispatch, 2026-09-30).
 
 ## Transport
 
@@ -50,15 +51,34 @@ New conversation ids are returned via the `X-Conversation-Id` response header.
 ## Tool loop semantics (AI plan B)
 
 - Tools come from the server-side registry: built-in portal reads plus every active
-  installed module's manifest `agentContributions.tools[]`. Remote tool names are
+  installed module's manifest `agentContributions.tools[]` and
+  `agentContributions.agents[]` (sub-agent delegations, below). Remote entry names are
   flattened to `moduleKey_name` for provider compatibility (function names must be
-  alphanumeric + `_`/`-`).
+  alphanumeric + `_`/`-`; hyphens are folded to `_`).
 - The loop runs with **native model tool calling** (Spring AI), capped at 8
   dispatched tool calls per turn (`cap_reached` → the model must answer from what it
   has).
 - Authorization: a tool declaring `roles[]` requires the caller to hold at least one;
   undeclared = any authenticated user. Denied calls are audited and narrated by the
-  model — never a 500.
+  model — never a 500. Matching is **exact string equality** against the caller's
+  Keycloak realm roles.
+
+## Role provisioning
+
+Module roles are module-owned: the manifest `security.roles[]` declares the keys
+(`solutions-user`, `solutions-admin`, `staffing-user`, …) and every tool/content
+`roles[]` must use exactly those names. On install (and each boot for
+tenant-config-declared externals), the portal creates any missing realm roles in
+Keycloak — requires `portal.kc-admin.*` (all four values, secret sourced as
+`KC_ADMIN_CLIENT_SECRET` from `secrets.env`). Granting is manual: assign the role to
+a user or group (typically the tenant's admin group) in the Keycloak console. A
+near-miss role name created by hand (e.g. `portal-solutions-edit`) never satisfies
+`solutions-user` — the dispatcher will deny with
+`you do not have the required roles for <tool>`.
+- In the dev stack the Keycloak realm is **ephemeral** (`KC_DB: dev-file`, no data
+  volume): every container recreate reimports `config-management/tenants-config/dev/realm.json`
+  and drops console-made changes. Put durable grants in that import (`roles.realm` +
+  group `realmRoles`) and recreate Keycloak after editing it.
 - **Mutating tools never execute on first call.** They park in the pending store
   (10-minute TTL) and return `needs_confirmation` with a `callId`. The UI confirms by
   sending `toolConfirmation.callId` on the next chat request; the portal executes the
@@ -77,6 +97,47 @@ with body `{"tool": name, "arguments": {...}}` and header
 `X-Portal-Agent: <token>` — a short-lived (5 min) HMAC-SHA256-signed token carrying
 `{iss:"portal", sub, name, roles, exp}`, keyed with the portal session secret. There
 is no OIDC bearer token to forward (portal sessions are cookies); module backends
-validate signature + expiry and enforce roles locally. Module base URLs are
+validate signature + expiry (roles are enforced portal-side by the dispatcher, before
+dispatch — modules authenticate the token but do not check roles). Module base URLs are
 admin-configured at install time, so no SSRF guard applies to this path; transport
 failures are fail-soft (tool-result errors, never portal 500s).
+
+## Sub-agent dispatch (AI_PLAN F / AI_MODULES_PLAN P7)
+
+Manifest `agentContributions.agents[]` entries (`name`, `description`, `endpoint`,
+`roles[]`) hydrate into the same catalogue as tools — surfaced to the model as a
+delegating tool named `moduleKey_name` (e.g. `solutions_projects_agent`). Calling it
+runs the F1 task-envelope round-trip:
+
+```
+POST {baseUrl}{endpoint}
+X-Portal-Agent: <same token as tool dispatch>
+{
+  "task": "<from tool args — required>",
+  "expectedOutput": "<optional, from tool args>",
+  "context": { "conversationId": "conv_…" },
+  "timeoutMs": 25000
+}
+→ { "status": "done|failed", "output": "…", "artifacts": [], "auditRef": null }
+```
+
+The model only supplies `task` (required) and optional `expectedOutput` — the portal
+builds the rest of the envelope. `status:"done"` folds back as `tool_result` status
+`ok`; any other status folds back as `error` (payload preserved), so the model
+narrates module-side failures (e.g. module LLM not configured) instead of treating
+them as answers.
+
+- **Roles are enforced portal-side only**: the dispatcher checks the caller against
+  the manifest `roles[]` before the HTTP call — modules authenticate the token but
+  never check roles.
+- Agents never park for confirmation (there is no `mutates` on `agents[]`); manifest
+  `roles[]` is the mutation-safety gate.
+- **Delegation depth is structurally 1**: the sub-agent runs module-side as a single
+  model turn with no path back into the portal tool loop (F3 depth cap), so it cannot
+  spawn further sub-agents.
+- Sub-agent activity is visible in the transcript as ordinary `tool_call` /
+  `tool_result` frames (F5, Phase C3 rows) and every attempt lands in the
+  `agent_tool_calls` audit table with duration — a sub-agent turn includes module-side
+  LLM latency.
+- Fail-soft: unreachable module or `status:"failed"` → tool-result error; never a
+  portal 500.

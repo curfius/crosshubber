@@ -22,6 +22,7 @@ class ToolDispatcherTest {
 
   private BuiltinToolHandlers builtinHandlers;
   private RemoteToolInvoker remoteInvoker;
+  private SubAgentInvoker subAgentInvoker;
   private AgentToolCallRepository auditRepository;
   private ToolDispatcher dispatcher;
   private ObjectMapper mapper;
@@ -33,11 +34,17 @@ class ToolDispatcherTest {
   void setUp() {
     builtinHandlers = mock(BuiltinToolHandlers.class);
     remoteInvoker = mock(RemoteToolInvoker.class);
+    subAgentInvoker = mock(SubAgentInvoker.class);
     auditRepository = mock(AgentToolCallRepository.class);
     mapper = new JacksonConfig().jsonMapper();
     dispatcher =
         new ToolDispatcher(
-            builtinHandlers, remoteInvoker, new PendingToolCallStore(), auditRepository, mapper);
+            builtinHandlers,
+            remoteInvoker,
+            subAgentInvoker,
+            new PendingToolCallStore(),
+            auditRepository,
+            mapper);
   }
 
   private static AgentTool readTool() {
@@ -58,6 +65,17 @@ class ToolDispatcherTest {
         false,
         List.of(roles),
         null);
+  }
+
+  private static AgentTool agentTool(String... roles) {
+    return AgentTool.agent(
+        "solutions",
+        "http://solutions:8090",
+        "projects-agent",
+        "Answers project status questions",
+        null,
+        List.of(roles),
+        "/agent/tasks");
   }
 
   @Test
@@ -195,5 +213,89 @@ class ToolDispatcherTest {
     assertThat(audit.getValue().getToolId()).isEqualTo("read_tool");
     assertThat(audit.getValue().getToolName()).isEqualTo("read_tool");
     assertThat(audit.getValue().getModuleKey()).isNull();
+  }
+
+  @Test
+  void subAgentDoneFoldsBackAsOkAndAudits() throws Exception {
+    ObjectNode taskResult =
+        mapper
+            .createObjectNode()
+            .put("status", "done")
+            .put("output", "The ERP Rollout project is in Delivery.");
+    when(subAgentInvoker.invoke(any(), any(), any(), any())).thenReturn(taskResult);
+    ObjectNode args = mapper.createObjectNode().put("task", "project status?");
+
+    ToolDispatcher.ToolResult result = dispatcher.dispatch(agentTool(), USER, "conv1", args, false);
+
+    assertThat(result.status()).isEqualTo("ok");
+    assertThat(result.payload().path("output").asString()).contains("ERP Rollout");
+    ArgumentCaptor<AgentToolCallEntity> audit = ArgumentCaptor.forClass(AgentToolCallEntity.class);
+    org.mockito.Mockito.verify(auditRepository).save(audit.capture());
+    assertThat(audit.getValue().getOutcome()).isEqualTo("ok");
+    assertThat(audit.getValue().getToolId()).isEqualTo("solutions:projects-agent");
+    assertThat(audit.getValue().getToolName()).isEqualTo("projects-agent");
+    assertThat(audit.getValue().getModuleKey()).isEqualTo("solutions");
+    org.mockito.Mockito.verifyNoInteractions(remoteInvoker, builtinHandlers);
+  }
+
+  @Test
+  void subAgentFailedStatusFoldsBackAsError() throws Exception {
+    ObjectNode taskResult =
+        mapper
+            .createObjectNode()
+            .put("status", "failed")
+            .put("output", "llm is not configured on the solutions module");
+    when(subAgentInvoker.invoke(any(), any(), any(), any())).thenReturn(taskResult);
+
+    ToolDispatcher.ToolResult result =
+        dispatcher.dispatch(agentTool(), USER, "conv1", mapper.createObjectNode(), false);
+
+    assertThat(result.status()).isEqualTo("error");
+    assertThat(result.payload().path("output").asString()).contains("llm is not configured");
+    ArgumentCaptor<AgentToolCallEntity> audit = ArgumentCaptor.forClass(AgentToolCallEntity.class);
+    org.mockito.Mockito.verify(auditRepository).save(audit.capture());
+    assertThat(audit.getValue().getOutcome()).isEqualTo("error");
+  }
+
+  @Test
+  void subAgentTransportFailureIsErrorNotException() throws Exception {
+    when(subAgentInvoker.invoke(any(), any(), any(), any()))
+        .thenThrow(new java.net.ConnectException("down"));
+
+    ToolDispatcher.ToolResult result =
+        dispatcher.dispatch(agentTool(), USER, null, mapper.createObjectNode(), false);
+
+    assertThat(result.status()).isEqualTo("error");
+    assertThat(result.payload().path("error").asString()).contains("down");
+    ArgumentCaptor<AgentToolCallEntity> audit = ArgumentCaptor.forClass(AgentToolCallEntity.class);
+    org.mockito.Mockito.verify(auditRepository).save(audit.capture());
+    assertThat(audit.getValue().getOutcome()).isEqualTo("error");
+  }
+
+  @Test
+  void subAgentEnforcesManifestRolesPortalSide() throws Exception {
+    // modules authenticate the token but never check roles — the portal gate is the only one
+    ToolDispatcher.ToolResult result =
+        dispatcher.dispatch(
+            agentTool("solutions-admin"), USER, null, mapper.createObjectNode(), false);
+
+    assertThat(result.status()).isEqualTo("denied");
+    org.mockito.Mockito.verifyNoInteractions(subAgentInvoker);
+    ArgumentCaptor<AgentToolCallEntity> audit = ArgumentCaptor.forClass(AgentToolCallEntity.class);
+    org.mockito.Mockito.verify(auditRepository).save(audit.capture());
+    assertThat(audit.getValue().getOutcome()).isEqualTo("denied");
+  }
+
+  @Test
+  void subAgentNeverParksForConfirmation() throws Exception {
+    // agents have mutates=false by construction — even so, dispatch must go straight through
+    when(subAgentInvoker.invoke(any(), any(), any(), any()))
+        .thenReturn(mapper.createObjectNode().put("status", "done"));
+
+    ToolDispatcher.ToolResult result =
+        dispatcher.dispatch(agentTool(), USER, null, mapper.createObjectNode(), false);
+
+    assertThat(result.status()).isEqualTo("ok");
+    assertThat(result.callId()).isNull();
   }
 }

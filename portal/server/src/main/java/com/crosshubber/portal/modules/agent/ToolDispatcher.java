@@ -18,6 +18,11 @@ import tools.jackson.databind.node.ObjectNode;
  * they park in {@link PendingToolCallStore} and return {@code needs_confirmation}; only a
  * caller-owned confirmation executes them. Remote execution runs outside any transaction (TX
  * hygiene invariant); every attempt lands in the audit table with its outcome and duration.
+ *
+ * <p>Sub-agent delegations (AI plan F3) run through the same gates: {@code AGENT}-kind entries pass
+ * their manifest {@code roles[]} check here (modules do not enforce roles themselves), never park
+ * for confirmation (agents are delegation, not direct mutation), and their F1 result folds back as
+ * a tool result — {@code status:"done"} → {@code ok}, anything else → {@code error}.
  */
 @Service
 public class ToolDispatcher {
@@ -28,6 +33,7 @@ public class ToolDispatcher {
 
   private final BuiltinToolHandlers builtinHandlers;
   private final RemoteToolInvoker remoteInvoker;
+  private final SubAgentInvoker subAgentInvoker;
   private final PendingToolCallStore pendingStore;
   private final AgentToolCallRepository auditRepository;
   private final ObjectMapper objectMapper;
@@ -35,11 +41,13 @@ public class ToolDispatcher {
   public ToolDispatcher(
       BuiltinToolHandlers builtinHandlers,
       RemoteToolInvoker remoteInvoker,
+      SubAgentInvoker subAgentInvoker,
       PendingToolCallStore pendingStore,
       AgentToolCallRepository auditRepository,
       ObjectMapper objectMapper) {
     this.builtinHandlers = builtinHandlers;
     this.remoteInvoker = remoteInvoker;
+    this.subAgentInvoker = subAgentInvoker;
     this.pendingStore = pendingStore;
     this.auditRepository = auditRepository;
     this.objectMapper = objectMapper;
@@ -102,15 +110,27 @@ public class ToolDispatcher {
       return new ToolResult("needs_confirmation", payload, callId);
     }
     try {
-      JsonNode payload =
-          tool.kind() == AgentTool.Kind.BUILTIN
-              ? builtinHandlers.handle(tool, user, args)
-              : remoteInvoker.invoke(tool, user, args);
-      return ToolResult.of("ok", payload);
+      return switch (tool.kind()) {
+        case BUILTIN -> ToolResult.of("ok", builtinHandlers.handle(tool, user, args));
+        case REMOTE -> ToolResult.of("ok", remoteInvoker.invoke(tool, user, args));
+        case AGENT -> dispatchSubAgent(tool, user, conversationId, args);
+      };
     } catch (Exception e) {
       log.warn("[agent] tool {} failed: {}", tool.modelName(), e.getMessage());
       return ToolResult.of("error", errorPayload(safeMessage(e)));
     }
+  }
+
+  /**
+   * Delegates to a module-owned sub-agent (AI plan F3): the F1 envelope round-trip result folds
+   * back as a tool result — {@code status:"done"} maps to {@code ok}, anything else to {@code
+   * error} so the model narrates the failure instead of treating it as an answer.
+   */
+  private ToolResult dispatchSubAgent(
+      AgentTool tool, PortalUser user, String conversationId, JsonNode args) throws Exception {
+    JsonNode payload = subAgentInvoker.invoke(tool, user, conversationId, args);
+    String subStatus = payload.path("status").asString("");
+    return ToolResult.of("done".equals(subStatus) ? "ok" : "error", payload);
   }
 
   private boolean authorized(AgentTool tool, PortalUser user) {
