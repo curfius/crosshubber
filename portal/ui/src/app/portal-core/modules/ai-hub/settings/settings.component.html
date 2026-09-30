@@ -2,7 +2,9 @@
   <div class="mb-6 flex items-center justify-between">
     <div>
       <h1 class="ds-heading-3">{{ i18n.t('aihub.settings.title') }}</h1>
-      <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('aihub.settings.description') }}</p>
+      <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">
+        {{ i18n.t('aihub.settings.description') }}
+      </p>
     </div>
   </div>
 
@@ -10,63 +12,112 @@
     <!-- System Prompt (first) -->
     <div class="ds-card p-5">
       <h3 class="ds-heading-3 mb-1 text-sm">{{ i18n.t('aihub.settings.system-prompt') }}</h3>
-      <p class="mb-4 text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.settings.system-prompt-hint') }}</p>
+      <p class="mb-4 text-[10px] text-[var(--portal-text-disabled)]">
+        {{ i18n.t('aihub.settings.system-prompt-hint') }}
+      </p>
       <app-markdown-editor
         [content]="systemPrompt()"
         (contentChange)="systemPrompt.set($event)"
         [rows]="12"
-        [placeholder]="i18n.t('aihub.settings.system-prompt-placeholder')"></app-markdown-editor>
+        [placeholder]="i18n.t('aihub.settings.system-prompt-placeholder')"
+      ></app-markdown-editor>
     </div>
 
     <!-- Token Selection -->
     <div class="ds-card p-5">
       <h3 class="ds-heading-3 mb-1 text-sm">{{ i18n.t('aihub.settings.api-tokens') }}</h3>
-      <p class="mb-4 text-[10px] text-[var(--portal-text-muted)]">{{ i18n.t('aihub.settings.api-tokens-hint') }}</p>
+      <p class="mb-4 text-[10px] text-[var(--portal-text-muted)]">
+        {{ i18n.t('aihub.settings.api-tokens-hint') }}
+      </p>
 
       @if (activeTokens().length === 0) {
-      <p class="py-4 text-center text-xs text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.settings.no-active-tokens') }}</p>
+        <p class="py-4 text-center text-xs text-[var(--portal-text-disabled)]">
+          {{ i18n.t('aihub.settings.no-active-tokens') }}
+        </p>
       } @else {
-      <div class="space-y-1">
-        @for (row of activeTokens(); track row.token.id) {
-        <div class="flex items-center gap-3 rounded-lg px-3 py-2.5 transition"
-          [class]="isTokenSelected(row.token.id)
-            ? 'border border-[var(--portal-accent-primary-glow)] bg-[var(--portal-accent-primary-subtle)]'
-            : 'border border-transparent bg-[var(--portal-bg-hover)] hover:bg-[var(--portal-bg-active)]'">
-          <div class="min-w-0 flex-1">
-            <div class="flex min-w-0 flex-wrap items-center gap-2">
-              <p class="truncate text-sm font-medium text-[var(--portal-text-secondary)]">{{ row.token.name }}</p>
-              <span class="shrink-0 rounded-full border border-[var(--portal-border-subtle)] bg-[var(--portal-bg-elevated)] px-2 py-0.5 text-[9px] uppercase tracking-wide text-[var(--portal-text-tertiary)]">{{ row.providerName }}</span>
-              @if (!row.providerEnabled) {
-              <span class="shrink-0 rounded bg-[var(--portal-bg-elevated)] px-1.5 py-0.5 text-[9px] text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.settings.provider-disabled') }}</span>
-              }
+        <div class="space-y-1">
+          @for (row of activeTokens(); track row.token.id) {
+            <div
+              class="flex items-center gap-3 rounded-lg px-3 py-2.5 transition"
+              [class]="
+                isTokenSelected(row.token.id)
+                  ? 'border border-[var(--portal-accent-primary-glow)] bg-[var(--portal-accent-primary-subtle)]'
+                  : 'border border-transparent bg-[var(--portal-bg-hover)] hover:bg-[var(--portal-bg-active)]'
+              "
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
+                  <p class="truncate text-sm font-medium text-[var(--portal-text-secondary)]">
+                    {{ row.token.name }}
+                  </p>
+                  <span
+                    class="shrink-0 rounded-full border border-[var(--portal-border-subtle)] bg-[var(--portal-bg-elevated)] px-2 py-0.5 text-[9px] uppercase tracking-wide text-[var(--portal-text-tertiary)]"
+                    >{{ row.providerName }}</span
+                  >
+                  @if (!row.providerEnabled) {
+                    <span
+                      class="shrink-0 rounded bg-[var(--portal-bg-elevated)] px-1.5 py-0.5 text-[9px] text-[var(--portal-text-disabled)]"
+                      >{{ i18n.t('aihub.settings.provider-disabled') }}</span
+                    >
+                  }
+                </div>
+                <p class="text-[10px] text-[var(--portal-text-disabled)]">
+                  {{ row.token.maskedKey }} &middot;
+                  {{
+                    i18n.t('aihub.settings.enabled-models', { count: enabledModelCount(row.token) })
+                  }}
+                </p>
+              </div>
+              <app-switch
+                [checked]="isTokenSelected(row.token.id)"
+                (toggled)="toggleToken(row.token.id, $event)"
+              />
             </div>
-            <p class="text-[10px] text-[var(--portal-text-disabled)]">{{ row.token.maskedKey }} &middot; {{ i18n.t('aihub.settings.enabled-models', { count: enabledModelCount(row.token) }) }}</p>
-          </div>
-          <app-switch [checked]="isTokenSelected(row.token.id)" (toggled)="toggleToken(row.token.id, $event)" />
+          }
         </div>
-        }
-      </div>
       }
 
       @if (models().length > 0) {
-      <div class="mt-4 rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-subtle)] p-3">
-        <p class="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--portal-text-muted)]">{{ i18n.t('aihub.settings.default-model', { count: models().length }) }}</p>
-        <p class="mb-2 text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.settings.default-model-hint') }}</p>
-        <div class="space-y-1">
-          @for (m of models(); track m.modelId + m.tokenId) {
-          <button type="button" (click)="selectDefaultModel(m)"
-            [class]="modelOptionKey(m) === defaultModelKey()
-              ? 'flex w-full items-center gap-2 rounded-lg border border-[var(--portal-accent-primary-glow)] bg-[var(--portal-accent-primary-subtle)] px-3 py-1.5 text-left text-xs text-[var(--portal-accent-primary)]'
-              : 'flex w-full items-center gap-2 rounded-lg border border-transparent px-3 py-1.5 text-left text-xs text-[var(--portal-text-secondary)] hover:bg-[var(--portal-bg-hover)]'">
-            <span class="size-1.5 shrink-0 rounded-full" [class]="modelOptionKey(m) === defaultModelKey() ? 'bg-[var(--portal-accent-primary)]' : 'bg-[var(--portal-status-success)]'"></span>
-            <span class="text-[var(--portal-text-secondary)]">{{ m.providerName }}</span>
-            <span class="text-[var(--portal-text-disabled)]">/</span>
-            <span>{{ m.modelName }}</span>
-            <span class="ml-auto text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.settings.via-token', { token: m.tokenName }) }}</span>
-          </button>
-          }
+        <div
+          class="mt-4 rounded-lg border border-[var(--portal-border-default)] bg-[var(--portal-bg-subtle)] p-3"
+        >
+          <p
+            class="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--portal-text-muted)]"
+          >
+            {{ i18n.t('aihub.settings.default-model', { count: models().length }) }}
+          </p>
+          <p class="mb-2 text-[10px] text-[var(--portal-text-disabled)]">
+            {{ i18n.t('aihub.settings.default-model-hint') }}
+          </p>
+          <div class="space-y-1">
+            @for (m of models(); track m.modelId + m.tokenId) {
+              <button
+                type="button"
+                (click)="selectDefaultModel(m)"
+                [class]="
+                  modelOptionKey(m) === defaultModelKey()
+                    ? 'flex w-full items-center gap-2 rounded-lg border border-[var(--portal-accent-primary-glow)] bg-[var(--portal-accent-primary-subtle)] px-3 py-1.5 text-left text-xs text-[var(--portal-accent-primary)]'
+                    : 'flex w-full items-center gap-2 rounded-lg border border-transparent px-3 py-1.5 text-left text-xs text-[var(--portal-text-secondary)] hover:bg-[var(--portal-bg-hover)]'
+                "
+              >
+                <span
+                  class="size-1.5 shrink-0 rounded-full"
+                  [class]="
+                    modelOptionKey(m) === defaultModelKey()
+                      ? 'bg-[var(--portal-accent-primary)]'
+                      : 'bg-[var(--portal-status-success)]'
+                  "
+                ></span>
+                <span class="text-[var(--portal-text-secondary)]">{{ m.providerName }}</span>
+                <span class="text-[var(--portal-text-disabled)]">/</span>
+                <span>{{ m.modelName }}</span>
+                <span class="ml-auto text-[10px] text-[var(--portal-text-disabled)]">{{
+                  i18n.t('aihub.settings.via-token', { token: m.tokenName })
+                }}</span>
+              </button>
+            }
+          </div>
         </div>
-      </div>
       }
     </div>
 
@@ -78,22 +129,31 @@
           <div class="mb-2">
             <label class="ds-label">{{ i18n.t('aihub.settings.input-placeholder') }}</label>
           </div>
-          <input type="text"
+          <input
+            type="text"
             [value]="inputPlaceholder()"
             (input)="inputPlaceholder.set($any($event.target).value)"
             [placeholder]="i18n.t('aihub.settings.input-placeholder-example')"
-            class="ds-input" />
-          <p class="mt-1 text-[10px] text-[var(--portal-text-disabled)]">{{ i18n.t('aihub.settings.input-placeholder-hint') }}</p>
+            class="ds-input"
+          />
+          <p class="mt-1 text-[10px] text-[var(--portal-text-disabled)]">
+            {{ i18n.t('aihub.settings.input-placeholder-hint') }}
+          </p>
         </div>
         <div>
           <div class="mb-2 flex items-center justify-between">
             <label class="ds-label">{{ i18n.t('aihub.settings.temperature') }}</label>
             <span class="text-xs text-[var(--portal-text-tertiary)]">{{ temperature() }}</span>
           </div>
-          <input type="range" min="0" max="2" step="0.1"
+          <input
+            type="range"
+            min="0"
+            max="2"
+            step="0.1"
             [value]="temperature()"
-            (input)="temperature.set(+($any($event.target).value))"
-            class="w-full accent-[var(--portal-accent-primary)]" />
+            (input)="temperature.set(+$any($event.target).value)"
+            class="w-full accent-[var(--portal-accent-primary)]"
+          />
           <div class="mt-1 flex justify-between text-[10px] text-[var(--portal-text-disabled)]">
             <span>{{ i18n.t('aihub.settings.temperature-low') }}</span>
             <span>{{ i18n.t('aihub.settings.temperature-high') }}</span>
@@ -104,10 +164,15 @@
             <label class="ds-label">{{ i18n.t('aihub.settings.max-tokens') }}</label>
             <span class="text-xs text-[var(--portal-text-tertiary)]">{{ maxTokens() }}</span>
           </div>
-          <input type="range" min="100" max="4096" step="100"
+          <input
+            type="range"
+            min="100"
+            max="4096"
+            step="100"
             [value]="maxTokens()"
-            (input)="maxTokens.set(+($any($event.target).value))"
-            class="w-full accent-[var(--portal-accent-primary)]" />
+            (input)="maxTokens.set(+$any($event.target).value)"
+            class="w-full accent-[var(--portal-accent-primary)]"
+          />
           <div class="mt-1 flex justify-between text-[10px] text-[var(--portal-text-disabled)]">
             <span>{{ i18n.t('aihub.settings.max-tokens-low') }}</span>
             <span>{{ i18n.t('aihub.settings.max-tokens-high') }}</span>
@@ -116,15 +181,111 @@
       </div>
     </div>
 
+    <!-- Agent tool audit (AI plan C4) -->
+    @if (aiHub.canManage()) {
+      <div class="ds-card p-5">
+        <div class="mb-1 flex items-center justify-between gap-3">
+          <h3 class="ds-heading-3 text-sm">{{ i18n.t('agent.audit.title') }}</h3>
+          <button
+            type="button"
+            (click)="loadAudit()"
+            [disabled]="auditLoading()"
+            class="ds-btn ds-btn-ghost"
+          >
+            {{ i18n.t('agent.audit.refresh') }}
+          </button>
+        </div>
+        <p class="mb-4 text-[10px] text-[var(--portal-text-muted)]">
+          {{ i18n.t('agent.audit.hint') }}
+        </p>
+
+        <div class="mb-3 flex flex-wrap items-center gap-2">
+          <input
+            type="search"
+            class="ds-input min-w-56"
+            [value]="auditQuery()"
+            (input)="auditQuery.set($any($event.target).value)"
+            [placeholder]="i18n.t('agent.audit.filter-search')"
+          />
+          <select
+            class="ds-select min-w-44"
+            [value]="auditOutcome()"
+            (change)="auditOutcome.set($any($event.target).value)"
+          >
+            @for (o of auditOutcomes; track o) {
+              <option [value]="o" [selected]="o === auditOutcome()">
+                {{ o === 'all' ? i18n.t('agent.audit.filter-all-outcomes') : outcomeLabel(o) }}
+              </option>
+            }
+          </select>
+          <span class="text-[10px] text-[var(--portal-text-disabled)]">
+            {{ i18n.t('agent.audit.count', { count: filteredToolCalls().length }) }}
+          </span>
+        </div>
+
+        @if (auditError()) {
+          <p
+            class="rounded-lg bg-[var(--portal-status-danger-bg)] px-3 py-2 text-[11px] text-[var(--portal-status-danger)]"
+          >
+            {{ i18n.t('agent.audit.load-error') }}
+          </p>
+        } @else if (filteredToolCalls().length === 0) {
+          <p class="py-4 text-center text-xs text-[var(--portal-text-disabled)]">
+            {{ i18n.t('agent.audit.empty') }}
+          </p>
+        } @else {
+          <div class="ds-table-wrapper max-h-80 overflow-y-auto">
+            <table class="ds-table w-full min-w-[680px]">
+              <thead>
+                <tr>
+                  <th>{{ i18n.t('agent.audit.col-time') }}</th>
+                  <th>{{ i18n.t('agent.audit.col-user') }}</th>
+                  <th>{{ i18n.t('agent.audit.col-tool') }}</th>
+                  <th>{{ i18n.t('agent.audit.col-module') }}</th>
+                  <th>{{ i18n.t('agent.audit.col-outcome') }}</th>
+                  <th>{{ i18n.t('agent.audit.col-duration') }}</th>
+                  <th>{{ i18n.t('agent.audit.col-args') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of filteredToolCalls(); track row.id) {
+                  <tr>
+                    <td class="whitespace-nowrap">{{ formatAuditTime(row.occurredAt) }}</td>
+                    <td class="truncate">{{ row.userId }}</td>
+                    <td class="font-mono text-[11px]">{{ row.toolName }}</td>
+                    <td>{{ row.moduleKey || '' }}</td>
+                    <td>
+                      <span [class]="toolStatusTone(row.outcome)">{{
+                        outcomeLabel(row.outcome)
+                      }}</span>
+                    </td>
+                    <td class="whitespace-nowrap">
+                      {{ row.durationMs != null ? row.durationMs + ' ms' : '' }}
+                    </td>
+                    <td
+                      class="max-w-56 truncate font-mono text-[10px] text-[var(--portal-text-muted)]"
+                      [title]="row.argsSummary || ''"
+                    >
+                      {{ row.argsSummary || '' }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    }
+
     <!-- Save -->
     <div class="flex items-center gap-3">
-      <button type="button" (click)="save()"
-        [disabled]="saving()"
-        class="ds-btn ds-btn-primary">
+      <button type="button" (click)="save()" [disabled]="saving()" class="ds-btn ds-btn-primary">
         {{ saving() ? i18n.t('aihub.settings.saving') : i18n.t('aihub.settings.save') }}
       </button>
       @if (saved()) {
-      <span class="text-xs text-[var(--portal-status-success)]">{{ i18n.t('aihub.settings.saved') }}</span>
+        <span class="text-xs text-[var(--portal-status-success)]">{{
+          i18n.t('aihub.settings.saved')
+        }}</span>
       }
     </div>
   </div>

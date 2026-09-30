@@ -1,5 +1,12 @@
 import { DragDropModule } from '@angular/cdk/drag-drop';
-import { ChangeDetectionStrategy, Component, computed, inject, signal, type OnDestroy } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+  type OnDestroy,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import type { Subscription } from 'rxjs';
 import { AppLayout } from '../workarea/split-layout.component';
@@ -56,8 +63,11 @@ export class Shell implements OnDestroy {
   protected readonly toast = inject(ToastService);
   protected readonly showQuickChat = signal(false);
 
-  protected readonly appModuleContents = computed(() =>
-    this.config()?.moduleContents.filter((ep) => ep.category === 'applications' && ep.active !== false) ?? [],
+  protected readonly appModuleContents = computed(
+    () =>
+      this.config()?.moduleContents.filter(
+        (ep) => ep.category === 'applications' && ep.active !== false,
+      ) ?? [],
   );
 
   protected readonly activeAppKey = computed(() => {
@@ -99,6 +109,7 @@ export class Shell implements OnDestroy {
       this.settings.init(config.user);
       this.i18nAdmin.init(config.user);
       this.navAdmin.init(config.user);
+      this.aiHub.init(config.user);
       // Home tab needs the configured home app before state application.
       await this.settings.load();
       this.wb.setHomeApp(this.settings.homeApp());

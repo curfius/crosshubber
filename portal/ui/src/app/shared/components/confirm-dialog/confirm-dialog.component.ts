@@ -13,10 +13,14 @@ import { I18nService } from '../../../core/i18n/i18n.service';
           <p class="text-sm text-[var(--portal-text-tertiary)]">{{ message() }}</p>
         </div>
         <div class="ds-modal-footer">
-          <button type="button" (click)="cancelled.emit()"
-            class="ds-btn ds-btn-ghost">{{ i18n.t('common.cancel') }}</button>
-          <button type="button" (click)="confirmed.emit()"
-            class="ds-btn ds-btn-danger">
+          <button type="button" (click)="cancelled.emit()" class="ds-btn ds-btn-ghost">
+            {{ i18n.t('common.cancel') }}
+          </button>
+          <button
+            type="button"
+            (click)="confirmed.emit()"
+            [class]="variant() === 'primary' ? 'ds-btn ds-btn-primary' : 'ds-btn ds-btn-danger'"
+          >
             {{ confirmLabel() }}
           </button>
         </div>
@@ -30,6 +34,8 @@ export class ConfirmDialog {
   readonly title = input<string>('Confirm');
   readonly message = input<string>('');
   readonly confirmLabel = input<string>('Delete');
+  /** `danger` (default) for destructive actions; `primary` for intentional proceeds. */
+  readonly variant = input<'danger' | 'primary'>('danger');
   readonly confirmed = output<void>();
   readonly cancelled = output<void>();
 }

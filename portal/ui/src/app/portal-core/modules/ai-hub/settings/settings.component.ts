@@ -1,6 +1,21 @@
-import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  signal,
+  computed,
+  OnInit,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AiHubService, type LlmProviderConfig, type LlmTokenResponse } from '../../../../core/ai-hub/ai-hub.service';
+import {
+  AiHubService,
+  type LlmProviderConfig,
+  type LlmTokenResponse,
+} from '../../../../core/ai-hub/ai-hub.service';
+import {
+  AgentAuditService,
+  type AgentToolCallRow,
+} from '../../../../core/ai-hub/agent-audit.service';
 import {
   deriveChatModelOptions,
   matchChatModelOption,
@@ -13,6 +28,7 @@ import { ModuleSettingsService } from '../../../../core/settings/module-settings
 import { MarkdownEditorComponent } from '../../../../shared/components/markdown-editor/markdown-editor.component';
 import { Switch } from '../../../../shared/components/switch/switch.component';
 import { I18nService } from '../../../../core/i18n/i18n.service';
+import { toolStatusTone } from '../shared/chat-tool-flow';
 
 const MODULE_KEY = 'ai-hub';
 
@@ -31,7 +47,8 @@ interface ActiveTokenRow {
   styleUrl: './settings.component.css',
 })
 export class AiHubSettings implements OnInit {
-  private readonly aiHub = inject(AiHubService);
+  protected readonly aiHub = inject(AiHubService);
+  private readonly auditService = inject(AgentAuditService);
   private readonly moduleSettings = inject(ModuleSettingsService);
   protected readonly i18n = inject(I18nService);
 
@@ -43,6 +60,34 @@ export class AiHubSettings implements OnInit {
   protected readonly saving = signal(false);
   protected readonly saved = signal(false);
   protected readonly inputPlaceholder = signal('');
+
+  // ── Agent tool audit (AI plan C4) ────────────────────────────────────
+  protected readonly toolCalls = signal<AgentToolCallRow[]>([]);
+  protected readonly auditLoading = signal(false);
+  protected readonly auditError = signal(false);
+  protected readonly auditQuery = signal('');
+  protected readonly auditOutcome = signal('all');
+  protected readonly auditOutcomes = [
+    'all',
+    'ok',
+    'needs_confirmation',
+    'confirmed',
+    'denied',
+    'error',
+    'cap_reached',
+  ];
+
+  protected readonly filteredToolCalls = computed<AgentToolCallRow[]>(() => {
+    const query = this.auditQuery().trim().toLowerCase();
+    const outcome = this.auditOutcome();
+    return this.toolCalls().filter((row) => {
+      if (outcome !== 'all' && row.outcome !== outcome) return false;
+      if (!query) return true;
+      return [row.toolName, row.moduleKey ?? '', row.userId, row.argsSummary ?? ''].some((v) =>
+        v.toLowerCase().includes(query),
+      );
+    });
+  });
 
   protected readonly activeTokens = computed<ActiveTokenRow[]>(() => {
     const rows: ActiveTokenRow[] = [];
@@ -71,9 +116,45 @@ export class AiHubSettings implements OnInit {
     if (settings['systemPrompt']) this.systemPrompt.set(settings['systemPrompt'] as string);
     if (typeof settings['temperature'] === 'number') this.temperature.set(settings['temperature']);
     if (typeof settings['maxTokens'] === 'number') this.maxTokens.set(settings['maxTokens']);
-    if (typeof settings['inputPlaceholder'] === 'string') this.inputPlaceholder.set(settings['inputPlaceholder']);
+    if (typeof settings['inputPlaceholder'] === 'string')
+      this.inputPlaceholder.set(settings['inputPlaceholder']);
     const selected = matchChatModelOption(settings, this.models());
     if (selected) this.defaultModelKey.set(modelKey(selected));
+    if (this.aiHub.canManage()) await this.loadAudit();
+  }
+
+  // ── Agent tool audit (AI plan C4) ────────────────────────────────────
+
+  protected async loadAudit(): Promise<void> {
+    this.auditLoading.set(true);
+    this.auditError.set(false);
+    try {
+      this.toolCalls.set(await this.auditService.listRecent());
+    } catch {
+      this.auditError.set(true);
+    } finally {
+      this.auditLoading.set(false);
+    }
+  }
+
+  protected outcomeLabel(outcome: string): string {
+    return this.i18n.t('agent.outcome.' + outcome.replace(/_/g, '-'));
+  }
+
+  protected readonly toolStatusTone = toolStatusTone;
+
+  protected formatAuditTime(iso: string): string {
+    try {
+      return this.i18n.formatDate(iso, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    } catch {
+      return '';
+    }
   }
 
   protected isTokenSelected(tokenId: string): boolean {

@@ -220,7 +220,7 @@ public class AiHubChatService {
   }
 
   /** Executes a confirmed pending tool call and folds a system note into the user message. */
-  private String withConfirmedToolResult(
+  String withConfirmedToolResult(
       PortalUser user, String callId, String message, java.util.function.Consumer<String> emit) {
     ToolDispatcher.ToolResult result = toolDispatcher.executePending(callId, user);
     if (emit != null) {

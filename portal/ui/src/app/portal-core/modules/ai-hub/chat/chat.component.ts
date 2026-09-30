@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, AfterViewChecked, ElementRef, ViewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  signal,
+  computed,
+  OnInit,
+  AfterViewChecked,
+  ElementRef,
+  ViewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ModuleSettingsService } from '../../../../core/settings/module-settings.service';
 import { AiHubService } from '../../../../core/ai-hub/ai-hub.service';
@@ -12,13 +22,15 @@ import {
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { WorkbenchService } from '../../../features/workspaces/workspaces.store';
 import { ChatCoreService, type ChatMessage, type Conversation } from '../shared/chat-core.service';
+import { ChatToolFlow, toolStatusTone, waitUntilIdle } from '../shared/chat-tool-flow';
 import { buildClientContext } from '../shared/session-context';
+import { ConfirmDialog } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 const MODULE_KEY = 'ai-hub';
 
 @Component({
   selector: 'app-ai-hub-chat',
-  imports: [FormsModule],
+  imports: [FormsModule, ConfirmDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.css',
@@ -46,6 +58,8 @@ export class AiHubChat implements OnInit, AfterViewChecked {
   protected readonly conversations = signal<Conversation[]>([]);
   protected readonly currentConversationId = signal<string | null>(null);
   protected readonly showConversations = signal(false);
+  /** Tool-activity rows + pending confirmation for the agent loop (AI plan C3). */
+  protected readonly toolFlow = new ChatToolFlow();
 
   private shouldScroll = false;
 
@@ -55,12 +69,16 @@ export class AiHubChat implements OnInit, AfterViewChecked {
   });
 
   async ngOnInit(): Promise<void> {
-    const [, settings] = await Promise.all([this.aiHub.load(), this.moduleSettings.get(MODULE_KEY)]);
+    const [, settings] = await Promise.all([
+      this.aiHub.load(),
+      this.moduleSettings.get(MODULE_KEY),
+    ]);
     const selectedTokens = new Set(
       Array.isArray(settings['selectedTokens']) ? (settings['selectedTokens'] as string[]) : [],
     );
     this.models.set(deriveChatModelOptions(this.aiHub.providerList(), selectedTokens));
-    if (typeof settings['inputPlaceholder'] === 'string') this.inputPlaceholder.set(settings['inputPlaceholder']);
+    if (typeof settings['inputPlaceholder'] === 'string')
+      this.inputPlaceholder.set(settings['inputPlaceholder']);
     const selected = matchChatModelOption(settings, this.models());
     if (selected) this.selectedModelKey.set(modelKey(selected));
     await this.loadConversations();
@@ -97,7 +115,9 @@ export class AiHubChat implements OnInit, AfterViewChecked {
     try {
       const el = this.messagesContainer?.nativeElement;
       if (el) el.scrollTop = el.scrollHeight;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   // ── Conversations ──────────────────────────────────────────────────
@@ -114,6 +134,7 @@ export class AiHubChat implements OnInit, AfterViewChecked {
     this.errorExpanded.set(false);
     this.status.set('');
     this.showConversations.set(false);
+    this.toolFlow.reset();
   }
 
   protected async loadConversation(conv: Conversation): Promise<void> {
@@ -122,13 +143,21 @@ export class AiHubChat implements OnInit, AfterViewChecked {
     this.messages.set(msgs);
     this.currentConversationId.set(conv.id);
     this.errorMessage.set('');
+    this.toolFlow.reset();
     this.shouldScroll = true;
   }
 
   protected formatConvDate(iso: string): string {
     try {
-      return this.i18n.formatDate(iso, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    } catch { return ''; }
+      return this.i18n.formatDate(iso, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return '';
+    }
   }
 
   protected async deleteConversation(e: Event, conv: Conversation): Promise<void> {
@@ -143,7 +172,7 @@ export class AiHubChat implements OnInit, AfterViewChecked {
 
   // ── Send ───────────────────────────────────────────────────────────
 
-  protected async send(): Promise<void> {
+  protected async send(opts?: { toolConfirmation?: { callId: string } }): Promise<void> {
     const text = this.input().trim();
     if (!text || this.loading()) return;
 
@@ -158,26 +187,37 @@ export class AiHubChat implements OnInit, AfterViewChecked {
     this.shouldScroll = true;
 
     this.status.set(
-      this.i18n.t('aihub.chat.status-connecting', { provider: this.selectedModel()?.providerName ?? '' }),
+      this.i18n.t('aihub.chat.status-connecting', {
+        provider: this.selectedModel()?.providerName ?? '',
+      }),
     );
 
     try {
       const startTime = Date.now();
       let assistantContent = '';
-      this.messages.update((msgs) => [...msgs, { role: 'assistant', content: '', timestamp: Date.now() }]);
+      this.messages.update((msgs) => [
+        ...msgs,
+        { role: 'assistant', content: '', timestamp: Date.now() },
+      ]);
       const result = await this.chatCore.streamChat({
         conversationId: this.currentConversationId(),
         message: text,
         context: buildClientContext(this.workbench),
+        toolConfirmation: opts?.toolConfirmation,
         onContent: (chunk) => {
           assistantContent += chunk;
           this.messages.update((msgs) => {
             const updated = [...msgs];
-            updated[updated.length - 1] = { role: 'assistant', content: assistantContent, timestamp: Date.now() };
+            updated[updated.length - 1] = {
+              role: 'assistant',
+              content: assistantContent,
+              timestamp: Date.now(),
+            };
             return updated;
           });
           setTimeout(() => this.scrollToBottom(), 0);
         },
+        onEvent: (e) => this.toolFlow.handleEvent(e),
       });
       if (result.conversationId && result.conversationId !== this.currentConversationId()) {
         this.currentConversationId.set(result.conversationId);
@@ -198,6 +238,32 @@ export class AiHubChat implements OnInit, AfterViewChecked {
   protected toggleError(): void {
     this.errorExpanded.update((v) => !v);
   }
+
+  // ── Tool confirmation (AI plan C3/B6) ──────────────────────────────
+
+  /**
+   * Confirms the pending mutating tool call: waits for the current stream to
+   * finish, then sends a localized confirmation message carrying the call id
+   * (the server rejects empty messages with 400).
+   */
+  protected async confirmToolCall(): Promise<void> {
+    const pending = this.toolFlow.pending();
+    if (!pending) return;
+    this.toolFlow.clearPending();
+    await waitUntilIdle(() => this.loading());
+    this.input.set(this.i18n.t('agent.chat.confirmed-message'));
+    await this.send({ toolConfirmation: { callId: pending.callId } });
+  }
+
+  protected declineToolCall(): void {
+    this.toolFlow.decline();
+  }
+
+  protected toolStatusLabel(status: string): string {
+    return this.i18n.t('agent.outcome.' + status.replace(/_/g, '-'));
+  }
+
+  protected readonly toolStatusTone = toolStatusTone;
 
   protected clearError(): void {
     this.errorMessage.set('');

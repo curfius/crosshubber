@@ -3,9 +3,11 @@ package com.crosshubber.portal.modules.aihub.chat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +29,11 @@ import com.crosshubber.portal.modules.aihub.context.SessionContextBuilder;
 import com.crosshubber.portal.modules.aihub.conversations.AiHubConversationsService;
 import com.crosshubber.portal.modules.aihub.providers.AiHubProvidersService;
 import com.crosshubber.portal.modules.settings.modules.ModuleSettingsService;
+import com.crosshubber.portal.security.PortalUser;
 
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 class AiHubChatServiceTest {
 
@@ -97,6 +102,10 @@ class AiHubChatServiceTest {
   // --- resolveConfig() ---
 
   private AiHubChatService newService(Map<String, Object> settings) {
+    return newService(settings, mock(ToolDispatcher.class));
+  }
+
+  private AiHubChatService newService(Map<String, Object> settings, ToolDispatcher dispatcher) {
     ModuleSettingsService moduleSettings = mock(ModuleSettingsService.class);
     when(moduleSettings.get("ai-hub")).thenReturn(settings);
     JsonMapper mapper = new JacksonConfig().jsonMapper();
@@ -110,7 +119,7 @@ class AiHubChatServiceTest {
         mock(AgentPromptAssembler.class),
         mock(ToolRegistry.class),
         mock(AgentToolCallbacks.class),
-        mock(ToolDispatcher.class));
+        dispatcher);
   }
 
   @Test
@@ -184,5 +193,53 @@ class AiHubChatServiceTest {
     ResponseStatusException ex =
         assertThrows(ResponseStatusException.class, () -> newService(settings).resolveConfig());
     assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+  }
+
+  // --- withConfirmedToolResult() (AI plan B6) ---
+
+  @Test
+  void withConfirmedToolResultExecutesPendingCallAndEmitsToolResultFrame() {
+    PortalUser user = new PortalUser("u1", "Dev", "dev@example.com", List.of("solutions-user"));
+    JsonMapper mapper = new JacksonConfig().jsonMapper();
+    ObjectNode payload = mapper.createObjectNode().put("runId", "run_1");
+    ToolDispatcher dispatcher = mock(ToolDispatcher.class);
+    when(dispatcher.executePending("call_9", user))
+        .thenReturn(ToolDispatcher.ToolResult.of("ok", payload));
+    AiHubChatService svc = newService(Map.of(), dispatcher);
+
+    List<String> frames = new ArrayList<>();
+    String message = svc.withConfirmedToolResult(user, "call_9", "create the run", frames::add);
+
+    assertTrue(message.startsWith("create the run"), "original user message comes first");
+    assertTrue(message.contains("call_9"));
+    assertTrue(message.contains("status ok"));
+    assertTrue(message.contains("run_1"));
+
+    assertEquals(1, frames.size());
+    JsonNode frame = mapper.readTree(frames.get(0));
+    assertEquals("tool_result", frame.path("type").asText());
+    assertEquals("confirmed:call_9", frame.path("tool").asText());
+    assertEquals("ok", frame.path("status").asText());
+  }
+
+  @Test
+  void withConfirmedToolResultFoldsExpiredConfirmationIntoMessage() {
+    PortalUser user = new PortalUser("u1", "Dev", "dev@example.com", List.of("solutions-user"));
+    JsonMapper mapper = new JacksonConfig().jsonMapper();
+    ToolDispatcher dispatcher = mock(ToolDispatcher.class);
+    when(dispatcher.executePending("call_gone", user))
+        .thenReturn(
+            ToolDispatcher.ToolResult.of(
+                "error",
+                mapper.createObjectNode().put("error", "confirmation expired or unknown call id")));
+    AiHubChatService svc = newService(Map.of(), dispatcher);
+
+    List<String> frames = new ArrayList<>();
+    String message = svc.withConfirmedToolResult(user, "call_gone", "ok?", frames::add);
+
+    assertTrue(message.contains("status error"));
+    JsonNode frame = mapper.readTree(frames.get(0));
+    assertEquals("error", frame.path("status").asText());
+    assertEquals("confirmed:call_gone", frame.path("tool").asText());
   }
 }
