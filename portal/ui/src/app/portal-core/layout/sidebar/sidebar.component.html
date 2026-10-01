@@ -239,7 +239,8 @@
 
     <div class="flex-1"></div>
 
-    <!-- Chat button (docked bottom) -->
+    <!-- Chat button (docked bottom; hidden when the quick-chat EP is not served) -->
+    @if (quickChatAvailable()) {
     <div class="mt-auto border-t border-[var(--portal-sidebar-border)] px-3 pt-3 pb-3">
       <button
         (click)="chatClick.emit()"
@@ -255,5 +256,6 @@
         }
       </button>
     </div>
+    }
   </div>
 </aside>

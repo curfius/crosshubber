@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   signal,
   type OnDestroy,
@@ -63,6 +64,15 @@ export class Shell implements OnDestroy {
   protected readonly toast = inject(ToastService);
   protected readonly showQuickChat = signal(false);
 
+  /**
+   * Quick Chat is EP-driven (UX Plan #11): the flyout opens only when the
+   * `ai-hub:quick-chat` module content is served to this user — the server
+   * already filters it by module active, content active, hidden and roles.
+   */
+  protected readonly quickChatAvailable = computed(
+    () => !!this.wb.findModuleContent('ai-hub', 'quick-chat'),
+  );
+
   protected readonly appModuleContents = computed(
     () =>
       this.config()?.moduleContents.filter(
@@ -92,6 +102,13 @@ export class Shell implements OnDestroy {
     // Navigation editors trigger a config refresh so shell nav trees render
     // immediately after save.
     this.configService.changed$.subscribe(() => void this.refresh());
+    // If the EP availability drops while the flyout is open (module/content
+    // deactivated, role revoked), close it instead of leaving an orphan surface.
+    effect(() => {
+      if (!this.quickChatAvailable()) {
+        this.showQuickChat.set(false);
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -157,6 +174,7 @@ export class Shell implements OnDestroy {
   }
 
   toggleQuickChat(): void {
+    if (!this.quickChatAvailable()) return;
     this.showQuickChat.update((v) => !v);
   }
 

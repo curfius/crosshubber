@@ -30,6 +30,8 @@ export class Sidebar {
   readonly homeTabActive = input(false);
   readonly workspacesEnabled = input(true);
   readonly chatClick = output<void>();
+  /** Quick Chat dock button renders only when the `ai-hub:quick-chat` EP is served. */
+  readonly quickChatAvailable = input(false);
 
   protected readonly i18n = inject(I18nService);
   protected readonly branding = inject(BrandingService);

@@ -5,11 +5,11 @@ platform: a session-aware portal agent that can use module-contributed tools/ski
 delegate work to module-owned sub-agents, and retrieve module-owned knowledge.
 
 Status: **in progress** (re-verified 2026-10-01). Implemented: Phases A, B, D via
-H0a (2026-09-29); C3/C4/C5 via H6 (2026-09-30 — tool transparency rows, confirm
-dialog + admin "Agent tool calls" audit list, `agent.*` i18n); F1/F2/F3/F5 via H0b
+H0a (2026-09-29); C1–C5 (C-phase complete — C1 EP-driven quick-chat landed
+2026-10-01, C3/C4/C5 via H6 2026-09-30); F1/F2/F3/F5 via H0b
 (2026-09-30 — HTTP sub-agent dispatch, depth structurally 1); portal-side G via H5
 (2026-10-01 — G3 citation frames on the tool loop, sources rows in chat/quick-chat);
-C2 was already done (`ChatCoreService`). Not started: C1, E (deferred), F4
+C2 was already done (`ChatCoreService`). Not started: E (deferred), F4
 (portal-native sub-agents), G2 embedding-quality decisions (module-side; Q5 open).
 Phase A go scope remains A1–A3 + A5 (A4
 deferred). Two dogfood modules (`solutions`, `staffing`) drive sequencing — see
@@ -51,7 +51,7 @@ owns both surfaces.
 | Chat orchestration | `modules/aihub/chat/AiHubChatService` | Spring AI `ChatClient` per (provider, token, model), 60s cache, `ChatMemory` → `ai_hub_chat_memory`, SSE stream |
 | Providers/tokens/models | `modules/aihub/providers/*` | Admin-managed under `portal-ai-hub-edit`; encrypted tokens (`CryptoService`) |
 | Conversations | `modules/aihub/conversations/*` | Per-user CRUD + message history endpoints |
-| Quick Chat entry | EmbeddedCatalog EP `ai-hub:quick-chat` (features, roles `[]`) + UI `quick-chat.component` | Orphaned EP — Shell hardcodes the flyout (UX Plan #11 / #16). Chat and quick-chat already share `ChatCoreService` (C2 prerequisite done); Shell still hardcodes `toggleQuickChat` |
+| Quick Chat entry | EmbeddedCatalog EP `ai-hub:quick-chat` (features, roles `[]`) + UI `quick-chat.component` | EP-driven since C1 (2026-10-01): Shell gates the flyout + sidebar dock button on the EP (server-filtered); availability drop auto-closes the flyout. Chat and quick-chat already share `ChatCoreService` (C2 prerequisite done) |
 | Shell config / RBAC | `ShellConfigService` triple filter; `Roles`, `@PreAuthorize` on mutating endpoints | Agent tool dispatcher must reuse the same role checks |
 | Module registry | `modules/registry/*` (manifest fetch, validate, install) | Source of installed modules' `agentContributions` |
 | Event bus | NATS (compose service; health surfaced in `/api/config` services) | Portal currently only reports the NATS URL — no publish/subscribe client in Java yet |
@@ -96,7 +96,7 @@ explains refusal — never mutates without role; every call lands in the audit t
 
 | # | Work item | Detail |
 |---|---|---|
-| C1 | Quick Chat via EP | Follow UX Plan #11: Shell opens quick-chat only when `ai-hub:quick-chat` is active and roles allow; retire hardcoded `toggleQuickChat` path. |
+| C1 | Quick Chat via EP — **DONE 2026-10-01** | Shell opens quick-chat only when `ai-hub:quick-chat` is served (server filters active/roles/hidden); sidebar dock button hidden without the EP; availability drop auto-closes the flyout. |
 | C2 | Merge chat / quick-chat | Existing AGENTS backlog: one chat core service, two shells (full page vs. flyout). |
 | C3 | Tool transparency | Streaming UI shows collapsible "used tool X" rows (name, status), not raw JSON dumps. |
 | C4 | Confirmation + audit surfaces | Confirm dialog for write tools; AI Hub settings gains "Agent tool calls" list (filter by user/tool/outcome). |
@@ -233,5 +233,6 @@ as H0b/H5. E stays deferred (open question 4). See
 | 2026-09-30 | H6 implemented: C3 (tool-activity rows in chat/quick-chat via shared `ChatToolFlow`), C4 (confirm dialog for `needsConfirmation` dispatches + admin-gated "Agent tool calls" list under AI Hub settings — latest 200 rows, client-side search/outcome filters), C5 (27 `agent.*` labels × 4 languages, reconciler insert-if-absent — no migration needed for new keys). Fixed en route: `AiHubService.init(config.user)` was never called from Shell (`canManage` permanently false). Live-verified on dev: endpoint 401/200/403 matrix, confirm → audit `outcome=confirmed`, devuser → `outcome=denied` with no mutation. Details: AI_MODULES_PLAN decision log. |
 | 2026-09-30 | H0b implemented: F1 envelope (`SubAgentInvoker` — `task`/`expectedOutput` from tool args, `context.conversationId`, `timeoutMs` 25s inside the shared 30s read timeout), F2 (`agents[]` hydrates into the tool catalogue as `Kind.AGENT` entries named `moduleKey_name`, hyphens flattened for provider safety), F3 (dispatcher maps F1 `status:"done"`→`ok` else `error`; manifest `roles[]` enforced portal-side — modules only authenticate; depth structurally 1 since the module turn cannot re-enter the portal tool loop; no confirmation parking), F5 (delegations ride ordinary `tool_call`/`tool_result` frames + audit rows). Protocol doc: new "Sub-agent dispatch" section (also fixed the stale claim that modules enforce roles locally). Live-verified (S6): direct envelope probe `status=done` in 4.7s, chat delegation → `solutions_projects_agent` row → audit `outcome=ok` 3.8s → narration folded back. Tests: server 144 (+11: +6 dispatcher, +5 new `ToolRegistryTest`). |
 | 2026-10-01 | H5 implemented (portal-side G / G3): `CitationExtractor` (modules/agent) pulls `{title, ref|documentRef, snippet}` items out of a successful tool-result payload (`citations[]` then `snippets[]`, cap 5, snippet truncated at 200); `DispatchingToolCallback` emits one `citation` frame right after the `tool_result` (ok only); `ChatToolFlow` gained a `citations` signal + `ChatCitationRow` (chat and quick-chat render a sources block under the tool rows, DS tokens only); `agent.citations.label` i18n key x 4 languages; persona prompt now tells the model to name the document titles it used. Protocol doc: citation frame defined (was "reserved"). Scope: `knowledge[]` manifests stay empty for now; sub-agent (F1) results carry no citations in v1; no vector store. Live-verified (S4): "Summarize the proposal documents for the ERP Rollout project" -> `solutions_search_project_docs` row -> Sources block with the seeded doc titles -> narrated summary, no confirm dialog. Tests: server 151 (+5 extractor, +2 callback), UI 18 files all green, build exit 0. |
+| 2026-10-01 | **C1 (UX Plan #11) landed — quick-chat is EP-driven.** Shell gates the flyout on the served `ai-hub:quick-chat` module content (`wb.findModuleContent('ai-hub','quick-chat')` — ShellConfigService already filters by module active, content active, hidden and roles, so the client check is authoritative-by-construction); `toggleQuickChat` no-ops without the EP; an effect auto-closes the flyout when availability drops mid-session (registry/config refresh after deactivation or role change); Sidebar gained a `quickChatAvailable` input and hides the dock button without the EP (its `moduleContents` input is applications-only, so the computed lives in Shell and passes down as a plain input). Live-verified on dev: button visible + flyout opens as `dev`; EP `active:false` via registry API -> button hidden, flyout absent; re-activated -> both return. UI-only change: npm test 155 green (18 files), build exit 0. |
 
 

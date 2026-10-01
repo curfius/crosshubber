@@ -8,6 +8,7 @@
     [activeAppKey]="activeAppKey()"
     [homeTabActive]="homeTabActive()"
     [workspacesEnabled]="nav.features().workspacesEnabled"
+    [quickChatAvailable]="quickChatAvailable()"
     (homeClick)="onHomeClick()"
     (entryPointClick)="openApp($event)"
     (workspaceClick)="onWorkspaceClick($event)"

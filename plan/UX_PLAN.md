@@ -60,7 +60,7 @@ Known follow-ups from Phase 1 (backlog):
 | 8 | Shared "visible apps" filter helper — one rule set for Portal Navigation, Dashboard, sidebar, Add-app (each filters differently today) | Module browsing |
 | 9 | Breadcrumbs in workarea: workspace → app → module `?path=` (none exist today) | Wayfinding |
 | 10 | Close-tab available outside edit mode (split/add stay edit-only; loading a workspace currently hides close) | Workspaces |
-| 11 | Quick Chat flyout opens via `ai-hub:quick-chat` module content ref (today hardcoded in Shell; roles/active flags never consulted; EP orphaned) | Browsing + feeds AGENTS `chat`/`quick-chat` merge backlog |
+| 11 | Quick Chat flyout opens via `ai-hub:quick-chat` module content ref (today hardcoded in Shell; roles/active flags never consulted; EP orphaned) — **fixed 2026-10-01 (C1)**: Shell gates the flyout + sidebar dock button on the EP (server-filtered by active/roles/hidden); availability drop auto-closes the flyout | Browsing + feeds AGENTS `chat`/`quick-chat` merge backlog |
 | 12 | Hide Module registry from non-admins (server-side; currently visible to `devuser` behind a read-only banner) — **touches `/api/config`** | Settings & admin |
 | 13 | Consolidate workspace CRUD affordances (sidebar menu = open/rename/delete; delete confirms) | Workspaces |
 
