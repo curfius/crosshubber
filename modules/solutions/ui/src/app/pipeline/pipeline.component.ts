@@ -8,6 +8,7 @@ import {
   Stage,
 } from '../shared/module-client';
 import { SHARED_STYLES } from '../shared/styles';
+import { ProjectDetailComponent } from './project-detail.component';
 
 interface StageGroup {
   stage: Stage;
@@ -24,51 +25,56 @@ interface StageGroup {
   encapsulation: ViewEncapsulation.ShadowDom,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="wrap">
-      @if (error(); as err) {
-        <div class="card error">{{ err }}</div>
-      } @else if (loading()) {
-        <div class="muted">Loading projects…</div>
-      } @else {
-        <div class="head">
-          <h2>Project Pipeline</h2>
-          <span class="muted">{{ total() }} project(s) · {{ clientCount() }} client(s)</span>
-        </div>
-        <div class="board">
-          @for (group of groups(); track group.stage) {
-            @if (group.projects.length > 0) {
-              <section class="card">
-                <h3>{{ group.stage }}</h3>
-                <table>
-                  <tbody>
-                    @for (p of group.projects; track p.id) {
-                      <tr>
-                        <td class="name">{{ p.name }}</td>
-                        <td class="owner muted">{{ p.owner }}</td>
-                        <td>
-                          @if (p.health; as h) {
-                            <span class="badge {{ healthTone(h) }}">{{ h }}</span>
-                          }
-                        </td>
-                        <td class="budget muted">
-                          @if (p.budget) {
-                            {{ p.budget }}
-                          }
-                        </td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </section>
+    @if (selected(); as project) {
+      <sol-project-detail [project]="project" (back)="selected.set(null)" />
+    } @else {
+      <div class="wrap">
+        @if (error(); as err) {
+          <div class="card error">{{ err }}</div>
+        } @else if (loading()) {
+          <div class="muted">Loading projects…</div>
+        } @else {
+          <div class="head">
+            <h2>Project Pipeline</h2>
+            <span class="muted">{{ total() }} project(s) · {{ clientCount() }} client(s)</span>
+          </div>
+          <div class="board">
+            @for (group of groups(); track group.stage) {
+              @if (group.projects.length > 0) {
+                <section class="card">
+                  <h3>{{ group.stage }}</h3>
+                  <table>
+                    <tbody>
+                      @for (p of group.projects; track p.id) {
+                        <tr>
+                          <td class="name clickable" (click)="selected.set(p)">{{ p.name }}</td>
+                          <td class="owner muted">{{ p.owner }}</td>
+                          <td>
+                            @if (p.health; as h) {
+                              <span class="badge {{ healthTone(h) }}">{{ h }}</span>
+                            }
+                          </td>
+                          <td class="budget muted">
+                            @if (p.budget) {
+                              {{ p.budget }}
+                            }
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </section>
+              }
             }
+          </div>
+          @if (total() === 0) {
+            <div class="muted">No projects yet.</div>
           }
-        </div>
-        @if (total() === 0) {
-          <div class="muted">No projects yet.</div>
         }
-      }
-    </div>
+      </div>
+    }
   `,
+  imports: [ProjectDetailComponent],
   styles: [
     SHARED_STYLES +
       /* css */ `
@@ -77,6 +83,7 @@ interface StageGroup {
       .head h2 { margin: 0; }
       .board { display: grid; gap: 12px; }
       .name { font-weight: 500; }
+      .clickable { cursor: pointer; color: var(--portal-accent-primary, #2563eb); }
       .budget { text-align: right; }
     `,
   ],
@@ -89,6 +96,7 @@ export class PipelineComponent implements OnInit {
   readonly groups = signal<StageGroup[]>([]);
   readonly total = signal(0);
   readonly clientCount = signal(0);
+  readonly selected = signal<ProjectSummary | null>(null);
 
   ngOnInit(): void {
     void this.load();
