@@ -25,6 +25,14 @@ test/e2e/.stack-owned
 
 portal/server/src/main/resources/static/
 
+# Module MFE bundles (built by modules/<key>/ui into the server resources)
+modules/solutions/server/src/main/resources/public/mfe/solutions.js
+modules/staffing/server/src/main/resources/public/mfe/staffing.js
+modules/solutions/ui/dist/
+modules/solutions/ui/.angular/
+modules/staffing/ui/dist/
+modules/staffing/ui/.angular/
+
 # IDE
 .idea/
 *.iml

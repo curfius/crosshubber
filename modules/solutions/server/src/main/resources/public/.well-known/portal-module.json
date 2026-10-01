@@ -11,7 +11,7 @@
         "name": "Project Pipeline",
         "description": "Track engagements from market lead to closed delivery.",
         "type": "mfe",
-        "path": "/mfe/main.js",
+        "path": "/mfe/solutions.js",
         "element": "solutions-pipeline",
         "requiredRoles": ["solutions-user"]
       }
@@ -23,7 +23,7 @@
         "name": "Solutions Settings",
         "description": "Configure the Projects Agent, tools and the document source.",
         "type": "mfe",
-        "path": "/mfe/settings.js",
+        "path": "/mfe/solutions.js",
         "element": "solutions-settings",
         "requiredRoles": ["solutions-admin"]
       }

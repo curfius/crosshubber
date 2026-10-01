@@ -16,8 +16,10 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
 /**
- * MFE asset proxy: resolves the module's {@code mfe} content (60 s in-memory cache), then fetches
- * {@code <entryUrl-origin>/<rest>} server-side and pipes body + content-type.
+ * MFE proxy: resolves the module's {@code mfe} content (60 s in-memory cache), then forwards {@code
+ * <entryUrl-origin>/<rest>} server-side and pipes body + content-type. GET serves module assets
+ * (and API reads); POST/PATCH forward MFE data calls (JSON body + {@code X-Portal-Agent}
+ * passthrough), so elements never need the module's container hostname or CORS.
  */
 @Service
 public class ProxyService {
@@ -52,16 +54,40 @@ public class ProxyService {
         .orElse(null);
   }
 
-  /** Fetches the upstream asset; returns status, content-type and body. */
+  /** Fetches the upstream asset (GET, no body, no agent token). */
   public FetchResult fetch(ModuleContentEntity entryPoint, String rest) throws Exception {
+    return forward(entryPoint, rest, "GET", null, null, null);
+  }
+
+  /** Forwards an MFE call to the module backend; agent token + body passthrough optional. */
+  public FetchResult forward(
+      ModuleContentEntity entryPoint,
+      String rest,
+      String method,
+      byte[] body,
+      String contentType,
+      String agentToken)
+      throws Exception {
     URI entryUrl = URI.create(entryPoint.getEntryUrl());
     URI origin = new URI(entryUrl.getScheme(), entryUrl.getAuthority(), "/", null, null);
     URI target = origin.resolve("/" + rest);
-    HttpRequest request =
-        HttpRequest.newBuilder().uri(target).timeout(Duration.ofSeconds(30)).GET().build();
+    HttpRequest.Builder builder =
+        HttpRequest.newBuilder().uri(target).timeout(Duration.ofSeconds(30));
+    if (agentToken != null && !agentToken.isBlank()) {
+      builder.header("X-Portal-Agent", agentToken);
+    }
+    if (contentType != null && !contentType.isBlank()) {
+      builder.header("Content-Type", contentType);
+    }
+    if ("GET".equals(method)) {
+      builder.GET();
+    } else {
+      builder.method(
+          method, HttpRequest.BodyPublishers.ofByteArray(body == null ? new byte[0] : body));
+    }
     HttpResponse<byte[]> response =
-        httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
-    String contentType = response.headers().firstValue("content-type").orElse(null);
-    return new FetchResult(response.statusCode(), contentType, response.body());
+        httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
+    String responseContentType = response.headers().firstValue("content-type").orElse(null);
+    return new FetchResult(response.statusCode(), responseContentType, response.body());
   }
 }
