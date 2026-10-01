@@ -48,6 +48,8 @@ export interface ChatStreamEvent {
   mutates?: boolean;
   status?: string;
   callId?: string;
+  /** citation frame payload (AI plan G3): [{title, ref?, snippet?}] */
+  citations?: unknown[];
   [key: string]: unknown;
 }
 
@@ -78,7 +80,7 @@ export class ChatCoreService {
     try {
       const res = await fetch('/api/ai-hub/conversations');
       if (!res.ok) return [];
-      const data = await res.json() as { conversations: Conversation[] };
+      const data = (await res.json()) as { conversations: Conversation[] };
       return data.conversations;
     } catch {
       return [];
@@ -88,14 +90,20 @@ export class ChatCoreService {
   async deleteConversation(id: string): Promise<void> {
     try {
       await fetch(`/api/ai-hub/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   async getMessages(conversationId: string): Promise<ChatMessage[]> {
     try {
-      const res = await fetch(`/api/ai-hub/conversations/${encodeURIComponent(conversationId)}/messages`);
+      const res = await fetch(
+        `/api/ai-hub/conversations/${encodeURIComponent(conversationId)}/messages`,
+      );
       if (!res.ok) return [];
-      const data = await res.json() as { messages: Array<{ role: string; content: string; created_at: string }> };
+      const data = (await res.json()) as {
+        messages: Array<{ role: string; content: string; created_at: string }>;
+      };
       return data.messages.map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
@@ -128,9 +136,11 @@ export class ChatCoreService {
     if (!res.ok) {
       let message = '';
       try {
-        const err = await res.json() as { error?: string };
+        const err = (await res.json()) as { error?: string };
         message = err.error ?? '';
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       throw new Error(message);
     }
 
@@ -171,10 +181,12 @@ export class ChatCoreService {
       if (!trimmed.startsWith('data:')) continue;
       const data = trimmed.slice(5).replace(/^ /, '');
       if (data === '[DONE]') return true;
-      let parsed: ({ content?: string; error?: string; type?: string });
+      let parsed: { content?: string; error?: string; type?: string };
       try {
         parsed = JSON.parse(data) as { content?: string; error?: string; type?: string };
-      } catch { continue; /* skip unparseable lines */ }
+      } catch {
+        continue; /* skip unparseable lines */
+      }
       if (parsed.error) throw new Error(parsed.error);
       if (typeof parsed.type === 'string') {
         params.onEvent?.(parsed as ChatStreamEvent);

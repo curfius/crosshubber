@@ -245,6 +245,40 @@
           }
         </div>
       }
+      <!-- Agent citation sources (AI plan G3) -->
+      @if (toolFlow.citations().length > 0) {
+        <div class="space-y-1">
+          <div class="text-[9px] uppercase tracking-wide text-[var(--portal-text-disabled)]">
+            {{ i18n.t('agent.citations.label') }}
+          </div>
+          @for (c of toolFlow.citations(); track c.seq) {
+            <div
+              class="flex items-start gap-2 rounded-lg border border-[var(--portal-border-subtle)] bg-[var(--portal-bg-subtle)] px-2.5 py-1.5"
+            >
+              <svg
+                class="mt-0.5 size-3 shrink-0 text-[var(--portal-text-disabled)]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <path d="M14 2v6h6" />
+              </svg>
+              <div class="min-w-0">
+                <div class="truncate text-[10px] text-[var(--portal-text-secondary)]">
+                  {{ c.title }}
+                </div>
+                @if (c.snippet) {
+                  <div class="line-clamp-2 text-[9px] text-[var(--portal-text-disabled)]">
+                    {{ c.snippet }}
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
       <!-- Error message -->
       @if (errorMessage()) {
         <div class="rounded-lg bg-[var(--portal-status-danger-bg)] px-3 py-2">

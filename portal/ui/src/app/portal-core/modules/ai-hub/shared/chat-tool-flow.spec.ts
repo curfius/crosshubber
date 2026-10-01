@@ -109,6 +109,53 @@ describe('ChatToolFlow', () => {
   });
 });
 
+describe('ChatToolFlow citations (G3)', () => {
+  it('collects citation frames into the sources list', () => {
+    const flow = new ChatToolFlow();
+    flow.handleEvent(
+      ev('citation', {
+        tool: 'solutions_search_project_docs',
+        citations: [
+          { title: 'Proposal - scope', ref: 'fake:proposal-scope', snippet: 'fixed 180k' },
+          { title: 'Architecture notes' },
+        ],
+      }),
+    );
+    expect(flow.citations()).toHaveLength(2);
+    expect(flow.citations()[0]).toMatchObject({
+      tool: 'solutions_search_project_docs',
+      title: 'Proposal - scope',
+      ref: 'fake:proposal-scope',
+      snippet: 'fixed 180k',
+    });
+    expect(flow.citations()[1].ref).toBeUndefined();
+  });
+
+  it('skips citation items without a title and tolerates a missing array', () => {
+    const flow = new ChatToolFlow();
+    flow.handleEvent(
+      ev('citation', {
+        tool: 't',
+        citations: [{}, null, 'nope', { title: '  ' }, { title: 'ok' }],
+      }),
+    );
+    flow.handleEvent(ev('citation', { tool: 't' }));
+    expect(flow.citations()).toHaveLength(1);
+    expect(flow.citations()[0].title).toBe('ok');
+  });
+
+  it('caps the citation list at 50 and reset clears it', () => {
+    const flow = new ChatToolFlow();
+    for (let i = 0; i < 60; i++) {
+      flow.handleEvent(ev('citation', { tool: 't', citations: [{ title: `d${i}` }] }));
+    }
+    expect(flow.citations()).toHaveLength(50);
+    expect(flow.citations()[0].title).toBe('d10');
+    flow.reset();
+    expect(flow.citations()).toHaveLength(0);
+  });
+});
+
 describe('toolStatusTone', () => {
   it('maps statuses to design-system badge variants with no raw hex colors', () => {
     expect(toolStatusTone('running')).toBe('ds-badge ds-badge-info');

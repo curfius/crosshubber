@@ -20,6 +20,16 @@ export interface ChatToolRow {
   callId?: string;
 }
 
+/** One cited document source (citation frame, AI plan G3). */
+export interface ChatCitationRow {
+  /** Monotonic id (shared counter with the tool rows). */
+  seq: number;
+  tool: string;
+  title: string;
+  ref?: string;
+  snippet?: string;
+}
+
 export interface PendingToolConfirmation {
   tool: string;
   callId: string;
@@ -27,10 +37,12 @@ export interface PendingToolConfirmation {
 
 /** Bounded: the settings page owns the full audit trail (latest 200 rows). */
 const MAX_ROWS = 50;
+const MAX_CITATIONS = 50;
 const CONFIRMED_PREFIX = 'confirmed:';
 
 export class ChatToolFlow {
   readonly rows = signal<ChatToolRow[]>([]);
+  readonly citations = signal<ChatCitationRow[]>([]);
   readonly pending = signal<PendingToolConfirmation | null>(null);
   private seq = 0;
 
@@ -46,6 +58,9 @@ export class ChatToolFlow {
         break;
       case 'tool_result':
         this.applyResult(event);
+        break;
+      case 'citation':
+        this.applyCitations(event);
         break;
       case 'confirmation_required':
         this.applyConfirmation(event);
@@ -72,6 +87,7 @@ export class ChatToolFlow {
 
   reset(): void {
     this.rows.set([]);
+    this.citations.set([]);
     this.pending.set(null);
   }
 
@@ -93,6 +109,32 @@ export class ChatToolFlow {
     if (!this.markRow((r) => r.tool === tool && r.status === 'running', patch)) {
       this.appendRow({ tool, status, callId });
     }
+  }
+
+  /** Citation frame (G3): collect the named sources, skipping items without a title. */
+  private applyCitations(event: ChatStreamEvent): void {
+    const tool = String(event.tool ?? '');
+    const items = Array.isArray(event.citations) ? event.citations : [];
+    for (const raw of items) {
+      if (typeof raw !== 'object' || raw === null) continue;
+      const item = raw as Record<string, unknown>;
+      const titleValue = item['title'];
+      const title = typeof titleValue === 'string' && titleValue.trim() ? titleValue : null;
+      if (!title) continue;
+      const ref = item['ref'];
+      const snippet = item['snippet'];
+      this.appendCitation({
+        tool,
+        title,
+        ref: typeof ref === 'string' ? ref : undefined,
+        snippet: typeof snippet === 'string' ? snippet : undefined,
+      });
+    }
+  }
+
+  private appendCitation(row: Omit<ChatCitationRow, 'seq'>): void {
+    const seq = ++this.seq;
+    this.citations.update((rows) => [...rows, { seq, ...row }].slice(-MAX_CITATIONS));
   }
 
   private applyConfirmation(event: ChatStreamEvent): void {

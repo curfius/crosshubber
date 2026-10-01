@@ -1,5 +1,6 @@
 package com.crosshubber.portal.modules.agent;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -12,14 +13,16 @@ import com.crosshubber.portal.security.PortalUser;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Spring AI {@link ToolCallback} adapter over {@link ToolDispatcher} (AI plan B3): the model's
- * native tool-calling loop lands here. Emits {@code tool_call}/{@code tool_result}/ {@code
- * confirmation_required} SSE frames through the request-scoped emitter and enforces the per-turn
- * iteration budget — over budget, the model receives an error result telling it to stop calling
- * tools (fail-closed, no silent runaway loops).
+ * native tool-calling loop lands here. Emits {@code tool_call}/{@code tool_result}/{@code
+ * confirmation_required} SSE frames through the request-scoped emitter (plus one {@code citation}
+ * frame for successful results carrying a snippets/citations array — AI plan G3) and enforces the
+ * per-turn iteration budget — over budget, the model receives an error result telling it to stop
+ * calling tools (fail-closed, no silent runaway loops).
  */
 class DispatchingToolCallback implements ToolCallback {
 
@@ -85,6 +88,9 @@ class DispatchingToolCallback implements ToolCallback {
 
     ObjectNode resultFrame = resultFrame(result);
     emit("tool_result", resultFrame);
+    if ("ok".equals(result.status())) {
+      emitCitations(result.payload());
+    }
     if ("needs_confirmation".equals(result.status())) {
       ObjectNode confirmFrame = frame("confirmation_required");
       confirmFrame.put("tool", tool.modelName());
@@ -124,6 +130,28 @@ class DispatchingToolCallback implements ToolCallback {
     ObjectNode node = objectMapper.createObjectNode();
     node.put("type", type);
     return node;
+  }
+
+  /** G3: a successful payload with a citations/snippets array emits one citation frame. */
+  private void emitCitations(JsonNode payload) {
+    List<CitationExtractor.Citation> citations = CitationExtractor.fromPayload(payload);
+    if (citations.isEmpty()) {
+      return;
+    }
+    ObjectNode frame = frame("citation");
+    frame.put("tool", tool.modelName());
+    ArrayNode items = frame.putArray("citations");
+    for (CitationExtractor.Citation citation : citations) {
+      ObjectNode item = items.addObject();
+      item.put("title", citation.title());
+      if (citation.ref() != null) {
+        item.put("ref", citation.ref());
+      }
+      if (citation.snippet() != null) {
+        item.put("snippet", citation.snippet());
+      }
+    }
+    emit("citation", frame);
   }
 
   private ObjectNode errorPayload(String message) {

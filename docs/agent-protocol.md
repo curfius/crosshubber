@@ -40,11 +40,14 @@ Spring's SSE writer may omit the space after `data:` — parsers must accept bot
 | tool_call | `{"type":"tool_call","tool":"<name>","module":"<moduleKey>","mutates":bool}` | the model invoked a tool |
 | tool_result | `{"type":"tool_result","tool":"<name>","status":"ok\|denied\|error\|needs_confirmation\|cap_reached","callId":"…"}` | dispatch outcome |
 | confirmation_required | `{"type":"confirmation_required","tool":"<name>","callId":"call_…"}` | mutating tool parked; UI may offer a confirm affordance |
+| citation | `{"type":"citation","tool":"<name>","citations":[{"title":"…","ref":"…","snippet":"…"}]}` | document sources behind a successful search (max 5, snippet truncated) |
 | error | `{"error": "…"}` | stream-level failure |
 | `[DONE]` | `data: [DONE]` | sentinel terminating the stream |
 
-`citation` frames are reserved for AI plan G3 (not emitted yet). UIs must ignore
-unknown frames/fields.
+`citation` frames (AI plan G3) follow a successful `tool_result` whose payload carries a
+`citations[]` or `snippets[]` array of `{title, ref|documentRef, snippet}` objects (at least
+`title` is required; `ref` and `snippet` are optional). One frame per tool call, emitted only
+for `status:"ok"`. UIs must ignore unknown frames/fields.
 
 New conversation ids are returned via the `X-Conversation-Id` response header.
 
