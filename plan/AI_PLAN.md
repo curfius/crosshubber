@@ -11,8 +11,10 @@ H0a (2026-09-29); C1–C5 (C-phase complete — C1 EP-driven quick-chat landed
 (2026-10-01 — G3 citation frames on the tool loop, sources rows in chat/quick-chat);
 D4 via the registry agent-contributions sections (2026-10-02); F4 dropped
 (2026-10-02 — module-owned HTTP agents proved the pattern; no current need for
-portal-native ones). C2 was already done (`ChatCoreService`). Not started: E
-(deferred), G2 embedding-quality decisions (module-side; Q5 open).
+portal-native ones). C2 was already done (`ChatCoreService`). G2 dropped
+(2026-10-02 — keyword retrieval adequate; embeddings premature infra). E
+extracted to `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md` (approved, not started —
+build when an external MCP server is actually needed).
 Phase A go scope remains A1–A3 + A5 (A4
 deferred). Two dogfood modules (`solutions`, `staffing`) drive sequencing — see
 `plan/AI_MODULES_PLAN.md` ("Phase H"); there they are the reference consumer for
@@ -118,19 +120,15 @@ dispatch — still Crosshubber-owned schema (no external standard mandated).
 | D5 | Catalog / seed | Embedded modules that should contribute tools declare them in `EmbeddedCatalog` (e.g. future portal-native skills). |
 | D6 | Tests | Validator fixtures (valid/invalid v2 manifests); registry add/remove on install/uninstall. |
 
-## Phase E — MCP tool execution
+## Phase E — MCP tool execution — **EXTRACTED 2026-10-02**
 
-**Goal:** the portal can act as an MCP client (consume external tool servers) and/or
-expose selected portal tools over MCP for external agents — without weakening RBAC.
-
-| # | Work item | Detail |
-|---|---|---|
-| E1 | Decision record | Client-only vs. client+server; stdio vs. HTTP/SSE transport; which config surface (instance settings vs. tenant config). Document in this file before coding. |
-| E2 | MCP client config | Instance settings form: list of external MCP servers (name, transport, URL/command, enabled, allowed-tools). Secrets via existing encrypted settings paths — never plaintext YAML. |
-| E3 | Connection management | Startup + lazy connect, health in `/api/config` services list (alongside NATS pattern), fail-soft: unreachable server disables its tools, does not kill portal boot. |
-| E4 | Tool namespace | External tools appear as `mcp:<server>:<tool>` in the registry; collisions rejected at config time. |
-| E5 | Portal-as-MCP-server (optional stretch) | Expose a curated allow-list of built-in tools behind an MCP endpoint authenticated with a portal service token; still enforce role mapping. Separate go/no-go from E2–E4. |
-| E6 | Tests | Fake MCP server in tests; namespace collision; fail-soft health; no secret leakage in logs. |
+**Plan moved to `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md`** (approved, not started —
+parked until a concrete external MCP server needs connecting). The E1 decision
+record lives there: v1 = MCP `2026-07-28` Streamable HTTP client only
+(hand-rolled, tools/list + tools/call), DB-backed admin server registry with
+encrypted secrets, `mcp:<server>:<tool>` namespace, fail-soft health; stdio and
+the deprecated HTTP+SSE transport out of scope; E5 (portal-as-MCP-server) is a
+no-go. The original E1–E6 items and their resolutions are carried by that file.
 
 ## Phase F — A2A-shaped sub-agents
 
@@ -154,8 +152,8 @@ without the portal indexing the world.
 | # | Work item | Detail |
 |---|---|---|
 | G1 | Knowledge source contract | Manifest `agentContributions.knowledge[]`: `{ id, title, kind: markdown|url, ref }` — content either inline (small) or fetched from module `baseUrl` at ask-time / install-time. |
-| G2 | Retrieval strategy v1 | Keyword/BM25 or simple embedding store per tenant schema; start with **fetch-on-demand + truncate** for ≤N docs and only add a vector store if quality demands it (avoid premature infra). |
-| G3 | Citation | Answers cite `knowledge[]` ids/titles in the stream (Phase C3 row type `citation`). |
+| G2 | ~~Retrieval strategy v1~~ — **DROPPED 2026-10-02** | Keyword fetch-on-demand + truncate proved adequate (S4 verified meaningful retrieval); embeddings would be premature infra for the current corpora. Revisit trigger: a module with a real corpus reports retrieval misses. |
+| G3 | Citation — **DONE 2026-10-01** | Answers cite `knowledge[]` ids/titles in the stream (Phase C3 row type `citation`). |
 | G4 | Privacy | Knowledge is tenant-scoped (per-schema), never cross-tenant; URL fetches go through `SsrfGuard` + existing HTTP client config. |
 | G5 | Tests | Retrieval ranking fixtures; SSRF rejection; tenant isolation. |
 
@@ -204,7 +202,8 @@ D unlocks module contributions; E/F/G each need an explicit go decision.
 **Phase H ordering (2026-09-29, dogfood-driven):** A + B (+ remote dispatch) + D
 first, then module domain builds in parallel (modules own their datasources and LLM
 access — no portal prerequisites remain), then F (HTTP sub-agents) + G (citations)
-as H0b/H5. E stays deferred (open question 4). See
+as H0b/H5. E is extracted and parked — `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md`
+(approved, not started). See
 `plan/AI_MODULES_PLAN.md` § Sequencing.
 
 ## Open questions
@@ -218,9 +217,11 @@ as H0b/H5. E stays deferred (open question 4). See
 3. **NATS role:** use the existing broker for sub-agent events (F) or stay
    in-process until there is a second process that needs it?
 4. **MCP priority** vs. native manifest tools (D): **resolved 2026-09-29** — D
-   strictly first (it is on the Phase H critical path); E remains deferred.
-5. **Knowledge embeddings:** defer vector store until retrieval quality of G2
-   fetch-on-demand is measured.
+   strictly first (it was on the Phase H critical path); E extracted to its own
+   plan 2026-10-02.
+5. ~~**Knowledge embeddings:** defer vector store until retrieval quality of G2
+   fetch-on-demand is measured.~~ **Closed 2026-10-02** — G2 dropped; no
+   embedding store unless a module with a real corpus reports retrieval misses.
 
 ## Decision log
 
@@ -237,5 +238,6 @@ as H0b/H5. E stays deferred (open question 4). See
 | 2026-10-01 | H5 implemented (portal-side G / G3): `CitationExtractor` (modules/agent) pulls `{title, ref|documentRef, snippet}` items out of a successful tool-result payload (`citations[]` then `snippets[]`, cap 5, snippet truncated at 200); `DispatchingToolCallback` emits one `citation` frame right after the `tool_result` (ok only); `ChatToolFlow` gained a `citations` signal + `ChatCitationRow` (chat and quick-chat render a sources block under the tool rows, DS tokens only); `agent.citations.label` i18n key x 4 languages; persona prompt now tells the model to name the document titles it used. Protocol doc: citation frame defined (was "reserved"). Scope: `knowledge[]` manifests stay empty for now; sub-agent (F1) results carry no citations in v1; no vector store. Live-verified (S4): "Summarize the proposal documents for the ERP Rollout project" -> `solutions_search_project_docs` row -> Sources block with the seeded doc titles -> narrated summary, no confirm dialog. Tests: server 151 (+5 extractor, +2 callback), UI 18 files all green, build exit 0. |
 | 2026-10-01 | **C1 (UX Plan #11) landed — quick-chat is EP-driven.** Shell gates the flyout on the served `ai-hub:quick-chat` module content (`wb.findModuleContent('ai-hub','quick-chat')` — ShellConfigService already filters by module active, content active, hidden and roles, so the client check is authoritative-by-construction); `toggleQuickChat` no-ops without the EP; an effect auto-closes the flyout when availability drops mid-session (registry/config refresh after deactivation or role change); Sidebar gained a `quickChatAvailable` input and hides the dock button without the EP (its `moduleContents` input is applications-only, so the computed lives in Shell and passes down as a plain input). Live-verified on dev: button visible + flyout opens as `dev`; EP `active:false` via registry API -> button hidden, flyout absent; re-activated -> both return. UI-only change: npm test 155 green (18 files), build exit 0. |
 | 2026-10-02 | **D4 landed; F4 dropped.** D4: `PortalModuleManifest` gained the typed `agentContributions` (tools/skills/agents/knowledge, matching the server validator schema); `buildDiffSections` emits four keyed sections (`Agent Tools`/`Agent Skills`/`Agents`/`Knowledge`, keyed by name/id) — the registry module detail renders them read-only via the existing generic-sections loop, and install/upgrade previews show contribution diffs for free; `fieldValue` formatter prints objects as JSON (no more `[object Object]`); 11 new `registry.section/field.*` keys x 4 languages (reconciler insert-if-absent). Live-verified: Solutions shows 5 tools (mutates=true on update_project_stage) + projects-agent, Staffing shows 5 tools with no Agents section, AI Hub shows none. Tests: UI 18 files green (+3 diff-engine specs), build exit 0. **F4 dropped by owner decision** — module-owned HTTP sub-agents (H0b/S6) proved the envelope pattern; portal-native sub-agents have no current consumer; revisit on a concrete need. |
+| 2026-10-02 | **G2 dropped; E extracted.** G2 (retrieval strategy): keyword fetch-on-demand + truncate proved adequate for the dogfood corpora (S4 verified meaningful retrieval with citations); an embedding store would be premature infra — module teams revisit only if a real corpus reports retrieval misses (open question 5 closed). E (MCP): owner confirmed the intent to connect external MCP servers eventually — Phase E extracted to `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md` with a complete decision record (transport = MCP `2026-07-28` Streamable HTTP, hand-rolled client, DB-backed admin registry with encrypted secrets, `mcp:` namespace, fail-soft health, E5 no-go); status: approved, not started — build when a concrete external server exists. |
 
 

@@ -187,6 +187,9 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
   knowledge retrieval). Dogfood consumers scoped in `plan/AI_MODULES_PLAN.md`
   (`solutions`, `staffing` — planned, needs go decision). F4 (portal-native
   sub-agents) dropped 2026-10-02 — module-owned HTTP agents proved the pattern.
+  G2 (retrieval/embeddings) dropped 2026-10-02 — keyword retrieval adequate.
+  Phase E (MCP) extracted to `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md` (approved,
+  not started).
 - `plan/TEST_PLAN.md` — approved (not started): tenant-driven regression testing via a
   temporary deterministic `e2e` tenant; CI explicitly deferred.
 - `plan/UX_PLAN.md` — portal navigation/UX optimization roadmap (journey-based
