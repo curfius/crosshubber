@@ -206,6 +206,35 @@ export interface ManifestRole {
   description?: string;
 }
 
+/** Manifest agentContributions v2 (snake-case names; server-side validator is the authority). */
+export interface ManifestAgentTool {
+  name: string;
+  description: string;
+  arguments?: Record<string, unknown>;
+  mutates?: boolean;
+  roles?: string[];
+}
+
+export interface ManifestAgentSkill {
+  name: string;
+  description: string;
+  prompts?: string[];
+}
+
+export interface ManifestAgentEntry {
+  name: string;
+  description: string;
+  endpoint?: string;
+  roles?: string[];
+}
+
+export interface ManifestKnowledge {
+  id: string;
+  title: string;
+  kind: 'markdown' | 'url' | 'docsource';
+  ref: string;
+}
+
 export interface PortalModuleManifest {
   manifestVersion: number;
   key: string;
@@ -221,6 +250,12 @@ export interface PortalModuleManifest {
   security: { roles: ManifestRole[] };
   capabilities?: { scope: string }[];
   events?: { published?: { subject: string; schemaVersion?: number; description?: string }[]; consumed?: { subject: string; schemaVersion?: number; description?: string }[] };
+  agentContributions?: {
+    tools?: ManifestAgentTool[];
+    skills?: ManifestAgentSkill[];
+    agents?: ManifestAgentEntry[];
+    knowledge?: ManifestKnowledge[];
+  };
 }
 
 export interface EntryDiff {

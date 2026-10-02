@@ -185,7 +185,8 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
 - `plan/AI_PLAN.md` — roadmap for the portal agent (session context pack, manifest
   `agentContributions` v2, MCP tool execution, A2A-shaped sub-agents, module-owned
   knowledge retrieval). Dogfood consumers scoped in `plan/AI_MODULES_PLAN.md`
-  (`solutions`, `staffing` — planned, needs go decision).
+  (`solutions`, `staffing` — planned, needs go decision). F4 (portal-native
+  sub-agents) dropped 2026-10-02 — module-owned HTTP agents proved the pattern.
 - `plan/TEST_PLAN.md` — approved (not started): tenant-driven regression testing via a
   temporary deterministic `e2e` tenant; CI explicitly deferred.
 - `plan/UX_PLAN.md` — portal navigation/UX optimization roadmap (journey-based

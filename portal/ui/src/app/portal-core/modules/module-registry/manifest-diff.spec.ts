@@ -104,4 +104,60 @@ describe('manifest-diff engine', () => {
     expect(applications.action).toBe('unchanged');
     expect(applications.items![0].action).toBe('unchanged');
   });
+
+  it('agent contributions create sections keyed by name (D4)', () => {
+    const contributions = {
+      tools: [{ name: 'list_projects', description: 'List projects', mutates: false, roles: ['solutions-user'] }],
+      skills: [],
+      agents: [{ name: 'projects_agent', description: 'Delivery status agent', endpoint: '/agent/tasks', roles: ['solutions-user'] }],
+      knowledge: [{ id: 'doc-1', title: 'Proposal', kind: 'docsource' as const, ref: 'fake:proposal-scope' }],
+    };
+    const sections = buildDiffSections(manifest({}), manifest({ agentContributions: contributions }));
+    const tools = sections.find((s) => s.title === 'Agent Tools')!;
+    expect(tools.action).toBe('create');
+    expect(tools.items![0].key).toBe('list_projects');
+    expect(tools.items![0].fields.map((f) => f.key)).toContain('mutates');
+
+    const agents = sections.find((s) => s.title === 'Agents')!;
+    expect(agents.items![0].key).toBe('projects_agent');
+
+    const knowledge = sections.find((s) => s.title === 'Knowledge')!;
+    expect(knowledge.items![0].key).toBe('doc-1');
+
+    // empty groups are omitted
+    expect(sections.find((s) => s.title === 'Agent Skills')).toBeUndefined();
+  });
+
+  it('agent contributions diff between versions (update and delete)', () => {
+    const old = manifest({
+      agentContributions: {
+        tools: [
+          { name: 'list_projects', description: 'List projects', mutates: false },
+          { name: 'get_project', description: 'Get a project', mutates: false },
+        ],
+        skills: [],
+        agents: [],
+        knowledge: [],
+      },
+    });
+    const next = manifest({
+      agentContributions: {
+        tools: [{ name: 'list_projects', description: 'List projects', mutates: true }],
+        skills: [],
+        agents: [],
+        knowledge: [],
+      },
+    });
+    const tools = buildDiffSections(old, next).find((s) => s.title === 'Agent Tools')!;
+    expect(tools.action).toBe('update');
+    const changed = tools.items!.find((i) => i.key === 'list_projects')!;
+    expect(changed.action).toBe('update');
+    expect(changed.fields.find((f) => f.key === 'mutates')!.changed).toBe(true);
+    expect(tools.items!.find((i) => i.key === 'get_project')!.fields[0].key).toBe('_deleted');
+  });
+
+  it('manifests without agentContributions emit no agent sections', () => {
+    const sections = buildDiffSections(manifest({}), manifest({}));
+    expect(sections.filter((s) => s.title.startsWith('Agent') || s.title === 'Knowledge')).toEqual([]);
+  });
 });

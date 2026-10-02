@@ -1430,6 +1430,10 @@ export class ModuleRegistry {
       'Security Roles': 'registry.section.securityRoles',
       'Capabilities': 'registry.section.capabilities',
       'Events': 'registry.section.events',
+      'Agent Tools': 'registry.section.agentTools',
+      'Agent Skills': 'registry.section.agentSkills',
+      'Agents': 'registry.section.agents',
+      'Knowledge': 'registry.section.knowledge',
     };
     return keys[title] ? this.i18n.t(keys[title]) : title;
   }
@@ -1439,10 +1443,30 @@ export class ModuleRegistry {
       'Manifest Version': 'registry.field.manifestVersion',
       'Key': 'registry.field.key',
       'Name': 'registry.field.name',
+      'name': 'registry.field.name',
       'Base URL': 'registry.field.baseUrl',
       'Health': 'registry.field.health',
       'deleted': 'registry.diff.deleted',
+      'mutates': 'registry.field.mutates',
+      'roles': 'registry.field.roles',
+      'arguments': 'registry.field.arguments',
+      'endpoint': 'registry.field.endpoint',
+      'prompts': 'registry.field.prompts',
+      'kind': 'registry.field.kind',
+      'ref': 'registry.field.ref',
     };
     return keys[label] ? this.i18n.t(keys[label]) : label;
+  }
+
+  /** Preview values: objects print as JSON, string arrays join — never "[object Object]". */
+  protected fieldValue(value: unknown): string {
+    if (value == null) return '-';
+    if (typeof value === 'object') {
+      return Array.isArray(value)
+        ? value.map((v) => (typeof v === 'object' ? JSON.stringify(v) : String(v))).join(', ')
+        : JSON.stringify(value);
+    }
+    if (typeof value === 'boolean') return String(value);
+    return String(value);
   }
 }

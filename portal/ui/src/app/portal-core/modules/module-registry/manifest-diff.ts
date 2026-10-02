@@ -1,4 +1,7 @@
-import type { ManifestContentEntry, PortalModuleManifest } from '../../../core/models';
+import type {
+  ManifestContentEntry,
+  PortalModuleManifest,
+} from '../../../core/models';
 
 export interface PreviewField {
   key: string;
@@ -131,6 +134,29 @@ function buildDiffSections(oldManifest: PortalModuleManifest | null, newManifest
   if (oldRoles.length > 0 || newRoles.length > 0) {
     const items = diffKeyed(oldRoles, newRoles, 'deleted');
     sections.push({ title: 'Security Roles', items, action: computeSectionAction(items) });
+  }
+
+  // Agent contributions (D4 — read-only visibility; keyed by name/id)
+  type AgentContribs = NonNullable<PortalModuleManifest['agentContributions']>;
+  const oldAgent: AgentContribs = oldManifest?.agentContributions ?? ({} as AgentContribs);
+  const newAgent: AgentContribs = newManifest.agentContributions ?? ({} as AgentContribs);
+  const agentGroups: Array<{
+    title: string;
+    field: 'tools' | 'skills' | 'agents' | 'knowledge';
+    idField: 'name' | 'id';
+  }> = [
+    { title: 'Agent Tools', field: 'tools', idField: 'name' },
+    { title: 'Agent Skills', field: 'skills', idField: 'name' },
+    { title: 'Agents', field: 'agents', idField: 'name' },
+    { title: 'Knowledge', field: 'knowledge', idField: 'id' },
+  ];
+  for (const g of agentGroups) {
+    const oldList = (oldAgent[g.field] ?? []) as unknown as Array<Record<string, unknown>>;
+    const newList = (newAgent[g.field] ?? []) as unknown as Array<Record<string, unknown>>;    if (oldList.length === 0 && newList.length === 0) continue;
+    const oldKeyed = oldList.map((e) => ({ ...e, key: String(e[g.idField] ?? '') }));
+    const newKeyed = newList.map((e) => ({ ...e, key: String(e[g.idField] ?? '') }));
+    const items = diffKeyed(oldKeyed, newKeyed, 'deleted');
+    sections.push({ title: g.title, items, action: computeSectionAction(items) });
   }
 
   return sections;

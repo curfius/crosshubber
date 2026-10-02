@@ -532,7 +532,7 @@
                 <dl class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                   @for (f of section.fields; track f.key) {
                   <dt class="text-[var(--portal-text-muted)]">{{ fieldLabel(f.label) }}</dt>
-                  <dd class="font-mono text-[var(--portal-text-tertiary)]">{{ f.newValue ?? '-' }}</dd>
+                  <dd class="font-mono text-[var(--portal-text-tertiary)]">{{ fieldValue(f.newValue) }}</dd>
                   }
                 </dl>
               </div>
@@ -546,7 +546,7 @@
                   <dl class="mt-1 grid grid-cols-[120px_1fr] gap-x-3 gap-y-0.5 text-[11px]">
                     @for (f of item.fields; track f.key) {
                     <dt class="text-[var(--portal-text-muted)]">{{ fieldLabel(f.label) }}</dt>
-                    <dd class="font-mono text-[var(--portal-text-tertiary)]">{{ f.newValue ?? '-' }}</dd>
+                    <dd class="font-mono text-[var(--portal-text-tertiary)]">{{ fieldValue(f.newValue) }}</dd>
                     }
                   </dl>
                   }
@@ -1101,7 +1101,7 @@
                       <span class="text-red-500 line-through italic">{{ f.oldValue }}</span>
                       <span class="ml-1 text-green-600 font-semibold">{{ f.newValue }}</span>
                     } @else {
-                      <span class="text-[var(--portal-text-tertiary)]">{{ f.newValue ?? '-' }}</span>
+                      <span class="text-[var(--portal-text-tertiary)]">{{ fieldValue(f.newValue) }}</span>
                     }
                   </dd>
                   }
@@ -1133,7 +1133,7 @@
                         <span class="text-red-500 line-through italic">{{ f.oldValue }}</span>
                         <span class="ml-1 text-green-600 font-semibold">{{ f.newValue }}</span>
                       } @else {
-                        <span class="text-[var(--portal-text-tertiary)]">{{ f.newValue ?? '-' }}</span>
+                        <span class="text-[var(--portal-text-tertiary)]">{{ fieldValue(f.newValue) }}</span>
                       }
                     </dd>
                     }
@@ -1250,7 +1250,7 @@
                   <span class="text-green-600 font-semibold">{{ f.newValue }}</span>
                   <span class="ml-1 text-red-500">{{ f.oldValue }}</span>
                 } @else {
-                  <span class="text-[var(--portal-text-tertiary)]">{{ f.newValue ?? '-' }}</span>
+                  <span class="text-[var(--portal-text-tertiary)]">{{ fieldValue(f.newValue) }}</span>
                 }
               </dd>
               }
@@ -1277,7 +1277,7 @@
                     <span class="text-green-600 font-semibold">{{ f.newValue }}</span>
                     <span class="ml-1 text-red-500">{{ f.oldValue }}</span>
                   } @else {
-                    <span class="text-[var(--portal-text-tertiary)]">{{ f.newValue ?? '-' }}</span>
+                    <span class="text-[var(--portal-text-tertiary)]">{{ fieldValue(f.newValue) }}</span>
                   }
                 </dd>
                 }
