@@ -28,6 +28,7 @@ import com.crosshubber.solutions.domain.ProjectEntity;
 import com.crosshubber.solutions.domain.ProjectService;
 import com.crosshubber.solutions.domain.Stage;
 import com.crosshubber.solutions.security.AgentPrincipal;
+import com.crosshubber.solutions.settings.ModuleSettingsService;
 
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -37,6 +38,7 @@ class AgentToolsControllerTest {
 
   private ProjectService projectService;
   private LlmClient llm;
+  private ModuleSettingsService settings;
   private MockMvc mockMvc;
   private ProjectEntity project;
 
@@ -44,11 +46,15 @@ class AgentToolsControllerTest {
   void setUp() {
     projectService = mock(ProjectService.class);
     llm = mock(LlmClient.class);
+    settings = mock(ModuleSettingsService.class);
+    when(settings.isToolEnabled(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+    when(settings.agentEnabled()).thenReturn(true);
+    when(settings.systemPrompt()).thenReturn(ModuleSettingsService.DEFAULT_SYSTEM_PROMPT);
     ObjectMapper mapper = new JsonMapper();
     mockMvc =
         MockMvcBuilders.standaloneSetup(
-                new AgentToolsController(projectService, mapper),
-                new AgentTasksController(projectService, llm, mapper))
+                new AgentToolsController(projectService, settings, mapper),
+                new AgentTasksController(projectService, llm, settings, mapper))
             .build();
     ClientEntity client = new ClientEntity();
     client.setName("Acme");
@@ -104,6 +110,32 @@ class AgentToolsControllerTest {
                 .content("{\"tool\":\"nope\",\"arguments\":{}}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.error").value("unknown tool: nope"));
+  }
+
+  @Test
+  void disabledToolReturnsErrorPayload() throws Exception {
+    when(settings.isToolEnabled("list_projects")).thenReturn(false);
+
+    mockMvc
+        .perform(
+            post("/agent/tools/list_projects")
+                .contentType("application/json")
+                .content("{\"tool\":\"list_projects\",\"arguments\":{}}"))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.error")
+                .value("tool \"list_projects\" is disabled in the solutions module settings"));
+  }
+
+  @Test
+  void tasksFailWhenAgentDisabledBySettings() throws Exception {
+    when(settings.agentEnabled()).thenReturn(false);
+
+    mockMvc
+        .perform(post("/agent/tasks").contentType("application/json").content("{\"task\":\"s\"}"))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.output").value("agent is disabled in the solutions module settings"));
   }
 
   @Test

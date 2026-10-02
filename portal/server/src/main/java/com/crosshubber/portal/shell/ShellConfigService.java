@@ -43,7 +43,7 @@ public class ShellConfigService {
   private static final Logger log = LoggerFactory.getLogger(ShellConfigService.class);
 
   private static final List<String> CATEGORY_ORDER =
-      List.of("applications", "settings", "features", "user-settings");
+      List.of("applications", "settings", "features", "user-settings", "admin-settings");
 
   private final ModuleRepository moduleRepo;
   private final ModuleContentRepository contentRepo;
@@ -141,8 +141,9 @@ public class ShellConfigService {
 
   /**
    * Module content visible to the user: module visible + active + known category + role match +
-   * group allowed (or no group). Category filter excludes admin-settings (admin settings are
-   * reachable only via their own routes). Sorted by category order, then sort_order, then name.
+   * group allowed (or no group). {@code admin-settings} rows (module-owned settings MFEs) are
+   * served so the portal Settings tree can render them; builtin settings pages stay route-based.
+   * Sorted by category order, then sort_order, then name.
    */
   private List<ModuleContentDto> visibleModuleContents(
       List<String> userRoles,

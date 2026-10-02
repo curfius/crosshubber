@@ -89,8 +89,11 @@ class ShellConfigServiceTest {
     assertEquals("sub-1", config.user().sub());
     assertNull(config.user().email());
     assertEquals(List.of("portal-user"), config.user().roles());
-    assertEquals(1, config.moduleContents().size());
+    // admin-settings content is served (module-owned settings MFEs surface in
+    // the portal Settings tree) — the role-blocked module's row is dropped.
+    assertEquals(2, config.moduleContents().size());
     assertEquals("a", config.moduleContents().get(0).contentKey());
+    assertEquals("c", config.moduleContents().get(1).contentKey());
     assertTrue(config.navigationGroups().isEmpty());
     assertTrue(config.preferences().isEmpty());
   }

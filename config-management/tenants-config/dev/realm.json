@@ -38,6 +38,10 @@
         "description": "Can use the solutions module (agent tools, project content)"
       },
       {
+        "name": "solutions-admin",
+        "description": "Can manage the solutions module settings"
+      },
+      {
         "name": "staffing-user",
         "description": "Can use the staffing module (agent tools, RFP/CV matching)"
       }
@@ -54,6 +58,7 @@
         "portal-navigation-edit",
         "portal-ai-hub-edit",
         "solutions-user",
+        "solutions-admin",
         "staffing-user"
       ]
     }

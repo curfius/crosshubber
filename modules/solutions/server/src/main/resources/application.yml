@@ -24,6 +24,8 @@ solutions:
   # Shared secret for validating portal-minted agent-call tokens (X-Portal-Agent).
   # Resolves to the same SESSION_SECRET the portal gets (env_file); must never differ.
   agent-shared-secret: ${AGENT_SHARED_SECRET:${SESSION_SECRET:dev-insecure-shared-secret}}
+  # AES key (64 hex chars) for encrypting module-stored credentials (settings).
+  crypto-key: ${SOLUTIONS_CRYPTO_KEY:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
   # Module-owned LLM credentials (OpenAI-compatible). Absent = agent tasks fail closed.
   llm:
     base-url: ${SOLUTIONS_LLM_BASE_URL:}

@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -48,6 +49,14 @@ public class ProxyController {
       HttpServletRequest request,
       @RequestBody(required = false) byte[] body) {
     return proxy(key, request, "PATCH", body);
+  }
+
+  @PutMapping("/api/mfe/{key}/**")
+  public ResponseEntity<?> proxyPut(
+      @PathVariable String key,
+      HttpServletRequest request,
+      @RequestBody(required = false) byte[] body) {
+    return proxy(key, request, "PUT", body);
   }
 
   private ResponseEntity<?> proxy(

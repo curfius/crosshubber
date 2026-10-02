@@ -30,7 +30,9 @@ export class Settings {
   protected readonly activeEntry = signal<PortalModuleContent | null>(null);
 
   protected readonly settingsContents = computed(() =>
-    this.wb.getModuleContents().filter((ep) => ep.category === 'settings'),
+    this.wb
+      .getModuleContents()
+      .filter((ep) => ep.category === 'settings' || ep.category === 'admin-settings'),
   );
 
   protected readonly settingsGroups = computed(() =>

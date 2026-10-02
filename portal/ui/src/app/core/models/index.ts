@@ -1,6 +1,11 @@
 export type ModuleType = 'iframe' | 'embedded' | 'mfe' | 'link';
 
-export type EntryCategory = 'applications' | 'settings' | 'features' | 'user-settings';
+export type EntryCategory =
+  | 'applications'
+  | 'settings'
+  | 'features'
+  | 'admin-settings'
+  | 'user-settings';
 
 // ── Module Content ────────────────────────────────────────────────────
 

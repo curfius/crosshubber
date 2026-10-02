@@ -7,12 +7,12 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import com.crosshubber.solutions.config.SolutionsProperties;
+import com.crosshubber.solutions.settings.ModuleSettingsService;
 
 /**
  * Module-owned LLM access (OpenAI-compatible chat completions over the shared RestClient) —
- * credentials come from module config (compose env), never from the portal. Unconfigured = the
- * caller gets a fail-closed error, no portal fallback.
+ * credentials resolve from module settings (DB, encrypted) with compose-env fallback; never from
+ * the portal. Unconfigured = the caller gets a fail-closed error, no portal fallback.
  */
 @Service
 public class LlmClient {
@@ -24,15 +24,15 @@ public class LlmClient {
   public record LlmResult(String content) {}
 
   private final RestClient.Builder restClientBuilder;
-  private final SolutionsProperties props;
+  private final ModuleSettingsService settings;
 
-  public LlmClient(RestClient.Builder restClientBuilder, SolutionsProperties props) {
+  public LlmClient(RestClient.Builder restClientBuilder, ModuleSettingsService settings) {
     this.restClientBuilder = restClientBuilder;
-    this.props = props;
+    this.settings = settings;
   }
 
   public boolean isConfigured() {
-    return props.getLlm().isConfigured();
+    return settings.effectiveLlm().isConfigured();
   }
 
   /**
@@ -43,21 +43,22 @@ public class LlmClient {
    */
   @SuppressWarnings("unchecked")
   public String complete(String system, String user) throws Exception {
-    if (!isConfigured()) {
-      throw new IllegalStateException("llm is not configured (SOLUTIONS_LLM_* env)");
+    ModuleSettingsService.EffectiveLlm llm = settings.effectiveLlm();
+    if (!llm.isConfigured()) {
+      throw new IllegalStateException(
+          "llm is not configured (module settings or SOLUTIONS_LLM_* env)");
     }
-    SolutionsProperties.Llm llm = props.getLlm();
-    String url = llm.getBaseUrl().replaceAll("/+$", "") + "/chat/completions";
+    String url = llm.baseUrl().replaceAll("/+$", "") + "/chat/completions";
     Map<String, Object> response =
         restClientBuilder
             .build()
             .post()
             .uri(url)
-            .header("Authorization", "Bearer " + llm.getApiKey())
+            .header("Authorization", "Bearer " + llm.apiKey())
             .contentType(MediaType.APPLICATION_JSON)
             .body(
                 new ChatRequest(
-                    llm.getModel(),
+                    llm.model(),
                     List.of(new ChatMessage("system", system), new ChatMessage("user", user)),
                     1024))
             .retrieve()

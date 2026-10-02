@@ -33,10 +33,15 @@ import tools.jackson.databind.node.ObjectNode;
 public class AgentToolsController {
 
   private final ProjectService projectService;
+  private final com.crosshubber.solutions.settings.ModuleSettingsService settings;
   private final ObjectMapper objectMapper;
 
-  public AgentToolsController(ProjectService projectService, ObjectMapper objectMapper) {
+  public AgentToolsController(
+      ProjectService projectService,
+      com.crosshubber.solutions.settings.ModuleSettingsService settings,
+      ObjectMapper objectMapper) {
     this.projectService = projectService;
+    this.settings = settings;
     this.objectMapper = objectMapper;
   }
 
@@ -45,6 +50,9 @@ public class AgentToolsController {
 
   @PostMapping("/agent/tools/{name}")
   public ObjectNode dispatch(@PathVariable String name, @RequestBody ToolRequest body) {
+    if (!settings.isToolEnabled(name)) {
+      return error("tool \"" + name + "\" is disabled in the solutions module settings");
+    }
     AgentPrincipal user = AgentPrincipals.current();
     JsonNode args = body.arguments() == null ? objectMapper.createObjectNode() : body.arguments();
     try {

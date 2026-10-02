@@ -9,6 +9,9 @@ public class SolutionsProperties {
   /** Shared secret for validating portal-minted agent-call tokens (X-Portal-Agent). */
   private String agentSharedSecret = "dev-insecure-shared-secret";
 
+  /** AES key (64 hex chars) for encrypting module-stored credentials. */
+  private String cryptoKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
   private final Llm llm = new Llm();
 
   private final Docsource docsource = new Docsource();
@@ -19,6 +22,14 @@ public class SolutionsProperties {
 
   public void setAgentSharedSecret(String agentSharedSecret) {
     this.agentSharedSecret = agentSharedSecret;
+  }
+
+  public String getCryptoKey() {
+    return cryptoKey;
+  }
+
+  public void setCryptoKey(String cryptoKey) {
+    this.cryptoKey = cryptoKey;
   }
 
   public Llm getLlm() {

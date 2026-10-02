@@ -21,7 +21,11 @@ export function buildSettingsTree(
   moduleContents: PortalModuleContent[],
 ): TreeNode<PortalModuleContent | NavigationGroup>[] {
   const settingsGroups = groups.filter((g) => g.category === 'settings');
-  const settingsEps = moduleContents.filter((ep) => ep.category === 'settings');
+  // Module-owned settings MFEs land in the admin-settings category and are
+  // rendered as plain entries in the same tree (role-filtered server-side).
+  const settingsEps = moduleContents.filter(
+    (ep) => ep.category === 'settings' || ep.category === 'admin-settings',
+  );
 
   return buildTree(settingsGroups, settingsEps);
 }

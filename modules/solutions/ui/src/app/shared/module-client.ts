@@ -130,4 +130,10 @@ export class ModuleClient {
     if (!res.ok) throw new Error(`PATCH ${path} failed (${res.status})`);
     return (await res.json()) as T;
   }
+
+  async put<T>(path: string, body: unknown): Promise<T> {
+    const res = await this.authed('PUT', path, body);
+    if (!res.ok) throw new Error(`PUT ${path} failed (${res.status})`);
+    return (await res.json()) as T;
+  }
 }
