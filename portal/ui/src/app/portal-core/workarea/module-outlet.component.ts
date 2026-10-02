@@ -194,15 +194,19 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   }
 
   private async renderMfe(ep: PortalModuleContent): Promise<void> {
+    // Entry switches run cleanup() + an async render; a render that is still
+    // awaiting when the entry changes again must never append — otherwise two
+    // elements stack in the host (the stale one below the current page).
+    const expected = moduleContentId(ep);
+    const stale = () => this.destroyed || moduleContentId(this.content()) !== expected;
     try {
       await this.ensureScript(mfeScriptUrl(ep));
-      // the tab can churn while the bundle loads — never mount into a dead view
-      if (this.destroyed) return;
+      if (stale()) return;
       await Promise.race([
         customElements.whenDefined(ep.element!),
         new Promise((r) => setTimeout(r, 4000)),
       ]);
-      if (this.destroyed || this.mounted) return;
+      if (stale() || this.mounted) return;
       const el = document.createElement(ep.element!) as HTMLElement & {
         mount?: (ctx: { user: PortalUser | null; language: string }) => void;
         unmount?: () => void;

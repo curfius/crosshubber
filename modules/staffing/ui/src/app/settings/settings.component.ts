@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { ViewEncapsulation } from '@angular/core';
 import { ModuleClient } from '../shared/module-client';
 import { SHARED_STYLES } from '../shared/styles';
+import { mfeReadyDispatcher } from '../shared/ready';
 
 interface SettingsView {
   tools: Record<string, boolean>;
@@ -121,6 +122,7 @@ const TOOL_LABELS: Record<string, string> = {
 })
 export class SettingsComponent implements OnInit {
   private readonly client = inject(ModuleClient);
+  private readonly signalMfeReady = mfeReadyDispatcher();
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -141,9 +143,11 @@ export class SettingsComponent implements OnInit {
       const view = await this.client.get<SettingsView>('/api/settings');
       this.draft.set(view);
       this.loading.set(false);
+      this.signalMfeReady();
     } catch (err) {
       this.error.set(err instanceof Error ? err.message : String(err));
       this.loading.set(false);
+      this.signalMfeReady();
     }
   }
 

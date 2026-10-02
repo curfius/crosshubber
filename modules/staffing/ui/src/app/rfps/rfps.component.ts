@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { ViewEncapsulation } from '@angular/core';
 import { ModuleClient, RFP_STATUSES, Rfp } from '../shared/module-client';
 import { SHARED_STYLES } from '../shared/styles';
+import { mfeReadyDispatcher } from '../shared/ready';
 import { RfpDetailComponent } from './rfp-detail.component';
 
 /**
@@ -71,6 +72,7 @@ import { RfpDetailComponent } from './rfp-detail.component';
 })
 export class RfpsComponent implements OnInit {
   private readonly client = inject(ModuleClient);
+  private readonly signalMfeReady = mfeReadyDispatcher();
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -98,9 +100,11 @@ export class RfpsComponent implements OnInit {
       this.total.set(rfps.rfps.length);
       this.candidateCount.set(candidates.candidates.length);
       this.loading.set(false);
+      this.signalMfeReady();
     } catch (err) {
       this.error.set(err instanceof Error ? err.message : String(err));
       this.loading.set(false);
+      this.signalMfeReady();
     }
   }
 

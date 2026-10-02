@@ -8,6 +8,7 @@ import {
   Stage,
 } from '../shared/module-client';
 import { SHARED_STYLES } from '../shared/styles';
+import { mfeReadyDispatcher } from '../shared/ready';
 import { ProjectDetailComponent } from './project-detail.component';
 
 interface StageGroup {
@@ -90,6 +91,7 @@ interface StageGroup {
 })
 export class PipelineComponent implements OnInit {
   private readonly client = inject(ModuleClient);
+  private readonly signalMfeReady = mfeReadyDispatcher();
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -119,9 +121,11 @@ export class PipelineComponent implements OnInit {
       this.total.set(projects.projects.length);
       this.clientCount.set(clients.clients.length);
       this.loading.set(false);
+      this.signalMfeReady();
     } catch (err) {
       this.error.set(err instanceof Error ? err.message : String(err));
       this.loading.set(false);
+      this.signalMfeReady();
     }
   }
 
