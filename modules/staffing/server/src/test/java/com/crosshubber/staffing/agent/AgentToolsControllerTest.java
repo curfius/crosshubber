@@ -28,6 +28,7 @@ import com.crosshubber.staffing.domain.RfpEntity;
 import com.crosshubber.staffing.domain.RfpStatus;
 import com.crosshubber.staffing.domain.StaffingService;
 import com.crosshubber.staffing.security.AgentPrincipal;
+import com.crosshubber.staffing.settings.ModuleSettingsService;
 
 import tools.jackson.databind.json.JsonMapper;
 
@@ -35,14 +36,19 @@ import tools.jackson.databind.json.JsonMapper;
 class AgentToolsControllerTest {
 
   private StaffingService staffingService;
+  private ModuleSettingsService settings;
   private MockMvc mockMvc;
   private RfpEntity rfp;
 
   @BeforeEach
   void setUp() {
     staffingService = mock(StaffingService.class);
+    settings = mock(ModuleSettingsService.class);
+    when(settings.isToolEnabled(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+    when(settings.matchTopN()).thenReturn(ModuleSettingsService.DEFAULT_TOP_N);
     mockMvc =
-        MockMvcBuilders.standaloneSetup(new AgentToolsController(staffingService, new JsonMapper()))
+        MockMvcBuilders.standaloneSetup(
+                new AgentToolsController(staffingService, settings, new JsonMapper()))
             .build();
     rfp = new RfpEntity();
     org.springframework.test.util.ReflectionTestUtils.setField(rfp, "id", UUID.randomUUID());

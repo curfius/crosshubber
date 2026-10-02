@@ -11,7 +11,7 @@
         "name": "RFP Matcher",
         "description": "React to RFPs/RFQs and match the CV repository.",
         "type": "mfe",
-        "path": "/mfe/main.js",
+        "path": "/mfe/staffing.js",
         "element": "staffing-rfps",
         "requiredRoles": ["staffing-user"]
       }
@@ -23,7 +23,7 @@
         "name": "Staffing Settings",
         "description": "Configure tools, matching and the CV library connector.",
         "type": "mfe",
-        "path": "/mfe/settings.js",
+        "path": "/mfe/staffing.js",
         "element": "staffing-settings",
         "requiredRoles": ["staffing-admin"]
       }

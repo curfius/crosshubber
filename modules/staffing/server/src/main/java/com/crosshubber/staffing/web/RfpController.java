@@ -99,4 +99,9 @@ public class RfpController {
   public Map<String, Object> listShortlists(@PathVariable UUID id) {
     return Map.of("shortlists", service.listShortlists(id));
   }
+
+  @GetMapping("/rfps/{id}/runs")
+  public Map<String, Object> listMatchRuns(@PathVariable UUID id) {
+    return Map.of("runs", service.listMatchRuns(id));
+  }
 }

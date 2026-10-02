@@ -77,6 +77,7 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   private element: (HTMLElement & { mount?: unknown; unmount?: () => void }) | null = null;
   private previousEpId = '';
   private viewReady = false;
+  private destroyed = false;
 
   constructor() {
     effect(() => {
@@ -98,6 +99,7 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
     this.cleanup();
     this.hostVcr()?.clear();
   }
@@ -194,11 +196,13 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   private async renderMfe(ep: PortalModuleContent): Promise<void> {
     try {
       await this.ensureScript(mfeScriptUrl(ep));
+      // the tab can churn while the bundle loads — never mount into a dead view
+      if (this.destroyed) return;
       await Promise.race([
         customElements.whenDefined(ep.element!),
         new Promise((r) => setTimeout(r, 4000)),
       ]);
-      if (this.mounted) return;
+      if (this.destroyed || this.mounted) return;
       const el = document.createElement(ep.element!) as HTMLElement & {
         mount?: (ctx: { user: PortalUser | null; language: string }) => void;
         unmount?: () => void;

@@ -35,15 +35,23 @@ public class AgentToolsController {
   public record ToolRequest(String tool, JsonNode arguments) {}
 
   private final StaffingService staffingService;
+  private final com.crosshubber.staffing.settings.ModuleSettingsService settings;
   private final ObjectMapper objectMapper;
 
-  public AgentToolsController(StaffingService staffingService, ObjectMapper objectMapper) {
+  public AgentToolsController(
+      StaffingService staffingService,
+      com.crosshubber.staffing.settings.ModuleSettingsService settings,
+      ObjectMapper objectMapper) {
     this.staffingService = staffingService;
+    this.settings = settings;
     this.objectMapper = objectMapper;
   }
 
   @PostMapping("/agent/tools/{name}")
   public ObjectNode dispatch(@PathVariable String name, @RequestBody ToolRequest body) {
+    if (!settings.isToolEnabled(name)) {
+      return error("tool \"" + name + "\" is disabled in the staffing module settings");
+    }
     JsonNode args = body.arguments() == null ? objectMapper.createObjectNode() : body.arguments();
     try {
       return switch (name) {
@@ -103,7 +111,8 @@ public class AgentToolsController {
           objectMapper.convertValue(
               req, new tools.jackson.core.type.TypeReference<Map<String, Object>>() {});
     }
-    int topN = args.path("topN").isNumber() ? args.path("topN").asInt() : 0;
+    // topN: explicit tool arg wins; otherwise the settings default (0/negative ignored).
+    int topN = args.path("topN").isNumber() ? args.path("topN").asInt() : settings.matchTopN();
     ObjectNode out = objectMapper.createObjectNode();
     ArrayNode matches = out.putArray("matches");
     for (MatchingService.ScoredCandidate scored :
@@ -119,7 +128,7 @@ public class AgentToolsController {
 
   private ObjectNode createMatchRun(JsonNode args) {
     UUID rfpId = requireId(args, "rfpId");
-    int topN = args.path("topN").isNumber() ? args.path("topN").asInt() : 0;
+    int topN = args.path("topN").isNumber() ? args.path("topN").asInt() : settings.matchTopN();
     var run = staffingService.createMatchRun(rfpId, topN, AgentPrincipals.currentName());
     ObjectNode out = objectMapper.createObjectNode();
     out.put("status", "ok");

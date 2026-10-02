@@ -44,6 +44,10 @@
       {
         "name": "staffing-user",
         "description": "Can use the staffing module (agent tools, RFP/CV matching)"
+      },
+      {
+        "name": "staffing-admin",
+        "description": "Can manage the staffing module settings"
       }
     ]
   },
@@ -59,7 +63,8 @@
         "portal-ai-hub-edit",
         "solutions-user",
         "solutions-admin",
-        "staffing-user"
+        "staffing-user",
+        "staffing-admin"
       ]
     }
   ],
