@@ -13,4 +13,6 @@ public interface UserSettingsRepository extends JpaRepository<UserSettingsEntity
   List<UserSettingsEntity> findByUserId(String userId);
 
   Optional<UserSettingsEntity> findByUserIdAndScope(String userId, String scope);
+
+  List<UserSettingsEntity> findByScope(String scope);
 }

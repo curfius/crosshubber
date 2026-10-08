@@ -1,0 +1,144 @@
+@if (line(); as current) {
+  <div
+    [class]="
+      compact()
+        ? 'flex items-center gap-1 text-[9px] text-[var(--portal-text-muted)]'
+        : 'flex items-center gap-1.5 text-[10px] text-[var(--portal-text-muted)]'
+    "
+  >
+    @if (current.pulse) {
+      <span
+        [class]="
+          compact()
+            ? 'size-1 animate-pulse rounded-full bg-[var(--portal-accent-primary)]'
+            : 'size-1.5 animate-pulse rounded-full bg-[var(--portal-accent-primary)]'
+        "
+      ></span>
+    }
+    <span class="min-w-0 truncate">{{ current.text }}</span>
+    @if (hasExpandable()) {
+      <button
+        type="button"
+        (click)="toggleExpanded()"
+        [attr.aria-expanded]="expanded()"
+        [title]="expanded() ? i18n.t('aihub.activity.hide') : i18n.t('aihub.activity.show')"
+        [class]="
+          compact()
+            ? 'ml-auto shrink-0 rounded px-1 text-[9px] text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]'
+            : 'ml-auto shrink-0 rounded px-1 text-[10px] text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]'
+        "
+      >
+        <svg
+          [class]="compact() ? 'size-2.5' : 'size-3'"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          [style.transform]="expanded() ? 'rotate(180deg)' : 'none'"
+          [style.transition]="'transform 150ms ease'"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+    }
+  </div>
+
+  @if (expanded()) {
+    <div [class]="compact() ? 'mt-1 space-y-1' : 'mt-1.5 space-y-1'">
+      @for (row of rows(); track row.seq) {
+        <div
+          [class]="
+            compact()
+              ? 'flex items-center gap-1.5 rounded-md border border-[var(--portal-border-subtle)] bg-[var(--portal-bg-subtle)] px-2 py-1'
+              : 'flex items-center gap-2 rounded-lg border border-[var(--portal-border-subtle)] bg-[var(--portal-bg-subtle)] px-2.5 py-1.5'
+          "
+        >
+          @if (row.kind === 'agent') {
+            <svg
+              [class]="compact() ? 'size-2.5 shrink-0' : 'size-3 shrink-0'"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--portal-text-disabled)"
+              stroke-width="2"
+            >
+              <path
+                d="M12 8V4H8m4 4H8a4 4 0 0 0-4 4v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a4 4 0 0 0-4-4h-4Zm4-6v4"
+              />
+              <circle cx="9" cy="15" r="1" />
+              <circle cx="15" cy="15" r="1" />
+            </svg>
+          } @else {
+            <svg
+              [class]="compact() ? 'size-2.5 shrink-0' : 'size-3 shrink-0'"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--portal-text-disabled)"
+              stroke-width="2"
+            >
+              <path
+                d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
+              />
+            </svg>
+          }
+          <span
+            [class]="
+              compact()
+                ? 'min-w-0 truncate font-mono text-[9px] text-[var(--portal-text-secondary)]'
+                : 'min-w-0 truncate font-mono text-[10px] text-[var(--portal-text-secondary)]'
+            "
+            >{{ row.tool }}</span
+          >
+          @if (row.module) {
+            <span [class]="compact() ? 'shrink-0 text-[9px] text-[var(--portal-text-disabled)]' : 'shrink-0 text-[9px] text-[var(--portal-text-disabled)]'">{{
+              row.module
+            }}</span>
+          }
+          <span class="ml-auto shrink-0">
+            <span [class]="toolStatusTone(row.status)">{{
+              toolStatusLabel(row.status)
+            }}</span>
+          </span>
+        </div>
+      }
+      @if (citations().length > 0) {
+        <div [class]="compact() ? '' : 'pt-1'">
+          <div
+            [class]="
+              compact()
+                ? 'text-[8px] uppercase tracking-wide text-[var(--portal-text-disabled)]'
+                : 'text-[9px] uppercase tracking-wide text-[var(--portal-text-disabled)]'
+            "
+          >
+            {{ i18n.t('agent.citations.label') }}
+          </div>
+          <div class="mt-0.5 space-y-1">
+            @for (c of citations(); track c.seq) {
+              <div class="min-w-0">
+                <div
+                  [class]="
+                    compact()
+                      ? 'truncate text-[9px] text-[var(--portal-text-secondary)]'
+                      : 'truncate text-[10px] text-[var(--portal-text-secondary)]'
+                  "
+                >
+                  {{ c.title }}
+                </div>
+                @if (c.snippet) {
+                  <div
+                    [class]="
+                      compact()
+                        ? 'line-clamp-1 text-[8px] text-[var(--portal-text-disabled)]'
+                        : 'line-clamp-2 text-[9px] text-[var(--portal-text-disabled)]'
+                    "
+                  >
+                    {{ c.snippet }}
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+}

@@ -1,1 +1,19 @@
-:host { display: block; height: 100%; }
+:host {
+  display: block;
+  height: 100%;
+}
+
+/* Focus ring belongs on the visible field border, not the bare textarea
+   (the unlayered global :focus-visible outline would paint an inner box). */
+.chat-input-wrapper {
+  transition: border-color 150ms ease;
+}
+
+.chat-input-wrapper:focus-within {
+  border-color: var(--portal-input-border-focus);
+}
+
+.chat-input:focus,
+.chat-input:focus-visible {
+  outline: none;
+}

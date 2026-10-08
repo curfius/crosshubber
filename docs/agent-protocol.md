@@ -37,7 +37,7 @@ Spring's SSE writer may omit the space after `data:` — parsers must accept bot
 | Frame | Shape | Meaning |
 |---|---|---|
 | content | `{"content": "…"}` | text delta (backwards compatible — the only frame before phases A/B) |
-| tool_call | `{"type":"tool_call","tool":"<name>","module":"<moduleKey>","mutates":bool}` | the model invoked a tool |
+| tool_call | `{"type":"tool_call","tool":"<name>","module":"<moduleKey>","mutates":bool,"kind":"builtin\|remote\|agent"}` | the model invoked a tool; `kind` lets UIs phrase sub-agent delegations ("asking module's agent …") differently from tools ("using tool … provided by module …") |
 | tool_result | `{"type":"tool_result","tool":"<name>","status":"ok\|denied\|error\|needs_confirmation\|cap_reached","callId":"…"}` | dispatch outcome |
 | confirmation_required | `{"type":"confirmation_required","tool":"<name>","callId":"call_…"}` | mutating tool parked; UI may offer a confirm affordance |
 | citation | `{"type":"citation","tool":"<name>","citations":[{"title":"…","ref":"…","snippet":"…"}]}` | document sources behind a successful search (max 5, snippet truncated) |

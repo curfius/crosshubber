@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -11,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.anthropic.AnthropicChatModel;
@@ -21,14 +23,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.crosshubber.portal.config.JacksonConfig;
-import com.crosshubber.portal.modules.agent.AgentToolCallbacks;
-import com.crosshubber.portal.modules.agent.ToolDispatcher;
-import com.crosshubber.portal.modules.agent.ToolRegistry;
+import com.crosshubber.portal.modules.aihub.agent.AgentToolCallbacks;
+import com.crosshubber.portal.modules.aihub.agent.ToolDispatcher;
+import com.crosshubber.portal.modules.aihub.agent.ToolRegistry;
 import com.crosshubber.portal.modules.aihub.context.AgentPromptAssembler;
 import com.crosshubber.portal.modules.aihub.context.SessionContextBuilder;
 import com.crosshubber.portal.modules.aihub.conversations.AiHubConversationsService;
 import com.crosshubber.portal.modules.aihub.providers.AiHubProvidersService;
-import com.crosshubber.portal.modules.settings.modules.ModuleSettingsService;
+import com.crosshubber.portal.modules.aihub.settings.AiHubSettingsService;
+import com.crosshubber.portal.modules.usersettings.scopes.UserSettingsService;
 import com.crosshubber.portal.security.PortalUser;
 
 import tools.jackson.databind.JsonNode;
@@ -45,9 +48,10 @@ class AiHubChatServiceTest {
     JsonMapper mapper = new JacksonConfig().jsonMapper();
     AiHubChatService svc =
         new AiHubChatService(
-            mock(ModuleSettingsService.class),
+            mock(AiHubSettingsService.class),
             providers,
             mock(AiHubConversationsService.class),
+            mock(UserSettingsService.class),
             mock(ChatMemory.class),
             mapper,
             mock(SessionContextBuilder.class),
@@ -72,9 +76,10 @@ class AiHubChatServiceTest {
     JsonMapper mapper = new JacksonConfig().jsonMapper();
     AiHubChatService svc =
         new AiHubChatService(
-            mock(ModuleSettingsService.class),
+            mock(AiHubSettingsService.class),
             providers,
             mock(AiHubConversationsService.class),
+            mock(UserSettingsService.class),
             mock(ChatMemory.class),
             mapper,
             mock(SessionContextBuilder.class),
@@ -106,13 +111,14 @@ class AiHubChatServiceTest {
   }
 
   private AiHubChatService newService(Map<String, Object> settings, ToolDispatcher dispatcher) {
-    ModuleSettingsService moduleSettings = mock(ModuleSettingsService.class);
-    when(moduleSettings.get("ai-hub")).thenReturn(settings);
+    AiHubSettingsService aiHubSettings = mock(AiHubSettingsService.class);
+    when(aiHubSettings.get()).thenReturn(settings);
     JsonMapper mapper = new JacksonConfig().jsonMapper();
     return new AiHubChatService(
-        moduleSettings,
+        aiHubSettings,
         mock(AiHubProvidersService.class),
         mock(AiHubConversationsService.class),
+        mock(UserSettingsService.class),
         mock(ChatMemory.class),
         mapper,
         mock(SessionContextBuilder.class),
@@ -193,6 +199,94 @@ class AiHubChatServiceTest {
     ResponseStatusException ex =
         assertThrows(ResponseStatusException.class, () -> newService(settings).resolveConfig());
     assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+  }
+
+  // --- per-user overrides (phase 5) ---
+
+  /** Service with both settings and a stubbed provider resolver for user-override tests. */
+  private AiHubChatService newServiceWithResolver(
+      Map<String, Object> settings, AiHubProvidersService providers) {
+    AiHubSettingsService aiHubSettings = mock(AiHubSettingsService.class);
+    when(aiHubSettings.get()).thenReturn(settings);
+    JsonMapper mapper = new JacksonConfig().jsonMapper();
+    return new AiHubChatService(
+        aiHubSettings,
+        providers,
+        mock(AiHubConversationsService.class),
+        mock(UserSettingsService.class),
+        mock(ChatMemory.class),
+        mapper,
+        mock(SessionContextBuilder.class),
+        mock(AgentPromptAssembler.class),
+        mock(ToolRegistry.class),
+        mock(AgentToolCallbacks.class),
+        mock(ToolDispatcher.class));
+  }
+
+  @Test
+  void userDefaultModelOverridesTenantDefault() {
+    AiHubProvidersService providers = mock(AiHubProvidersService.class);
+    when(providers.resolveApiKey("anthropic", "tok9"))
+        .thenReturn(new AiHubProvidersService.ResolvedKey("sk-x", "https://api.anthropic.com"));
+    AiHubChatService svc =
+        newServiceWithResolver(Map.of("selectedModelKey", "openai:gpt-4o:t1"), providers);
+
+    AiHubChatService.EffectiveConfig cfg =
+        svc.resolveConfig(
+            Map.of("selectedModelKey", "openai:gpt-4o:t1"),
+            Map.of(
+                "defaultModel",
+                Map.of("providerId", "anthropic", "modelId", "claude-3", "tokenId", "tok9")));
+
+    assertEquals("anthropic", cfg.providerId());
+    assertEquals("claude-3", cfg.model());
+    assertEquals("tok9", cfg.tokenId());
+  }
+
+  @Test
+  void userDefaultModelFallsBackWhenTokenNotSelectable() {
+    AiHubProvidersService providers = mock(AiHubProvidersService.class);
+    when(providers.resolveApiKey(anyString(), anyString())).thenReturn(null);
+    AiHubChatService svc =
+        newServiceWithResolver(
+            Map.of("selectedModelKey", "openai:gpt-4o:t1", "selectedTokens", List.of("t1")),
+            providers);
+
+    AiHubChatService.EffectiveConfig cfg =
+        svc.resolveConfig(
+            Map.of("selectedModelKey", "openai:gpt-4o:t1", "selectedTokens", List.of("t1")),
+            Map.of(
+                "defaultModel",
+                Map.of("providerId", "openai", "modelId", "gpt-4o-mini", "tokenId", "t2")));
+
+    assertEquals(
+        "t1", cfg.tokenId(), "tenant default survives when the user pick is not selectable");
+  }
+
+  @Test
+  void userDefaultModelFallsBackWhenProviderUnresolvable() {
+    AiHubProvidersService providers = mock(AiHubProvidersService.class);
+    when(providers.resolveApiKey("gone", "t9")).thenReturn(null);
+    AiHubChatService svc =
+        newServiceWithResolver(Map.of("selectedModelKey", "openai:gpt-4o:t1"), providers);
+
+    AiHubChatService.EffectiveConfig cfg =
+        svc.resolveConfig(
+            Map.of("selectedModelKey", "openai:gpt-4o:t1"),
+            Map.of("defaultModel", Map.of("providerId", "gone", "modelId", "m", "tokenId", "t9")));
+
+    assertEquals("openai", cfg.providerId());
+    assertEquals("t1", cfg.tokenId());
+  }
+
+  @Test
+  void disabledToolNamesParsesUserListAndIgnoresGarbage() {
+    assertEquals(
+        Set.of("solutions_search"),
+        AiHubChatService.disabledToolNames(
+            Map.of("disabledTools", java.util.Arrays.asList("solutions_search", 42, null))));
+    assertEquals(Set.of(), AiHubChatService.disabledToolNames(Map.of()));
+    assertEquals(Set.of(), AiHubChatService.disabledToolNames(Map.of("disabledTools", "nope")));
   }
 
   // --- withConfirmedToolResult() (AI plan B6) ---

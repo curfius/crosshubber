@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.crosshubber.portal.modules.aihub.dto.ConversationDto;
 import com.crosshubber.portal.modules.aihub.dto.CreateConversationRequest;
+import com.crosshubber.portal.modules.aihub.dto.UpdateConversationRequest;
 import com.crosshubber.portal.security.PortalUser;
 
 /**
@@ -55,6 +57,26 @@ public class AiHubConversationsController {
       return ResponseEntity.status(404).body(Map.of("error", "not found"));
     }
     return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Partial update of a conversation's metadata (rename and/or pin). Ownership is enforced; the
+   * conversation's messages are kept.
+   */
+  @PatchMapping("/api/ai-hub/conversations/{id}")
+  public ResponseEntity<?> update(
+      @AuthenticationPrincipal PortalUser user,
+      @PathVariable String id,
+      @RequestBody(required = false) UpdateConversationRequest body) {
+    if (body == null || (body.title() == null && body.pinned() == null)) {
+      return ResponseEntity.badRequest().body(Map.of("error", "invalid request body"));
+    }
+    ConversationDto updated =
+        conversationsService.updateConversation(id, user.sub(), body.title(), body.pinned());
+    if (updated == null) {
+      return ResponseEntity.status(404).body(Map.of("error", "not found"));
+    }
+    return ResponseEntity.ok(updated);
   }
 
   /** Returns a single conversation's metadata. */

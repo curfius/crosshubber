@@ -1,9 +1,171 @@
-<div class="flex h-full flex-col">
+<div class="flex h-full">
+  <!-- Session history panel — visible by default, collapsible (phase 4) -->
+  @if (showSessions()) {
+    <aside
+      class="flex w-64 shrink-0 flex-col border-r border-[var(--portal-border-default)] bg-[var(--portal-bg-surface)]"
+    >
+      <div
+        class="flex items-center justify-between border-b border-[var(--portal-border-subtle)] px-3 py-2.5"
+      >
+        <span class="text-xs font-medium text-[var(--portal-text-primary)]">{{
+          i18n.t('aihub.chat.sessions')
+        }}</span>
+        <button
+          type="button"
+          (click)="newChat()"
+          [title]="i18n.t('aihub.chat.new-chat')"
+          class="rounded p-1 text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]"
+        >
+          <svg
+            class="size-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-1.5">
+        @if (sortedConversations().length === 0) {
+          <p class="px-2 py-4 text-center text-xs text-[var(--portal-text-disabled)]">
+            {{ i18n.t('aihub.chat.no-conversations-yet') }}
+          </p>
+        }
+        @for (conv of sortedConversations(); track conv.id) {
+          <div
+            [class]="
+              conv.id === currentConversationId()
+                ? 'mb-0.5 flex items-center gap-0.5 rounded-lg bg-[var(--portal-bg-active)] px-1.5 py-1'
+                : 'mb-0.5 flex items-center gap-0.5 rounded-lg px-1.5 py-1 hover:bg-[var(--portal-bg-hover)]'
+            "
+          >
+            @if (renamingId() === conv.id) {
+              <input
+                class="ds-input !py-1 !text-xs w-full"
+                [value]="renameValue()"
+                (input)="renameValue.set($any($event.target).value)"
+                (keydown)="onRenameKeydown($event, conv)"
+                (blur)="saveRename(conv)"
+                [attr.aria-label]="i18n.t('aihub.chat.rename')"
+              />
+            } @else {
+              <div
+                class="min-w-0 flex-1 cursor-pointer py-0.5"
+                (click)="loadConversation(conv)"
+                role="button"
+                tabindex="0"
+                (keydown.enter)="loadConversation(conv)"
+              >
+                <div class="flex items-center gap-1">
+                  @if (conv.pinned) {
+                    <svg
+                      class="size-2.5 shrink-0 text-[var(--portal-accent-primary)]"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path d="M12 17v5" />
+                      <path
+                        d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"
+                      />
+                    </svg>
+                  }
+                  <p class="truncate text-xs text-[var(--portal-text-secondary)]">
+                    {{ conv.title }}
+                  </p>
+                </div>
+                <p class="text-[10px] text-[var(--portal-text-disabled)]">
+                  {{ formatConvDate(conv.updated_at) }}
+                </p>
+              </div>
+              <button
+                type="button"
+                (click)="togglePin($event, conv)"
+                [title]="conv.pinned ? i18n.t('aihub.chat.unpin') : i18n.t('aihub.chat.pin')"
+                [class]="
+                  conv.pinned
+                    ? 'shrink-0 rounded p-1 text-[var(--portal-accent-primary)] transition hover:bg-[var(--portal-bg-hover)]'
+                    : 'shrink-0 rounded p-1 text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]'
+                "
+              >
+                <svg
+                  class="size-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M12 17v5" />
+                  <path
+                    d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                (click)="startRename($event, conv)"
+                [title]="i18n.t('aihub.chat.rename')"
+                class="shrink-0 rounded p-1 text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]"
+              >
+                <svg
+                  class="size-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                (click)="deleteConversation($event, conv)"
+                class="shrink-0 rounded p-1 text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-status-danger)]"
+              >
+                <svg
+                  class="size-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </aside>
+  }
+
+  <!-- Chat column -->
+  <div class="flex min-w-0 flex-1 flex-col">
   <!-- Header -->
   <div
     class="flex items-center justify-between border-b border-[var(--portal-border-default)] px-6 py-3"
   >
     <div class="flex items-center gap-3">
+      <button
+        type="button"
+        (click)="toggleSessions()"
+        [title]="i18n.t('aihub.chat.toggle-sessions')"
+        class="rounded p-1 text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]"
+      >
+        <svg
+          class="size-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <rect width="18" height="18" x="3" y="3" rx="2" />
+          <path d="M9 3v18" />
+        </svg>
+      </button>
       <div
         class="flex size-8 items-center justify-center rounded-lg bg-[var(--portal-accent-primary-subtle)]"
       >
@@ -22,135 +184,37 @@
       <div>
         <h1 class="ds-heading-3 !text-sm">{{ i18n.t('aihub.chat.title') }}</h1>
         <div class="flex items-center gap-1.5 text-[10px] text-[var(--portal-text-muted)]">
-          @if (selectedModel()) {
-            <span>{{ selectedModel()!.providerName }} / {{ selectedModel()!.modelName }}</span>
-            <button
-              type="button"
-              (click)="toggleModelPicker()"
-              class="ml-0.5 rounded p-0.5 text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-tertiary)]"
+          @if (models().length > 1) {
+            <select
+              class="ds-select !py-0.5 !text-[10px]"
+              [value]="selectedModelKey()"
+              (change)="onModelSelect($event)"
+              [attr.aria-label]="i18n.t('aihub.chat.model-select')"
             >
-              <svg
-                class="size-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-              </svg>
-            </button>
+              @for (m of models(); track modelOptionKey(m)) {
+                <option [value]="modelOptionKey(m)">
+                  {{ m.providerName }} / {{ m.modelName }}
+                </option>
+              }
+            </select>
+          } @else if (selectedModel()) {
+            <span>{{ selectedModel()!.providerName }} / {{ selectedModel()!.modelName }}</span>
           } @else {
             {{ i18n.t('aihub.chat.no-model-selected') }}
           }
         </div>
       </div>
     </div>
-    <div class="flex items-center gap-2">
-      <!-- Conversations toggle -->
+    @if (messages().length > 0) {
       <button
         type="button"
-        (click)="showConversations.update((v) => !v)"
+        (click)="newChat()"
         class="rounded px-2 py-1 text-xs text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]"
       >
-        {{ i18n.t('aihub.chat.history') }}
+        {{ i18n.t('aihub.chat.new-chat') }}
       </button>
-      @if (messages().length > 0) {
-        <button
-          type="button"
-          (click)="newChat()"
-          class="rounded px-2 py-1 text-xs text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]"
-        >
-          {{ i18n.t('aihub.chat.new-chat') }}
-        </button>
-      }
-    </div>
+    }
   </div>
-
-  <!-- Model picker dropdown -->
-  @if (showModelPicker()) {
-    <div class="relative">
-      <div class="fixed inset-0 z-10" (click)="onPickerBackdrop()"></div>
-      <div
-        class="absolute left-6 top-14 z-20 w-80 max-h-64 overflow-y-auto rounded-xl border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] shadow-2xl"
-      >
-        @for (m of models(); track modelOptionKey(m)) {
-          <button
-            type="button"
-            (click)="selectModel(m)"
-            [class]="
-              modelOptionKey(m) === selectedModelKey()
-                ? 'flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[var(--portal-accent-primary)] hover:bg-[var(--portal-bg-hover)]'
-                : 'flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[var(--portal-text-secondary)] hover:bg-[var(--portal-bg-hover)]'
-            "
-          >
-            <span
-              class="size-1.5 shrink-0 rounded-full"
-              [class]="
-                modelOptionKey(m) === selectedModelKey()
-                  ? 'bg-[var(--portal-accent-primary)]'
-                  : 'bg-[var(--portal-text-disabled)]'
-              "
-            ></span>
-            <span class="truncate">{{ m.providerName }} / {{ m.modelName }}</span>
-          </button>
-        }
-        @if (models().length === 0) {
-          <p class="px-3 py-3 text-center text-xs text-[var(--portal-text-disabled)]">
-            {{ i18n.t('aihub.chat.no-models-configured') }}
-          </p>
-        }
-      </div>
-    </div>
-  }
-
-  <!-- Conversations sidebar -->
-  @if (showConversations()) {
-    <div class="relative">
-      <div class="fixed inset-0 z-10" (click)="showConversations.set(false)"></div>
-      <div
-        class="absolute right-6 top-14 z-20 w-72 max-h-80 overflow-y-auto rounded-xl border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] shadow-2xl"
-      >
-        @if (conversations().length === 0) {
-          <p class="px-3 py-4 text-center text-xs text-[var(--portal-text-disabled)]">
-            {{ i18n.t('aihub.chat.no-conversations-yet') }}
-          </p>
-        }
-        @for (conv of conversations(); track conv.id) {
-          <button
-            type="button"
-            (click)="loadConversation(conv)"
-            [class]="
-              conv.id === currentConversationId()
-                ? 'flex w-full items-center justify-between px-3 py-2.5 text-left hover:bg-[var(--portal-bg-hover)] bg-[var(--portal-bg-active)]'
-                : 'flex w-full items-center justify-between px-3 py-2.5 text-left hover:bg-[var(--portal-bg-hover)]'
-            "
-          >
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-xs text-[var(--portal-text-secondary)]">{{ conv.title }}</p>
-              <p class="text-[10px] text-[var(--portal-text-disabled)]">
-                {{ formatConvDate(conv.updated_at) }}
-              </p>
-            </div>
-            <button
-              type="button"
-              (click)="deleteConversation($event, conv)"
-              class="ml-2 shrink-0 rounded p-1 text-[var(--portal-text-disabled)] hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-status-danger)]"
-            >
-              <svg
-                class="size-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </button>
-        }
-      </div>
-    </div>
-  }
 
   <!-- Messages -->
   <div #messagesContainer class="flex-1 overflow-y-auto px-6 py-4">
@@ -194,7 +258,11 @@
               "
             >
               @if (msg.content) {
-                <div class="whitespace-pre-wrap">{{ msg.content }}</div>
+                @if (msg.role === 'assistant') {
+                  <div class="ds-chat-md" [innerHTML]="renderMarkdown(msg.content)"></div>
+                } @else {
+                  <div class="whitespace-pre-wrap">{{ msg.content }}</div>
+                }
               } @else {
                 <div class="ds-chat-typing">
                   <span class="ds-chat-typing-dot" style="animation-delay: 0ms"></span>
@@ -212,73 +280,12 @@
   <!-- Input -->
   <div class="border-t border-[var(--portal-border-default)] px-6 py-4">
     <div class="mx-auto max-w-2xl space-y-2">
-      <!-- Agent tool activity (AI plan C3) -->
-      @if (toolFlow.rows().length > 0) {
-        <div class="max-h-28 space-y-1 overflow-y-auto">
-          @for (row of toolFlow.rows(); track row.seq) {
-            <div
-              class="flex items-center gap-2 rounded-lg border border-[var(--portal-border-subtle)] bg-[var(--portal-bg-subtle)] px-2.5 py-1.5"
-            >
-              <svg
-                class="size-3 shrink-0 text-[var(--portal-text-disabled)]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path
-                  d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
-                />
-              </svg>
-              <span class="truncate font-mono text-[10px] text-[var(--portal-text-secondary)]">{{
-                row.tool
-              }}</span>
-              @if (row.module) {
-                <span class="shrink-0 text-[9px] text-[var(--portal-text-disabled)]">{{
-                  row.module
-                }}</span>
-              }
-              <span class="ml-auto shrink-0">
-                <span [class]="toolStatusTone(row.status)">{{ toolStatusLabel(row.status) }}</span>
-              </span>
-            </div>
-          }
-        </div>
-      }
-      <!-- Agent citation sources (AI plan G3) -->
-      @if (toolFlow.citations().length > 0) {
-        <div class="space-y-1">
-          <div class="text-[9px] uppercase tracking-wide text-[var(--portal-text-disabled)]">
-            {{ i18n.t('agent.citations.label') }}
-          </div>
-          @for (c of toolFlow.citations(); track c.seq) {
-            <div
-              class="flex items-start gap-2 rounded-lg border border-[var(--portal-border-subtle)] bg-[var(--portal-bg-subtle)] px-2.5 py-1.5"
-            >
-              <svg
-                class="mt-0.5 size-3 shrink-0 text-[var(--portal-text-disabled)]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <path d="M14 2v6h6" />
-              </svg>
-              <div class="min-w-0">
-                <div class="truncate text-[10px] text-[var(--portal-text-secondary)]">
-                  {{ c.title }}
-                </div>
-                @if (c.snippet) {
-                  <div class="line-clamp-2 text-[9px] text-[var(--portal-text-disabled)]">
-                    {{ c.snippet }}
-                  </div>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      }
+      <!-- Single-line status/tool/agent activity, expandable (phase 3) -->
+      <app-chat-activity-line
+        [rows]="toolFlow.rows()"
+        [citations]="toolFlow.citations()"
+        [status]="status()"
+      />
       <!-- Error message -->
       @if (errorMessage()) {
         <div class="rounded-lg bg-[var(--portal-status-danger-bg)] px-3 py-2">
@@ -336,18 +343,9 @@
           }
         </div>
       }
-      <!-- Status bar -->
-      @if (status()) {
-        <div class="flex items-center gap-1.5 text-[10px] text-[var(--portal-text-muted)]">
-          <span
-            class="size-1.5 animate-pulse rounded-full bg-[var(--portal-accent-primary)]"
-          ></span>
-          <span>{{ status() }}</span>
-        </div>
-      }
       <!-- Input bar -->
       <div
-        class="flex items-end gap-2 rounded-2xl border border-[var(--portal-input-border)] bg-[var(--portal-bg-elevated)] px-4 py-2"
+        class="chat-input-wrapper flex items-end gap-2 rounded-2xl border border-[var(--portal-input-border)] bg-[var(--portal-bg-elevated)] px-4 py-2"
       >
         <textarea
           [value]="input()"
@@ -356,7 +354,7 @@
           [placeholder]="inputPlaceholder() || i18n.t('aihub.chat.input-placeholder')"
           [disabled]="loading() || !selectedModel()"
           rows="1"
-          class="max-h-32 min-h-[36px] flex-1 resize-none bg-transparent text-sm text-[var(--portal-text-secondary)] outline-none placeholder:text-[var(--portal-input-placeholder)] disabled:opacity-50"
+          class="chat-input max-h-32 min-h-[36px] flex-1 resize-none bg-transparent text-sm text-[var(--portal-text-secondary)] outline-none placeholder:text-[var(--portal-input-placeholder)] disabled:opacity-50"
         ></textarea>
         <button
           type="button"
@@ -376,6 +374,8 @@
         </button>
       </div>
     </div>
+  </div>
+
   </div>
 
   <!-- Pending tool confirmation (AI plan B6/C3) -->

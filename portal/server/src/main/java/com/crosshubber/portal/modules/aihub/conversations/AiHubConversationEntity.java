@@ -30,6 +30,9 @@ public class AiHubConversationEntity extends BaseEntity {
   @Column(name = "origin", nullable = false)
   private ConversationOrigin origin;
 
+  @Column(name = "pinned", nullable = false)
+  private boolean pinned;
+
   public String getId() {
     return id;
   }
@@ -60,5 +63,13 @@ public class AiHubConversationEntity extends BaseEntity {
 
   public void setOrigin(ConversationOrigin origin) {
     this.origin = origin;
+  }
+
+  public boolean isPinned() {
+    return pinned;
+  }
+
+  public void setPinned(boolean pinned) {
+    this.pinned = pinned;
   }
 }

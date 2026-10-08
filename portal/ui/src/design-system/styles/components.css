@@ -729,6 +729,83 @@
   color: var(--portal-text-secondary);
 }
 
+/* Markdown-rendered assistant content (phase 3). The bubble's pre-wrap above
+   is for plain-text bubbles; markdown output brings its own block structure,
+   so it resets to normal flow inside the wrapper. */
+.ds-chat-bubble .ds-chat-md {
+  white-space: normal;
+  word-break: break-word;
+}
+.ds-chat-bubble .ds-chat-md > *:first-child { margin-top: 0; }
+.ds-chat-bubble .ds-chat-md > *:last-child { margin-bottom: 0; }
+.ds-chat-bubble .ds-chat-md h1,
+.ds-chat-bubble .ds-chat-md h2,
+.ds-chat-bubble .ds-chat-md h3,
+.ds-chat-bubble .ds-chat-md h4 {
+  font-weight: 600;
+  line-height: var(--portal-line-height-normal);
+  margin: var(--portal-space-3) 0 var(--portal-space-2);
+  color: var(--portal-text-primary);
+}
+.ds-chat-bubble .ds-chat-md p {
+  margin: var(--portal-space-2) 0;
+}
+.ds-chat-bubble .ds-chat-md ul,
+.ds-chat-bubble .ds-chat-md ol {
+  margin: var(--portal-space-2) 0;
+  padding-left: var(--portal-space-5);
+}
+.ds-chat-bubble .ds-chat-md li {
+  margin: var(--portal-space-1) 0;
+}
+.ds-chat-bubble .ds-chat-md a {
+  color: var(--portal-accent-primary);
+  text-decoration: underline;
+}
+.ds-chat-bubble .ds-chat-md blockquote {
+  margin: var(--portal-space-2) 0;
+  padding: var(--portal-space-1) var(--portal-space-3);
+  border-left: 3px solid var(--portal-border-default);
+  color: var(--portal-text-muted);
+}
+.ds-chat-bubble .ds-chat-md pre {
+  margin: var(--portal-space-2) 0;
+  padding: var(--portal-space-2) var(--portal-space-3);
+  border-radius: var(--portal-radius-lg);
+  background: var(--portal-bg-subtle);
+  border: 1px solid var(--portal-border-subtle);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ds-chat-bubble .ds-chat-md code {
+  font-family: var(--portal-font-family-mono);
+  font-size: 0.9em;
+  background: var(--portal-bg-subtle);
+  border-radius: var(--portal-radius-sm);
+  padding: 0.1em 0.3em;
+}
+.ds-chat-bubble .ds-chat-md pre code {
+  background: transparent;
+  padding: 0;
+}
+.ds-chat-bubble .ds-chat-md table {
+  border-collapse: collapse;
+  margin: var(--portal-space-2) 0;
+  width: 100%;
+}
+.ds-chat-bubble .ds-chat-md th,
+.ds-chat-bubble .ds-chat-md td {
+  border: 1px solid var(--portal-border-default);
+  padding: var(--portal-space-1) var(--portal-space-2);
+  text-align: left;
+}
+.ds-chat-bubble .ds-chat-md hr {
+  border: 0;
+  border-top: 1px solid var(--portal-border-default);
+  margin: var(--portal-space-3) 0;
+}
+
 .ds-chat-typing {
   display: flex;
   align-items: center;

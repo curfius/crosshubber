@@ -23,20 +23,44 @@
         i18n.t('aihub.quick.title')
       }}</span>
     </div>
-    <button
-      type="button"
-      (click)="close.emit()"
-      class="size-5 rounded text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]"
-    >
-      <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M18 6L6 18M6 6l12 12" />
-      </svg>
-    </button>
+    <div class="flex items-center gap-1">
+      <!-- Continue in the main assistant window (phase 4) -->
+      <button
+        type="button"
+        (click)="expandToMain()"
+        [title]="i18n.t('aihub.quick.expand')"
+        class="rounded p-1 text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]"
+      >
+        <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        (click)="close.emit()"
+        class="rounded p-1 text-[var(--portal-text-muted)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-secondary)]"
+      >
+        <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
   </div>
 
-  <!-- Model selector: name + pencil -->
+  <!-- Model selector: dropdown when more than one model is available -->
   <div class="flex items-center gap-1.5 border-b border-[var(--portal-border-subtle)] px-4 py-2">
-    @if (selectedModel()) {
+    @if (models().length > 1) {
+      <select
+        class="ds-select !py-0.5 !text-[10px] w-full"
+        [value]="selectedModelKey()"
+        (change)="onModelSelect($event)"
+        [attr.aria-label]="i18n.t('aihub.chat.model-select')"
+      >
+        @for (m of models(); track modelOptionKey(m)) {
+          <option [value]="modelOptionKey(m)">{{ m.providerName }} / {{ m.modelName }}</option>
+        }
+      </select>
+    } @else if (selectedModel()) {
       <span class="truncate text-[10px] text-[var(--portal-text-tertiary)]"
         >{{ selectedModel()!.providerName }} / {{ selectedModel()!.modelName }}</span
       >
@@ -44,51 +68,6 @@
       <span class="text-[10px] text-[var(--portal-text-disabled)]">{{
         i18n.t('aihub.quick.no-model')
       }}</span>
-    }
-    <button
-      type="button"
-      (click)="toggleModelPicker()"
-      class="shrink-0 rounded p-0.5 text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-tertiary)]"
-    >
-      <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-      </svg>
-    </button>
-    <!-- Model picker dropdown -->
-    @if (showModelPicker()) {
-      <div class="relative">
-        <div class="fixed inset-0 z-10" (click)="onPickerBackdrop()"></div>
-        <div
-          class="absolute left-0 top-full z-20 mt-1 w-64 max-h-48 overflow-y-auto rounded-lg border border-[var(--portal-modal-border)] bg-[var(--portal-modal-bg)] shadow-xl"
-        >
-          @for (m of models(); track modelOptionKey(m)) {
-            <button
-              type="button"
-              (click)="selectModel(m)"
-              [class]="
-                modelOptionKey(m) === selectedModelKey()
-                  ? 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[10px] text-[var(--portal-accent-primary)] hover:bg-[var(--portal-bg-hover)]'
-                  : 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[10px] text-[var(--portal-text-secondary)] hover:bg-[var(--portal-bg-hover)]'
-              "
-            >
-              <span
-                class="size-1 shrink-0 rounded-full"
-                [class]="
-                  modelOptionKey(m) === selectedModelKey()
-                    ? 'bg-[var(--portal-accent-primary)]'
-                    : 'bg-[var(--portal-text-disabled)]'
-                "
-              ></span>
-              <span class="truncate">{{ m.providerName }} / {{ m.modelName }}</span>
-            </button>
-          }
-          @if (models().length === 0) {
-            <p class="px-3 py-2 text-center text-[10px] text-[var(--portal-text-disabled)]">
-              {{ i18n.t('aihub.quick.no-models-configured') }}
-            </p>
-          }
-        </div>
-      </div>
     }
   </div>
 
@@ -116,7 +95,11 @@
               "
             >
               @if (msg.content) {
-                <div class="whitespace-pre-wrap">{{ msg.content }}</div>
+                @if (msg.role === 'assistant') {
+                  <div class="ds-chat-md" [innerHTML]="renderMarkdown(msg.content)"></div>
+                } @else {
+                  <div class="whitespace-pre-wrap">{{ msg.content }}</div>
+                }
               } @else {
                 <div class="ds-chat-typing">
                   <span class="ds-chat-typing-dot" style="animation-delay: 0ms"></span>
@@ -134,54 +117,13 @@
   <!-- Input -->
   <div class="border-t border-[var(--portal-border-default)] px-4 py-3">
     <div class="space-y-1.5">
-      <!-- Agent tool activity (AI plan C3) -->
-      @if (toolFlow.rows().length > 0) {
-        <div class="max-h-24 space-y-1 overflow-y-auto">
-          @for (row of toolFlow.rows(); track row.seq) {
-            <div
-              class="flex items-center gap-1.5 rounded-md border border-[var(--portal-border-subtle)] bg-[var(--portal-bg-subtle)] px-2 py-1"
-            >
-              <span class="truncate font-mono text-[9px] text-[var(--portal-text-secondary)]">{{
-                row.tool
-              }}</span>
-              <span class="ml-auto shrink-0">
-                <span [class]="toolStatusTone(row.status)">{{ toolStatusLabel(row.status) }}</span>
-              </span>
-            </div>
-          }
-        </div>
-      }
-      <!-- Agent citation sources (AI plan G3) -->
-      @if (toolFlow.citations().length > 0) {
-        <div class="max-h-24 space-y-1 overflow-y-auto">
-          @for (c of toolFlow.citations(); track c.seq) {
-            <div
-              class="flex items-start gap-1.5 rounded-md border border-[var(--portal-border-subtle)] bg-[var(--portal-bg-subtle)] px-2 py-1"
-            >
-              <svg
-                class="mt-0.5 size-2.5 shrink-0 text-[var(--portal-text-disabled)]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <path d="M14 2v6h6" />
-              </svg>
-              <div class="min-w-0">
-                <div class="truncate text-[9px] text-[var(--portal-text-secondary)]">
-                  {{ c.title }}
-                </div>
-                @if (c.snippet) {
-                  <div class="line-clamp-1 text-[8px] text-[var(--portal-text-disabled)]">
-                    {{ c.snippet }}
-                  </div>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      }
+      <!-- Single-line status/tool/agent activity, expandable (phase 3) -->
+      <app-chat-activity-line
+        [rows]="toolFlow.rows()"
+        [citations]="toolFlow.citations()"
+        [status]="status()"
+        [compact]="true"
+      />
       <!-- Error message -->
       @if (errorMessage()) {
         <div class="rounded-lg bg-[var(--portal-status-danger-bg)] px-2.5 py-1.5">
@@ -235,15 +177,8 @@
           }
         </div>
       }
-      <!-- Status bar -->
-      @if (status()) {
-        <div class="flex items-center gap-1 text-[9px] text-[var(--portal-text-muted)]">
-          <span class="size-1 animate-pulse rounded-full bg-[var(--portal-accent-primary)]"></span>
-          <span>{{ status() }}</span>
-        </div>
-      }
       <div
-        class="flex items-end gap-2 rounded-xl border border-[var(--portal-input-border)] bg-[var(--portal-bg-elevated)] px-3 py-1.5"
+        class="chat-input-wrapper flex items-end gap-2 rounded-xl border border-[var(--portal-input-border)] bg-[var(--portal-bg-elevated)] px-3 py-1.5"
       >
         <textarea
           [value]="input()"
@@ -252,7 +187,7 @@
           [placeholder]="inputPlaceholder() || i18n.t('aihub.quick.input-placeholder')"
           [disabled]="loading() || !selectedModel()"
           rows="1"
-          class="max-h-20 min-h-[28px] flex-1 resize-none bg-transparent text-xs text-[var(--portal-text-secondary)] outline-none placeholder:text-[var(--portal-input-placeholder)] disabled:opacity-50"
+          class="chat-input max-h-20 min-h-[28px] flex-1 resize-none bg-transparent text-xs text-[var(--portal-text-secondary)] outline-none placeholder:text-[var(--portal-input-placeholder)] disabled:opacity-50"
         ></textarea>
         <button
           type="button"

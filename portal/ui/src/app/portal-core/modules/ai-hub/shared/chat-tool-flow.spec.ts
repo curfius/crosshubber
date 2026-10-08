@@ -22,6 +22,28 @@ describe('ChatToolFlow', () => {
     expect(flow.rows()[0].callId).toBeUndefined();
   });
 
+  it('propagates the tool_call kind onto the row (agent phrasing)', () => {
+    const flow = new ChatToolFlow();
+    flow.handleEvent(
+      ev('tool_call', {
+        tool: 'solutions_projects_agent',
+        module: 'solutions',
+        kind: 'agent',
+        mutates: false,
+      }),
+    );
+    expect(flow.rows()[0].kind).toBe('agent');
+
+    flow.handleEvent(ev('tool_call', { tool: 'list_modules', kind: 'builtin' }));
+    expect(flow.rows()[1].kind).toBe('builtin');
+  });
+
+  it('keeps rows without a kind frame (older backends)', () => {
+    const flow = new ChatToolFlow();
+    flow.handleEvent(ev('tool_call', { tool: 'list_modules', module: null }));
+    expect(flow.rows()[0].kind).toBeUndefined();
+  });
+
   it('parks a mutating call and opens the confirmation from its frames', () => {
     const flow = new ChatToolFlow();
     flow.handleEvent(

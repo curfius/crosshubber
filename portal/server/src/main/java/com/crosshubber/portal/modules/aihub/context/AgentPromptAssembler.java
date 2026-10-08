@@ -8,9 +8,9 @@ import com.crosshubber.portal.common.JsonUtils;
 
 /**
  * Assembles the agent system message (AI plan A3): persona, the AI Hub configured prompt (if any),
- * the session context pack JSON and a compact tool catalogue — in that stable order, under a soft
- * budget (~1–2k tokens). Sections are dropped oldest-first (tool catalogue → open tabs) when inputs
- * are oversized.
+ * the user's own context (phase 5), the session context pack JSON and a compact tool catalogue — in
+ * that stable order, under a soft budget (~1–2k tokens). Sections are dropped oldest-first (tool
+ * catalogue → open tabs) when inputs are oversized.
  */
 @Service
 public class AgentPromptAssembler {
@@ -39,14 +39,20 @@ public class AgentPromptAssembler {
    * Builds the system prompt.
    *
    * @param configuredPrompt the AI Hub settings system prompt, may be null/blank
+   * @param about the user's own "about you" description (AI settings page, phase 5), may be
+   *     null/blank (omits the user-context section)
    * @param pack sanitized session context pack, may be null (omits the context section)
    * @param tools active tool catalogue, may be empty (omits the catalogue section)
    * @return the assembled system message
    */
-  public String build(String configuredPrompt, SessionContextPack pack, List<ToolSummary> tools) {
+  public String build(
+      String configuredPrompt, String about, SessionContextPack pack, List<ToolSummary> tools) {
     StringBuilder sb = new StringBuilder(PERSONA);
     if (configuredPrompt != null && !configuredPrompt.isBlank()) {
       sb.append("\n\n").append(configuredPrompt.strip());
+    }
+    if (about != null && !about.isBlank()) {
+      sb.append("\n\nUser context:\n").append(about.strip());
     }
     if (pack != null) {
       sb.append("\n\nSession context:\n").append(jsonUtils.write(pack));

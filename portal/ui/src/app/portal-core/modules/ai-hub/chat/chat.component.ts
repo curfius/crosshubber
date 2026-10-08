@@ -7,10 +7,11 @@ import {
   OnInit,
   AfterViewChecked,
   ElementRef,
+  effect,
   ViewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ModuleSettingsService } from '../../../../core/settings/module-settings.service';
+import { AiHubSettingsService } from '../../../../core/ai-hub/ai-hub-settings.service';
 import { AiHubService } from '../../../../core/ai-hub/ai-hub.service';
 import {
   deriveChatModelOptions,
@@ -21,25 +22,32 @@ import {
 } from '../../../../core/ai-hub/chat-models';
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { WorkbenchService } from '../../../features/workspaces/workspaces.store';
-import { ChatCoreService, type ChatMessage, type Conversation } from '../shared/chat-core.service';
-import { ChatToolFlow, toolStatusTone, waitUntilIdle } from '../shared/chat-tool-flow';
+import {
+  ChatCoreService,
+  sortConversations,
+  type ChatMessage,
+  type Conversation,
+} from '../shared/chat-core.service';
+import { AiHubHandoffService } from '../shared/ai-hub-handoff.service';
+import { ChatToolFlow, waitUntilIdle } from '../shared/chat-tool-flow';
+import { renderChatMarkdown } from '../shared/chat-markdown';
+import { ChatActivityLine } from '../shared/activity-line/chat-activity-line.component';
 import { buildClientContext } from '../shared/session-context';
 import { ConfirmDialog } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 
-const MODULE_KEY = 'ai-hub';
-
 @Component({
   selector: 'app-ai-hub-chat',
-  imports: [FormsModule, ConfirmDialog],
+  imports: [FormsModule, ConfirmDialog, ChatActivityLine],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.css',
 })
 export class AiHubChat implements OnInit, AfterViewChecked {
-  private readonly moduleSettings = inject(ModuleSettingsService);
+  private readonly aiHubSettings = inject(AiHubSettingsService);
   private readonly aiHub = inject(AiHubService);
   private readonly chatCore = inject(ChatCoreService);
   private readonly workbench = inject(WorkbenchService);
+  private readonly handoff = inject(AiHubHandoffService);
   protected readonly i18n = inject(I18nService);
 
   @ViewChild('messagesContainer') messagesContainer?: ElementRef<HTMLDivElement>;
@@ -54,14 +62,29 @@ export class AiHubChat implements OnInit, AfterViewChecked {
   protected readonly errorExpanded = signal(false);
   protected readonly status = signal('');
   protected readonly inputPlaceholder = signal('');
-  protected readonly showModelPicker = signal(false);
   protected readonly conversations = signal<Conversation[]>([]);
   protected readonly currentConversationId = signal<string | null>(null);
-  protected readonly showConversations = signal(false);
+  /** Session panel visible by default (phase 4); collapsible from the header. */
+  protected readonly showSessions = signal(true);
+  /** Conversation currently being renamed inline (its id), plus the edit buffer. */
+  protected readonly renamingId = signal<string | null>(null);
+  protected readonly renameValue = signal('');
   /** Tool-activity rows + pending confirmation for the agent loop (AI plan C3). */
   protected readonly toolFlow = new ChatToolFlow();
 
   private shouldScroll = false;
+
+  /** Panel ordering: pinned first, then most recently updated. */
+  protected readonly sortedConversations = computed(() => sortConversations(this.conversations()));
+
+  constructor() {
+    // Quick-chat expand handoff: load the parked conversation whenever one arrives
+    // (also while the app is already open — effects re-run on the signal).
+    effect(() => {
+      const pending = this.handoff.pending();
+      if (pending !== null) void this.openHandoffConversation(pending);
+    });
+  }
 
   protected readonly selectedModel = computed(() => {
     const key = this.selectedModelKey();
@@ -69,10 +92,7 @@ export class AiHubChat implements OnInit, AfterViewChecked {
   });
 
   async ngOnInit(): Promise<void> {
-    const [, settings] = await Promise.all([
-      this.aiHub.load(),
-      this.moduleSettings.get(MODULE_KEY),
-    ]);
+    const [, settings] = await Promise.all([this.aiHub.load(), this.aiHubSettings.load()]);
     const selectedTokens = new Set(
       Array.isArray(settings['selectedTokens']) ? (settings['selectedTokens'] as string[]) : [],
     );
@@ -95,20 +115,22 @@ export class AiHubChat implements OnInit, AfterViewChecked {
     return modelKey(m);
   }
 
+  /** Dropdown change handler (the selector only renders when > 1 model is available). */
+  protected async onModelSelect(e: Event): Promise<void> {
+    const value = (e.target as HTMLSelectElement).value;
+    const model = this.models().find((m) => this.modelOptionKey(m) === value);
+    if (model) await this.selectModel(model);
+  }
+
   protected async selectModel(m: ChatModelOption): Promise<void> {
     this.selectedModelKey.set(this.modelOptionKey(m));
-    this.showModelPicker.set(false);
-    await this.moduleSettings.update(MODULE_KEY, {
+    await this.aiHubSettings.save({
       defaultModel: toDefaultModel(m),
     });
   }
 
-  protected toggleModelPicker(): void {
-    this.showModelPicker.update((v) => !v);
-  }
-
-  protected onPickerBackdrop(): void {
-    this.showModelPicker.set(false);
+  protected renderMarkdown(content: string): string {
+    return renderChatMarkdown(content);
   }
 
   private scrollToBottom(): void {
@@ -133,18 +155,63 @@ export class AiHubChat implements OnInit, AfterViewChecked {
     this.errorDetails.set('');
     this.errorExpanded.set(false);
     this.status.set('');
-    this.showConversations.set(false);
     this.toolFlow.reset();
   }
 
   protected async loadConversation(conv: Conversation): Promise<void> {
-    this.showConversations.set(false);
+    if (this.renamingId() === conv.id) return;
     const msgs = await this.chatCore.getMessages(conv.id);
     this.messages.set(msgs);
     this.currentConversationId.set(conv.id);
     this.errorMessage.set('');
     this.toolFlow.reset();
     this.shouldScroll = true;
+  }
+
+  /** Quick-chat expand handoff: load the parked conversation and clear the signal. */
+  private async openHandoffConversation(id: string): Promise<void> {
+    this.handoff.consume();
+    await this.loadConversation({ id, title: '', created_at: '', updated_at: '', pinned: false });
+  }
+
+  protected toggleSessions(): void {
+    this.showSessions.update((v) => !v);
+  }
+
+  protected startRename(e: Event, conv: Conversation): void {
+    e.stopPropagation();
+    this.renamingId.set(conv.id);
+    this.renameValue.set(conv.title);
+  }
+
+  protected cancelRename(): void {
+    this.renamingId.set(null);
+    this.renameValue.set('');
+  }
+
+  protected async saveRename(conv: Conversation): Promise<void> {
+    if (this.renamingId() !== conv.id) return;
+    const title = this.renameValue().trim();
+    this.cancelRename();
+    if (!title || title === conv.title) return;
+    const updated = await this.chatCore.updateConversation(conv.id, { title });
+    if (updated) await this.loadConversations();
+  }
+
+  protected onRenameKeydown(e: KeyboardEvent, conv: Conversation): void {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      void this.saveRename(conv);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      this.cancelRename();
+    }
+  }
+
+  protected async togglePin(e: Event, conv: Conversation): Promise<void> {
+    e.stopPropagation();
+    const updated = await this.chatCore.updateConversation(conv.id, { pinned: !conv.pinned });
+    if (updated) await this.loadConversations();
   }
 
   protected formatConvDate(iso: string): string {
@@ -162,6 +229,7 @@ export class AiHubChat implements OnInit, AfterViewChecked {
 
   protected async deleteConversation(e: Event, conv: Conversation): Promise<void> {
     e.stopPropagation();
+    this.cancelRename();
     await this.chatCore.deleteConversation(conv.id);
     if (this.currentConversationId() === conv.id) {
       this.messages.set([]);
@@ -258,12 +326,6 @@ export class AiHubChat implements OnInit, AfterViewChecked {
   protected declineToolCall(): void {
     this.toolFlow.decline();
   }
-
-  protected toolStatusLabel(status: string): string {
-    return this.i18n.t('agent.outcome.' + status.replace(/_/g, '-'));
-  }
-
-  protected readonly toolStatusTone = toolStatusTone;
 
   protected clearError(): void {
     this.errorMessage.set('');

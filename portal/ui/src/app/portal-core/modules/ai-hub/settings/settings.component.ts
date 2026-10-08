@@ -24,13 +24,11 @@ import {
   type ChatModelOption,
 } from '../../../../core/ai-hub/chat-models';
 import { DEFAULT_SYSTEM_PROMPT } from '../../../../core/ai-hub/ai-hub-defaults';
-import { ModuleSettingsService } from '../../../../core/settings/module-settings.service';
+import { AiHubSettingsService } from '../../../../core/ai-hub/ai-hub-settings.service';
 import { MarkdownEditorComponent } from '../../../../shared/components/markdown-editor/markdown-editor.component';
 import { Switch } from '../../../../shared/components/switch/switch.component';
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { toolStatusTone } from '../shared/chat-tool-flow';
-
-const MODULE_KEY = 'ai-hub';
 
 interface ActiveTokenRow {
   providerId: string;
@@ -49,7 +47,7 @@ interface ActiveTokenRow {
 export class AiHubSettings implements OnInit {
   protected readonly aiHub = inject(AiHubService);
   private readonly auditService = inject(AgentAuditService);
-  private readonly moduleSettings = inject(ModuleSettingsService);
+  private readonly aiHubSettings = inject(AiHubSettingsService);
   protected readonly i18n = inject(I18nService);
 
   protected readonly providers = signal<LlmProviderConfig[]>([]);
@@ -109,7 +107,7 @@ export class AiHubSettings implements OnInit {
   async ngOnInit(): Promise<void> {
     await this.aiHub.load();
     this.providers.set(this.aiHub.providerList());
-    const settings = await this.moduleSettings.get(MODULE_KEY);
+    const settings = await this.aiHubSettings.load();
     if (Array.isArray(settings['selectedTokens'])) {
       this.selectedTokenIds.set(new Set(settings['selectedTokens'] as string[]));
     }
@@ -189,7 +187,7 @@ export class AiHubSettings implements OnInit {
   protected async save(): Promise<void> {
     this.saving.set(true);
     const selected = this.models().find((m) => modelKey(m) === this.defaultModelKey());
-    await this.moduleSettings.update(MODULE_KEY, {
+    await this.aiHubSettings.save({
       selectedTokens: Array.from(this.selectedTokenIds()),
       systemPrompt: this.systemPrompt(),
       temperature: this.temperature(),

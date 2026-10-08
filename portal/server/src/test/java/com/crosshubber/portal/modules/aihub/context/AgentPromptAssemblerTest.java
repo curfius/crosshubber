@@ -37,6 +37,7 @@ class AgentPromptAssemblerTest {
     String prompt =
         assembler.build(
             "Be concise.",
+            null,
             pack(),
             List.of(
                 new AgentPromptAssembler.ToolSummary("getShellConfig", "Shell config", false),
@@ -51,7 +52,7 @@ class AgentPromptAssemblerTest {
 
   @Test
   void includesContextPackAsJson() {
-    String prompt = assembler.build(null, pack(), List.of());
+    String prompt = assembler.build(null, null, pack(), List.of());
 
     assertTrue(prompt.contains("\"tenant\""), prompt);
     assertTrue(prompt.contains("\"slug\":\"dev\""), prompt);
@@ -62,6 +63,7 @@ class AgentPromptAssemblerTest {
   void annotatesMutatingToolsInTheCatalogue() {
     String prompt =
         assembler.build(
+            null,
             null,
             null,
             List.of(
@@ -75,7 +77,7 @@ class AgentPromptAssemblerTest {
 
   @Test
   void omitsEmptySections() {
-    String prompt = assembler.build(null, null, List.of());
+    String prompt = assembler.build(null, null, null, List.of());
 
     assertEquals(
         "You are the Crosshubber portal agent, embedded in the Crosshubber portal. "
@@ -94,9 +96,27 @@ class AgentPromptAssemblerTest {
             .mapToObj(i -> new AgentPromptAssembler.ToolSummary("tool_" + i, "Tool " + i, false))
             .toList();
 
-    String prompt = assembler.build(null, null, tools);
+    String prompt = assembler.build(null, null, null, tools);
 
     assertTrue(prompt.contains("tool_29"), prompt);
     assertFalse(prompt.contains("tool_30"), prompt);
+  }
+
+  @Test
+  void includesUserContextSectionBetweenPromptAndPack() {
+    String prompt = assembler.build("Be concise.", "I am a project manager.", pack(), List.of());
+
+    int personaEnd = prompt.indexOf("Be concise.");
+    int aboutStart = prompt.indexOf("User context:");
+    int aboutEnd = prompt.indexOf("I am a project manager.");
+    int packStart = prompt.indexOf("Session context:");
+    assertTrue(aboutStart > personaEnd && aboutEnd > aboutStart && packStart > aboutEnd, prompt);
+  }
+
+  @Test
+  void omitsBlankUserContext() {
+    String prompt = assembler.build(null, "   ", pack(), List.of());
+
+    assertFalse(prompt.contains("User context:"), prompt);
   }
 }

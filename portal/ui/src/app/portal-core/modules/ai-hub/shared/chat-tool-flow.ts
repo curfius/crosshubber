@@ -14,6 +14,8 @@ export interface ChatToolRow {
   seq: number;
   tool: string;
   module?: string | null;
+  /** Tool flavour from the tool_call frame: builtin | remote | agent. */
+  kind?: string;
   mutates?: boolean;
   /** running | needs_confirmation | ok | denied | error | confirmed | cap_reached | declined */
   status: string;
@@ -52,6 +54,7 @@ export class ChatToolFlow {
         this.appendRow({
           tool: String(event.tool ?? ''),
           module: event.module ?? null,
+          kind: typeof event.kind === 'string' ? event.kind : undefined,
           mutates: event.mutates ?? false,
           status: 'running',
         });

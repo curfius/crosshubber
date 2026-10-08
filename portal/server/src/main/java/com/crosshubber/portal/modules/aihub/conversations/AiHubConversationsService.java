@@ -90,6 +90,29 @@ public class AiHubConversationsService {
   }
 
   /**
+   * Partial update of a conversation's user-editable metadata (B6): title rename and pinned flag.
+   * Blank titles and {@code null} fields are ignored; returns the updated DTO, or {@code null} when
+   * the conversation is not found / not owned.
+   */
+  @Transactional
+  public ConversationDto updateConversation(
+      String id, String userId, String title, Boolean pinned) {
+    AiHubConversationEntity conversation =
+        conversationRepo.findByIdAndUserId(id, userId).orElse(null);
+    if (conversation == null) {
+      return null;
+    }
+    if (title != null && !title.isBlank()) {
+      conversation.setTitle(title.trim());
+    }
+    if (pinned != null) {
+      conversation.setPinned(pinned);
+    }
+    conversationRepo.saveAndFlush(conversation);
+    return toConversationDto(conversation);
+  }
+
+  /**
    * Returns the message history for a conversation from Spring AI's {@link ChatMemory}. Each
    * message includes its role ({@code user} / {@code assistant} / {@code system}) and text content.
    * Used by the REST layer to populate the chat UI when a user selects an existing conversation.
@@ -112,6 +135,7 @@ public class AiHubConversationsService {
         c.getOrigin() == null ? null : c.getOrigin().value(),
         c.getTitle(),
         NodeDates.format(c.getCreatedAt()),
-        NodeDates.format(c.getUpdatedAt()));
+        NodeDates.format(c.getUpdatedAt()),
+        c.isPinned());
   }
 }

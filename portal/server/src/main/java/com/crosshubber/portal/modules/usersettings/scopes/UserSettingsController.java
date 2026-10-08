@@ -1,5 +1,6 @@
 package com.crosshubber.portal.modules.usersettings.scopes;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
@@ -78,6 +79,11 @@ public class UserSettingsController {
       if (error != null) {
         return ResponseEntity.badRequest().body(Map.of("error", error));
       }
+    } else if ("ai".equals(scope)) {
+      String error = validateAiBody(body);
+      if (error != null) {
+        return ResponseEntity.badRequest().body(Map.of("error", error));
+      }
     }
     return ResponseEntity.ok(Map.of("settings", settingsService.update(user.sub(), scope, body)));
   }
@@ -93,6 +99,53 @@ public class UserSettingsController {
       }
       if (!(entry.getValue() instanceof String s) || s.length() > max) {
         return "\"" + entry.getKey() + "\" must be a string of at most " + max + " characters";
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Portal-owned 'ai' scope allow-list (phase 5): the user's default chat model, the "about you"
+   * context and the disabled tools/agents list. Unknown keys are rejected like {@code general}.
+   */
+  private String validateAiBody(Map<String, Object> body) {
+    for (Map.Entry<String, Object> entry : body.entrySet()) {
+      switch (entry.getKey()) {
+        case "defaultModel" -> {
+          if (!(entry.getValue() instanceof Map<?, ?> dm)) {
+            return "\"defaultModel\" must be an object";
+          }
+          for (String field : List.of("providerId", "modelId", "tokenId")) {
+            Object v = dm.get(field);
+            if (v != null && (!(v instanceof String s) || s.length() > 128)) {
+              return "\"defaultModel." + field + "\" must be a string of at most 128 characters";
+            }
+          }
+        }
+        case "about" -> {
+          if (!(entry.getValue() instanceof String s) || s.length() > 2000) {
+            return "\"about\" must be a string of at most 2000 characters";
+          }
+        }
+        case "disabledTools" -> {
+          if (!(entry.getValue() instanceof List<?> list)) {
+            return "\"disabledTools\" must be an array";
+          }
+          if (list.size() > 200) {
+            return "\"disabledTools\" must contain at most 200 entries";
+          }
+          for (Object v : list) {
+            if (!(v instanceof String s) || !s.matches("[A-Za-z0-9_-]{1,128}")) {
+              return "\"disabledTools\" entries must be tool names of at most 128 characters";
+            }
+          }
+        }
+        default -> {
+          return "unknown key \""
+              + entry.getKey()
+              + "\" for scope \"ai\""
+              + " (allowed: defaultModel, about, disabledTools)";
+        }
       }
     }
     return null;

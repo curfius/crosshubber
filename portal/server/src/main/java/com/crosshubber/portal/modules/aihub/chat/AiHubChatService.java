@@ -2,7 +2,9 @@ package com.crosshubber.portal.modules.aihub.chat;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,9 +21,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.crosshubber.portal.modules.agent.AgentToolCallbacks;
-import com.crosshubber.portal.modules.agent.ToolDispatcher;
-import com.crosshubber.portal.modules.agent.ToolRegistry;
+import com.crosshubber.portal.modules.aihub.agent.AgentToolCallbacks;
+import com.crosshubber.portal.modules.aihub.agent.ToolDispatcher;
+import com.crosshubber.portal.modules.aihub.agent.ToolRegistry;
 import com.crosshubber.portal.modules.aihub.context.AgentPromptAssembler;
 import com.crosshubber.portal.modules.aihub.context.ClientContext;
 import com.crosshubber.portal.modules.aihub.context.SessionContextBuilder;
@@ -29,7 +31,8 @@ import com.crosshubber.portal.modules.aihub.context.SessionContextPack;
 import com.crosshubber.portal.modules.aihub.conversations.AiHubConversationsService;
 import com.crosshubber.portal.modules.aihub.dto.ChatStreamRequest;
 import com.crosshubber.portal.modules.aihub.providers.AiHubProvidersService;
-import com.crosshubber.portal.modules.settings.modules.ModuleSettingsService;
+import com.crosshubber.portal.modules.aihub.settings.AiHubSettingsService;
+import com.crosshubber.portal.modules.usersettings.scopes.UserSettingsService;
 import com.crosshubber.portal.security.PortalUser;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -44,8 +47,8 @@ import tools.jackson.databind.node.ObjectNode;
  * message this service:
  *
  * <ol>
- *   <li>Reads the selected provider/model/token from the {@code ai-hub} module settings (1 DB
- *       query) plus the {@code agent.enabled} flag (default on).
+ *   <li>Reads the selected provider/model/token from the AI Hub settings document ({@code
+ *       ai_hub_settings}, 1 DB query) plus the {@code agent.enabled} flag (default on).
  *   <li>Builds the {@link SessionContextPack} — server-authoritative identity + client-supplied
  *       navigation state — and assembles the agent system message (persona, configured prompt,
  *       context JSON, tool catalogue).
@@ -68,11 +71,13 @@ public class AiHubChatService {
 
   private static final Logger log = LoggerFactory.getLogger(AiHubChatService.class);
 
-  private static final String MODULE_KEY = "ai-hub";
+  /** Per-user AI settings scope ({@code user_settings.scope = 'ai'}, phase 5). */
+  static final String USER_SCOPE = "ai";
 
-  private final ModuleSettingsService moduleSettings;
+  private final AiHubSettingsService aiHubSettings;
   private final AiHubProvidersService providersService;
   private final AiHubConversationsService conversationsService;
+  private final UserSettingsService userSettings;
   private final ChatMemory chatMemory;
   private final ObjectMapper objectMapper;
   private final SessionContextBuilder contextBuilder;
@@ -91,9 +96,10 @@ public class AiHubChatService {
       Caffeine.newBuilder().expireAfterWrite(60, TimeUnit.SECONDS).maximumSize(64).build();
 
   public AiHubChatService(
-      ModuleSettingsService moduleSettings,
+      AiHubSettingsService aiHubSettings,
       AiHubProvidersService providersService,
       AiHubConversationsService conversationsService,
+      UserSettingsService userSettings,
       ChatMemory chatMemory,
       ObjectMapper objectMapper,
       SessionContextBuilder contextBuilder,
@@ -101,9 +107,10 @@ public class AiHubChatService {
       ToolRegistry toolRegistry,
       AgentToolCallbacks toolCallbacks,
       ToolDispatcher toolDispatcher) {
-    this.moduleSettings = moduleSettings;
+    this.aiHubSettings = aiHubSettings;
     this.providersService = providersService;
     this.conversationsService = conversationsService;
+    this.userSettings = userSettings;
     this.chatMemory = chatMemory;
     this.objectMapper = objectMapper;
     this.contextBuilder = contextBuilder;
@@ -139,7 +146,8 @@ public class AiHubChatService {
       String message,
       ClientContext context,
       ChatStreamRequest.ToolConfirmation confirmation) {
-    EffectiveConfig cfg = resolveConfig();
+    Map<String, Object> userAi = userSettings.get(user.sub(), USER_SCOPE);
+    EffectiveConfig cfg = resolveConfig(aiHubSettings.get(), userAi);
     log.info("[ai-hub] chat request provider={} model={}", cfg.providerId(), cfg.model());
 
     // --- Conversation management ---
@@ -169,10 +177,12 @@ public class AiHubChatService {
     }
 
     // --- Session context + agent system prompt (AI plan A3) ---
+    Set<String> disabled = disabledToolNames(userAi);
     SessionContextPack pack = contextBuilder.build(user, context);
     List<AgentPromptAssembler.ToolSummary> catalogue =
-        cfg.agentEnabled() ? toolSummaries() : List.of();
-    String systemPrompt = promptAssembler.build(cfg.systemPrompt(), pack, catalogue);
+        cfg.agentEnabled() ? toolSummaries(disabled) : List.of();
+    String systemPrompt =
+        promptAssembler.build(cfg.systemPrompt(), aboutText(userAi), pack, catalogue);
 
     // --- Request-scoped tool loop wiring (AI plan B3) ---
     // Frames from the tool loop ride the same SSE channel as content deltas: a request-scoped
@@ -180,7 +190,7 @@ public class AiHubChatService {
     Sinks.Many<String> toolFrames = Sinks.many().unicast().onBackpressureBuffer();
     List<ToolCallback> callbacks =
         cfg.agentEnabled()
-            ? toolCallbacks.forRequest(user, finalConvId, toolFrames::tryEmitNext)
+            ? toolCallbacks.forRequest(user, finalConvId, toolFrames::tryEmitNext, disabled)
             : List.of();
 
     // --- Pending tool confirmation (AI plan B6) ---
@@ -240,8 +250,9 @@ public class AiHubChatService {
         + ". Summarize the outcome for the user.]";
   }
 
-  private List<AgentPromptAssembler.ToolSummary> toolSummaries() {
+  private List<AgentPromptAssembler.ToolSummary> toolSummaries(Set<String> disabled) {
     return toolRegistry.catalogue().stream()
+        .filter(t -> !disabled.contains(t.modelName()))
         .map(t -> new AgentPromptAssembler.ToolSummary(t.modelName(), t.description(), t.mutates()))
         .toList();
   }
@@ -266,9 +277,9 @@ public class AiHubChatService {
   }
 
   /**
-   * Reads the AI Hub module settings and extracts the selected model's provider/token/model IDs
-   * along with generation parameters (system prompt, temperature, max tokens) and the {@code
-   * agent.enabled} flag (default on).
+   * Reads the AI Hub settings document ({@code ai_hub_settings}) and extracts the selected model's
+   * provider/token/model IDs along with generation parameters (system prompt, temperature, max
+   * tokens) and the {@code agent.enabled} flag (default on).
    *
    * <p>The settings JSON stores the selected model in one of two formats:
    *
@@ -282,8 +293,45 @@ public class AiHubChatService {
    * <p>If neither is set, or the referenced provider/token is missing, a 400 error is thrown.
    */
   EffectiveConfig resolveConfig() {
-    Map<String, Object> settings = moduleSettings.get(MODULE_KEY);
+    return resolveConfig(aiHubSettings.get(), Map.of());
+  }
 
+  /**
+   * Resolves the effective config, with the tenant-wide AI Hub settings as the base. A per-user
+   * default model (phase 5, {@code user_settings.ai.defaultModel}) overrides the tenant default
+   * only when the triple is complete, still within the token-gated selectable set, and the
+   * provider/token actually resolves — otherwise the tenant default (or legacy fallbacks) wins.
+   */
+  EffectiveConfig resolveConfig(Map<String, Object> settings, Map<String, Object> userAi) {
+    EffectiveConfig base = baseConfig(settings);
+    if (userAi.get("defaultModel") instanceof Map<?, ?> dm) {
+      String providerId = stringSetting(dm.get("providerId"));
+      String modelId = stringSetting(dm.get("modelId"));
+      String tokenId = stringSetting(dm.get("tokenId"));
+      if (providerId != null
+          && modelId != null
+          && tokenId != null
+          && isSelectable(settings, tokenId)
+          && providersService.resolveApiKey(providerId, tokenId) != null) {
+        return new EffectiveConfig(
+            providerId,
+            modelId,
+            tokenId,
+            base.systemPrompt(),
+            base.temperature(),
+            base.maxTokens(),
+            base.agentEnabled());
+      }
+    }
+    return base;
+  }
+
+  /**
+   * Extracts the tenant-wide config: the selected model triple (two stored formats, below),
+   * generation parameters and the {@code agent.enabled} flag (default on). Throws 400 when no
+   * usable model selection exists.
+   */
+  private EffectiveConfig baseConfig(Map<String, Object> settings) {
     // Extract the selected model triple from the settings JSON.
     String providerId = null;
     String modelId = null;
@@ -316,6 +364,29 @@ public class AiHubChatService {
         doubleSetting(settings.get("temperature"), 0.7),
         intSetting(settings.get("maxTokens"), 4096),
         booleanSetting(settings.get("agent.enabled"), true));
+  }
+
+  private static String aboutText(Map<String, Object> userAi) {
+    return stringSetting(userAi.get("about"));
+  }
+
+  /** User turn-off list (phase 5): tool/agent model names disabled in the AI user settings. */
+  static Set<String> disabledToolNames(Map<String, Object> userAi) {
+    if (userAi.get("disabledTools") instanceof List<?> list) {
+      return list.stream()
+          .filter(String.class::isInstance)
+          .map(String.class::cast)
+          .collect(Collectors.toSet());
+    }
+    return Set.of();
+  }
+
+  /** Token gating from the settings screen ({@code selectedTokens}) for a per-user default. */
+  private static boolean isSelectable(Map<String, Object> settings, String tokenId) {
+    if (settings.get("selectedTokens") instanceof List<?> selected && !selected.isEmpty()) {
+      return selected.contains(tokenId);
+    }
+    return true;
   }
 
   /**

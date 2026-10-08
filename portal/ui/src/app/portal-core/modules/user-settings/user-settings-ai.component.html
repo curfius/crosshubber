@@ -1,0 +1,110 @@
+<div class="mx-auto max-w-2xl">
+  <h2 class="ds-heading-3">{{ i18n.t('userSettings.ai.title') }}</h2>
+  <p class="mt-1 text-sm text-[var(--portal-text-muted)]">
+    {{ i18n.t('userSettings.ai.description') }}
+  </p>
+
+  <!-- Default model (only meaningful when more than one is available) -->
+  <div class="ds-card mt-6 p-5">
+    <h3 class="text-sm font-semibold text-[var(--portal-text-primary)]">
+      {{ i18n.t('userSettings.ai.default-model') }}
+    </h3>
+    <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">
+      {{ i18n.t('userSettings.ai.default-model-hint') }}
+    </p>
+    @if (hasModelChoice()) {
+      <select
+        class="ds-select mt-3 w-full max-w-sm"
+        [value]="defaultModelKey()"
+        (change)="onModelSelect($event)"
+        [attr.aria-label]="i18n.t('userSettings.ai.default-model')"
+      >
+        @for (m of models(); track modelKeyOf(m)) {
+          <option [value]="modelKeyOf(m)">{{ m.providerName }} / {{ m.modelName }}</option>
+        }
+      </select>
+    } @else {
+      <p class="mt-3 text-xs text-[var(--portal-text-disabled)]">
+        {{ i18n.t('userSettings.ai.no-model-choice') }}
+      </p>
+    }
+  </div>
+
+  <!-- About you — context for personalized answers -->
+  <div class="ds-card mt-4 p-5">
+    <h3 class="text-sm font-semibold text-[var(--portal-text-primary)]">
+      {{ i18n.t('userSettings.ai.about') }}
+    </h3>
+    <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">
+      {{ i18n.t('userSettings.ai.about-hint') }}
+    </p>
+    <textarea
+      class="ds-textarea mt-3 w-full"
+      rows="4"
+      [value]="about()"
+      (input)="onAboutInput($any($event.target).value)"
+      (blur)="onAboutBlur()"
+      [placeholder]="i18n.t('userSettings.ai.about-placeholder')"
+    ></textarea>
+  </div>
+
+  <!-- Tools & agents per module, per-user toggles -->
+  <div class="ds-card mt-4 p-5">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-[var(--portal-text-primary)]">
+        {{ i18n.t('userSettings.ai.tools') }}
+      </h3>
+      @if (saved()) {
+        <span class="text-xs text-[var(--portal-status-success)]">{{
+          i18n.t('userSettings.ai.saved')
+        }}</span>
+      }
+    </div>
+    <p class="mt-0.5 text-xs text-[var(--portal-text-muted)]">
+      {{ i18n.t('userSettings.ai.tools-hint') }}
+    </p>
+    @if (groups().length === 0) {
+      <p class="mt-3 text-xs text-[var(--portal-text-disabled)]">
+        {{ i18n.t('userSettings.ai.no-tools') }}
+      </p>
+    }
+    @for (g of groups(); track g.moduleKey) {
+      <div class="mt-3">
+        <div class="text-[10px] uppercase tracking-wide text-[var(--portal-text-disabled)]">
+          {{ g.moduleKey === '' ? i18n.t('userSettings.ai.portal') : g.moduleKey }}
+        </div>
+        <div class="mt-1.5 space-y-1.5">
+          @for (e of g.entries; track e.modelName) {
+            <div
+              class="flex items-center gap-3 rounded-lg border border-[var(--portal-border-subtle)] bg-[var(--portal-bg-subtle)] px-3 py-2"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-xs font-medium text-[var(--portal-text-secondary)]">
+                    {{ e.name }}
+                  </span>
+                  <span
+                    class="ds-badge"
+                    [class]="
+                      e.kind === 'agent' ? 'ds-badge ds-badge-info' : 'ds-badge ds-badge-default'
+                    "
+                    >{{ kindLabel(e.kind) }}</span
+                  >
+                  @if (e.mutates) {
+                    <span class="ds-badge ds-badge-warning">{{
+                      i18n.t('userSettings.ai.mutating')
+                    }}</span>
+                  }
+                </div>
+                <p class="mt-0.5 line-clamp-2 text-[11px] text-[var(--portal-text-muted)]">
+                  {{ e.description }}
+                </p>
+              </div>
+              <app-switch [checked]="isEnabled(e)" (toggled)="toggle(e, $event)" />
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

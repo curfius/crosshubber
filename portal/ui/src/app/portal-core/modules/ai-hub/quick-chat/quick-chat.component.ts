@@ -12,7 +12,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ModuleSettingsService } from '../../../../core/settings/module-settings.service';
+import { AiHubSettingsService } from '../../../../core/ai-hub/ai-hub-settings.service';
 import { AiHubService } from '../../../../core/ai-hub/ai-hub.service';
 import {
   deriveChatModelOptions,
@@ -24,24 +24,26 @@ import {
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { WorkbenchService } from '../../../features/workspaces/workspaces.store';
 import { ChatCoreService, type ChatMessage } from '../shared/chat-core.service';
-import { ChatToolFlow, toolStatusTone, waitUntilIdle } from '../shared/chat-tool-flow';
+import { ChatToolFlow, waitUntilIdle } from '../shared/chat-tool-flow';
+import { AiHubHandoffService } from '../shared/ai-hub-handoff.service';
+import { renderChatMarkdown } from '../shared/chat-markdown';
+import { ChatActivityLine } from '../shared/activity-line/chat-activity-line.component';
 import { buildClientContext } from '../shared/session-context';
 import { ConfirmDialog } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 
-const MODULE_KEY = 'ai-hub';
-
 @Component({
   selector: 'app-ai-hub-quick-chat',
-  imports: [FormsModule, ConfirmDialog],
+  imports: [FormsModule, ConfirmDialog, ChatActivityLine],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './quick-chat.component.html',
   styleUrl: './quick-chat.component.css',
 })
 export class AiHubQuickChat implements OnInit, AfterViewChecked {
-  private readonly moduleSettings = inject(ModuleSettingsService);
+  private readonly aiHubSettings = inject(AiHubSettingsService);
   private readonly aiHub = inject(AiHubService);
   private readonly chatCore = inject(ChatCoreService);
   private readonly workbench = inject(WorkbenchService);
+  private readonly handoff = inject(AiHubHandoffService);
   protected readonly i18n = inject(I18nService);
 
   @ViewChild('messagesContainer') messagesContainer?: ElementRef<HTMLDivElement>;
@@ -58,7 +60,6 @@ export class AiHubQuickChat implements OnInit, AfterViewChecked {
   protected readonly errorExpanded = signal(false);
   protected readonly status = signal('');
   protected readonly inputPlaceholder = signal('');
-  protected readonly showModelPicker = signal(false);
   /** Tool-activity rows + pending confirmation for the agent loop (AI plan C3). */
   protected readonly toolFlow = new ChatToolFlow();
 
@@ -72,10 +73,7 @@ export class AiHubQuickChat implements OnInit, AfterViewChecked {
   });
 
   async ngOnInit(): Promise<void> {
-    const [, settings] = await Promise.all([
-      this.aiHub.load(),
-      this.moduleSettings.get(MODULE_KEY),
-    ]);
+    const [, settings] = await Promise.all([this.aiHub.load(), this.aiHubSettings.load()]);
     const selectedTokens = new Set(
       Array.isArray(settings['selectedTokens']) ? (settings['selectedTokens'] as string[]) : [],
     );
@@ -97,20 +95,33 @@ export class AiHubQuickChat implements OnInit, AfterViewChecked {
     return modelKey(m);
   }
 
+  /** Dropdown change handler (the selector only renders when > 1 model is available). */
+  protected async onModelSelect(e: Event): Promise<void> {
+    const value = (e.target as HTMLSelectElement).value;
+    const model = this.models().find((m) => this.modelOptionKey(m) === value);
+    if (model) await this.selectModel(model);
+  }
+
   protected async selectModel(m: ChatModelOption): Promise<void> {
     this.selectedModelKey.set(this.modelOptionKey(m));
-    this.showModelPicker.set(false);
-    await this.moduleSettings.update(MODULE_KEY, {
+    await this.aiHubSettings.save({
       defaultModel: toDefaultModel(m),
     });
   }
 
-  protected toggleModelPicker(): void {
-    this.showModelPicker.update((v) => !v);
+  protected renderMarkdown(content: string): string {
+    return renderChatMarkdown(content);
   }
 
-  protected onPickerBackdrop(): void {
-    this.showModelPicker.set(false);
+  /**
+   * Expand handoff (phase 4): park the current conversation id and open the AI Hub
+   * app — the main assistant page loads the conversation and continues it there.
+   */
+  protected expandToMain(): void {
+    this.handoff.requestOpen(this.conversationId);
+    const ep = this.workbench.findModuleContent('ai-hub', 'ai-hub');
+    if (ep) this.workbench.openApp(ep);
+    this.close.emit();
   }
 
   private scrollToBottom(): void {
@@ -205,12 +216,6 @@ export class AiHubQuickChat implements OnInit, AfterViewChecked {
   protected declineToolCall(): void {
     this.toolFlow.decline();
   }
-
-  protected toolStatusLabel(status: string): string {
-    return this.i18n.t('agent.outcome.' + status.replace(/_/g, '-'));
-  }
-
-  protected readonly toolStatusTone = toolStatusTone;
 
   protected clearError(): void {
     this.errorMessage.set('');

@@ -19,7 +19,14 @@ function ep(moduleKey: string): PortalModuleContent {
 
 /** Duck-typed workbench stub — buildClientContext only reads three signals. */
 function workbenchStub(opts: {
-  groups: Record<string, { id: string; tabs: Array<{ id: number; content: PortalModuleContent; instance: number }>; activeId: number | null }>;
+  groups: Record<
+    string,
+    {
+      id: string;
+      tabs: Array<{ id: number; content: PortalModuleContent; instance: number }>;
+      activeId: number | null;
+    }
+  >;
   focused: string | null;
   workspace: string | null;
 }): WorkbenchService {

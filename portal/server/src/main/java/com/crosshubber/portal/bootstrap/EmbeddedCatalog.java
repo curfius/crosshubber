@@ -162,6 +162,15 @@ public final class EmbeddedCatalog {
                   new Entry(
                       "main", "applications", "AI Hub", "ai-hub", "#f59e0b", -3, false, List.of()),
                   new Entry(
+                      "ai",
+                      "user-settings",
+                      "AI",
+                      "user-settings-ai",
+                      "#f59e0b",
+                      1,
+                      false,
+                      List.of()),
+                  new Entry(
                       "settings",
                       "settings",
                       "AI Hub",
@@ -188,6 +197,41 @@ public final class EmbeddedCatalog {
                       3,
                       false,
                       List.of()))),
+          new Module(
+              "msgcenter",
+              "Message Center",
+              "inbox",
+              "1.0",
+              List.of(
+                  "portal-msgcenter-edit", "portal-msgcenter-groups", "portal-msgcenter-templates"),
+              List.of(
+                  new Entry(
+                      "main",
+                      "applications",
+                      "Message Center",
+                      "msg-center",
+                      "#06b6d4",
+                      -2,
+                      false,
+                      List.of()),
+                  new Entry(
+                      "admin",
+                      "settings",
+                      "Message Center Admin",
+                      "msg-center-admin",
+                      "#06b6d4",
+                      5,
+                      false,
+                      List.of("portal-msgcenter-edit")),
+                  new Entry(
+                      "templates",
+                      "settings",
+                      "Task Template Studio",
+                      "msg-center-templates",
+                      "#06b6d4",
+                      6,
+                      false,
+                      List.of("portal-msgcenter-templates")))),
           new Module(
               "i18n-settings",
               "Internationalisation",

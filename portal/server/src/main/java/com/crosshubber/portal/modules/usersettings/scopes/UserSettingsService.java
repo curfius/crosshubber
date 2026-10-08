@@ -50,6 +50,16 @@ public class UserSettingsService {
         .orElseGet(LinkedHashMap::new);
   }
 
+  /** All users holding a given scope: {@code {userId: settings}} (subscriber rosters). */
+  @Transactional(readOnly = true)
+  public Map<String, Map<String, Object>> getAllByScope(String scope) {
+    Map<String, Map<String, Object>> out = new LinkedHashMap<>();
+    for (UserSettingsEntity entity : repo.findByScope(scope)) {
+      out.put(entity.getUserId(), parseJson(entity.getSettings()));
+    }
+    return out;
+  }
+
   /**
    * Atomic JSONB merge upsert ({@code settings || $json}) — mirrors the Node {@code ON CONFLICT DO
    * UPDATE SET settings = user_settings.settings || $3}.

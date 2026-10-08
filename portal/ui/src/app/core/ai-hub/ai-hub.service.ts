@@ -43,6 +43,18 @@ export interface FetchedModel {
   name: string;
 }
 
+/** One entry of the per-user agent catalog (phase 5): tools + sub-agents. */
+export interface AgentCatalogEntry {
+  /** Provider-safe name exposed to the model (`<moduleKey>_<name>` for remote/agent). */
+  modelName: string;
+  name: string;
+  /** builtin | remote | agent */
+  kind: string;
+  moduleKey: string | null;
+  description: string;
+  mutates: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AiHubService {
   readonly providers = signal<LlmProviderConfig[]>([]);
@@ -60,7 +72,7 @@ export class AiHubService {
     try {
       const res = await fetch('/api/ai-hub/providers');
       if (!res.ok) return;
-      const data = await res.json() as LlmProvidersResponse;
+      const data = (await res.json()) as LlmProvidersResponse;
       this.providers.set(data.providers ?? []);
       this.loaded.set(true);
     } catch (err) {
@@ -75,27 +87,39 @@ export class AiHubService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
       });
-      if (!res.ok) { console.error('[ai-hub] updateProvider failed:', res.status, await res.text()); return; }
-      const updated = await res.json() as LlmProviderConfig;
-      this.providers.update((ps) => ps.map((p) => p.id === id ? updated : p));
+      if (!res.ok) {
+        console.error('[ai-hub] updateProvider failed:', res.status, await res.text());
+        return;
+      }
+      const updated = (await res.json()) as LlmProviderConfig;
+      this.providers.update((ps) => ps.map((p) => (p.id === id ? updated : p)));
     } catch (err) {
       console.error('[ai-hub] failed to update provider:', err);
     }
   }
 
-  async updateToken(providerId: string, tokenId: string, patch: Partial<LlmTokenConfig>): Promise<void> {
+  async updateToken(
+    providerId: string,
+    tokenId: string,
+    patch: Partial<LlmTokenConfig>,
+  ): Promise<void> {
     try {
-      const res = await fetch(`/api/ai-hub/providers/${encodeURIComponent(providerId)}/tokens/${encodeURIComponent(tokenId)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      });
+      const res = await fetch(
+        `/api/ai-hub/providers/${encodeURIComponent(providerId)}/tokens/${encodeURIComponent(tokenId)}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        },
+      );
       if (!res.ok) return;
-      const updated = await res.json() as LlmTokenResponse;
-      this.providers.update((ps) => ps.map((p) => {
-        if (p.id !== providerId) return p;
-        return { ...p, tokens: p.tokens.map((t) => t.id === tokenId ? updated : t) };
-      }));
+      const updated = (await res.json()) as LlmTokenResponse;
+      this.providers.update((ps) =>
+        ps.map((p) => {
+          if (p.id !== providerId) return p;
+          return { ...p, tokens: p.tokens.map((t) => (t.id === tokenId ? updated : t)) };
+        }),
+      );
     } catch (err) {
       console.error('[ai-hub] failed to update token:', err);
     }
@@ -108,12 +132,17 @@ export class AiHubService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: token.name, apiKey: token.apiKey }),
       });
-      if (!res.ok) { console.error('[ai-hub] addToken failed:', res.status, await res.text()); return; }
-      const created = await res.json() as LlmTokenResponse;
-      this.providers.update((ps) => ps.map((p) => {
-        if (p.id !== providerId) return p;
-        return { ...p, tokens: [...p.tokens, created] };
-      }));
+      if (!res.ok) {
+        console.error('[ai-hub] addToken failed:', res.status, await res.text());
+        return;
+      }
+      const created = (await res.json()) as LlmTokenResponse;
+      this.providers.update((ps) =>
+        ps.map((p) => {
+          if (p.id !== providerId) return p;
+          return { ...p, tokens: [...p.tokens, created] };
+        }),
+      );
     } catch (err) {
       console.error('[ai-hub] failed to add token:', err);
     }
@@ -121,14 +150,22 @@ export class AiHubService {
 
   async removeToken(providerId: string, tokenId: string): Promise<void> {
     try {
-      const res = await fetch(`/api/ai-hub/providers/${encodeURIComponent(providerId)}/tokens/${encodeURIComponent(tokenId)}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) { console.error('[ai-hub] removeToken failed:', res.status, await res.text()); return; }
-      this.providers.update((ps) => ps.map((p) => {
-        if (p.id !== providerId) return p;
-        return { ...p, tokens: p.tokens.filter((t) => t.id !== tokenId) };
-      }));
+      const res = await fetch(
+        `/api/ai-hub/providers/${encodeURIComponent(providerId)}/tokens/${encodeURIComponent(tokenId)}`,
+        {
+          method: 'DELETE',
+        },
+      );
+      if (!res.ok) {
+        console.error('[ai-hub] removeToken failed:', res.status, await res.text());
+        return;
+      }
+      this.providers.update((ps) =>
+        ps.map((p) => {
+          if (p.id !== providerId) return p;
+          return { ...p, tokens: p.tokens.filter((t) => t.id !== tokenId) };
+        }),
+      );
     } catch (err) {
       console.error('[ai-hub] failed to remove token:', err);
     }
@@ -146,6 +183,19 @@ export class AiHubService {
     }
   }
 
+  /** Per-user tool/agent listing (role-filtered server-side); empty on failure. */
+  async listAgentCatalog(): Promise<AgentCatalogEntry[]> {
+    try {
+      const res = await fetch('/api/ai-hub/agent-catalog');
+      if (!res.ok) return [];
+      const data = (await res.json()) as { entries: AgentCatalogEntry[] };
+      return data.entries ?? [];
+    } catch (err) {
+      console.error('[ai-hub] failed to load agent catalog:', err);
+      return [];
+    }
+  }
+
   async addCustomProvider(id: string, name: string, baseURL: string): Promise<boolean> {
     try {
       const res = await fetch('/api/ai-hub/providers', {
@@ -153,8 +203,11 @@ export class AiHubService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, name, baseURL }),
       });
-      if (!res.ok) { console.error('[ai-hub] addCustomProvider failed:', res.status, await res.text()); return false; }
-      const provider = await res.json() as LlmProviderConfig;
+      if (!res.ok) {
+        console.error('[ai-hub] addCustomProvider failed:', res.status, await res.text());
+        return false;
+      }
+      const provider = (await res.json()) as LlmProviderConfig;
       this.providers.update((ps) => [...ps, provider]);
       return true;
     } catch (err) {
@@ -165,8 +218,13 @@ export class AiHubService {
 
   async removeCustomProvider(id: string): Promise<boolean> {
     try {
-      const res = await fetch(`/api/ai-hub/providers/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      if (!res.ok) { console.error('[ai-hub] removeCustomProvider failed:', res.status, await res.text()); return false; }
+      const res = await fetch(`/api/ai-hub/providers/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        console.error('[ai-hub] removeCustomProvider failed:', res.status, await res.text());
+        return false;
+      }
       this.providers.update((ps) => ps.filter((p) => p.id !== id));
       return true;
     } catch (err) {

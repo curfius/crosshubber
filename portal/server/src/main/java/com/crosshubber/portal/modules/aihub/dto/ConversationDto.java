@@ -5,4 +5,10 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 @JsonInclude(Include.NON_NULL)
 public record ConversationDto(
-    String id, String userId, String origin, String title, String createdAt, String updatedAt) {}
+    String id,
+    String userId,
+    String origin,
+    String title,
+    String createdAt,
+    String updatedAt,
+    boolean pinned) {}
