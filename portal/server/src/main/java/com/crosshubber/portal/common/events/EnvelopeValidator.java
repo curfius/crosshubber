@@ -339,10 +339,9 @@ public class EnvelopeValidator {
    */
   private void checkTaskShape(ObjectNode task, List<String> errors) {
     JsonNode template = task.get("template");
-    boolean hasTemplate = template != null && !template.isNull();
     boolean hasFields = task.has("fields") && !task.get("fields").isNull();
     boolean hasSections = task.has("sections") && !task.get("sections").isNull();
-    if (hasTemplate) {
+    if (template != null && !template.isNull()) {
       if (!template.isObject()) {
         errors.add("task.template must be an object {key, version}");
       } else {

@@ -87,6 +87,15 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
    enforce it). Prefer fixing or documenting in the backlog file.
 6. **Formatting before done**: `mvn spotless:apply` then `mvn verify` for Java; Prettier
    (`.prettierrc`) for TS. Java comments/Javadoc follow Google Java Style (see skill).
+7. **Zero warnings**: the workspace must stay warning-free — no IDE/Java-language-server
+   diagnostics (deprecated API, unused code, null analysis, raw types, unchecked, m2e) and
+   no compiler warnings from `mvn`/`npm`. Fix warnings introduced by your change in the
+   same change; never silence one with a suppression (`@SuppressWarnings` only where a
+   real unchecked cast is documented; class-level `@SuppressWarnings` for deprecation is
+   forbidden). Known replacements: Jackson 3 `isTextual()`/`asText()` → `isString()`/
+   `asString()`; Spring 7 `HttpStatus.UNPROCESSABLE_ENTITY` → `UNPROCESSABLE_CONTENT`;
+   Testcontainers 2.x: `GenericContainer<?>` (generic), `PostgreSQLContainer` (non-generic —
+   do NOT parameterize); shared JSON via `JsonUtils`, not dead injected `ObjectMapper` fields.
 
 ## Backend conventions
 

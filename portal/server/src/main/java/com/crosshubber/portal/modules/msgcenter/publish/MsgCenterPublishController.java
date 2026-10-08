@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Third-party HTTP publish endpoint (plan §6): secret-header auth (HMAC over the caller key), rate
@@ -20,15 +19,11 @@ public class MsgCenterPublishController {
 
   private final PublishAuthenticator authenticator;
   private final MsgCenterPublishService publishService;
-  private final ObjectMapper mapper;
 
   public MsgCenterPublishController(
-      PublishAuthenticator authenticator,
-      MsgCenterPublishService publishService,
-      ObjectMapper mapper) {
+      PublishAuthenticator authenticator, MsgCenterPublishService publishService) {
     this.authenticator = authenticator;
     this.publishService = publishService;
-    this.mapper = mapper;
   }
 
   @PostMapping("/api/msgcenter/publish")

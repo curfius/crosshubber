@@ -311,9 +311,9 @@ class AiHubChatServiceTest {
 
     assertEquals(1, frames.size());
     JsonNode frame = mapper.readTree(frames.get(0));
-    assertEquals("tool_result", frame.path("type").asText());
-    assertEquals("confirmed:call_9", frame.path("tool").asText());
-    assertEquals("ok", frame.path("status").asText());
+    assertEquals("tool_result", frame.path("type").asString());
+    assertEquals("confirmed:call_9", frame.path("tool").asString());
+    assertEquals("ok", frame.path("status").asString());
   }
 
   @Test
@@ -333,7 +333,7 @@ class AiHubChatServiceTest {
 
     assertTrue(message.contains("status error"));
     JsonNode frame = mapper.readTree(frames.get(0));
-    assertEquals("error", frame.path("status").asText());
-    assertEquals("confirmed:call_gone", frame.path("tool").asText());
+    assertEquals("error", frame.path("status").asString());
+    assertEquals("confirmed:call_gone", frame.path("tool").asString());
   }
 }

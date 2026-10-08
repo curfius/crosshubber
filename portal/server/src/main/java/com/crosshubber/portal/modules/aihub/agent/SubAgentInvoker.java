@@ -65,7 +65,7 @@ public class SubAgentInvoker {
     }
     ObjectNode body = objectMapper.createObjectNode();
     body.put("task", task);
-    if (args.hasNonNull("expectedOutput")) {
+    if (args != null && args.hasNonNull("expectedOutput")) {
       body.put("expectedOutput", args.path("expectedOutput").asString());
     }
     ObjectNode context = body.putObject("context");

@@ -38,7 +38,7 @@ class MsgCenterTaskServiceTest {
   private final McTaskResponseRepository responseRepo = mock(McTaskResponseRepository.class);
   private final McTaskDraftRepository draftRepo = mock(McTaskDraftRepository.class);
   private final McTaskActivityRepository activityRepo = mock(McTaskActivityRepository.class);
-  private final AllowlistSubmitValidator shape = new AllowlistSubmitValidator(MAPPER);
+  private final AllowlistSubmitValidator shape = new AllowlistSubmitValidator();
 
   private MsgCenterTaskService service;
 
@@ -229,7 +229,7 @@ class MsgCenterTaskServiceTest {
 
   @Test
   void submitDataRuleEngineValidatesRequiredTypeBounds() {
-    McMessageEntity message = claimTask("claimed", "u1");
+    claimTask("claimed", "u1");
     when(responseRepo.findByMessageIdAndUserSub(anyLong(), anyString()))
         .thenReturn(Optional.empty());
 

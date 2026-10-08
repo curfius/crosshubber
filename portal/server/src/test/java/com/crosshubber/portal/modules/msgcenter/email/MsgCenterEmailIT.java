@@ -7,6 +7,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -29,6 +30,7 @@ import com.crosshubber.portal.modules.settings.modules.ModuleSettingsService;
 import com.crosshubber.portal.modules.usersettings.scopes.UserSettingsService;
 import com.crosshubber.portal.security.CryptoService;
 
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -57,8 +59,8 @@ class MsgCenterEmailIT {
   static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16-alpine");
 
   @Container
-  static final GenericContainer MAILPIT =
-      new GenericContainer(DockerImageName.parse("axllent/mailpit")).withExposedPorts(1025, 8025);
+  static final GenericContainer<?> MAILPIT =
+      new GenericContainer<>(DockerImageName.parse("axllent/mailpit")).withExposedPorts(1025, 8025);
 
   @DynamicPropertySource
   static void containers(DynamicPropertyRegistry registry) {
@@ -191,7 +193,8 @@ class MsgCenterEmailIT {
     setEntityId(message, Math.abs(UUID.randomUUID().getMostSignificantBits()));
     message.setMsgType("notification");
     message.setModuleKey("portal-dashboard");
-    message.setAudienceJson(mapper.readValue(audienceJson, Map.class));
+    message.setAudienceJson(
+        mapper.readValue(audienceJson, new TypeReference<LinkedHashMap<String, Object>>() {}));
     message.setTitleJson(Map.of("en", "Mirror check", "pt-PT", "Verificação espelho"));
     message.setBodyJson(Map.of("en", "Arrival mirror body.", "pt-PT", "Corpo na chegada."));
     message.setStatus("open");
@@ -214,11 +217,6 @@ class MsgCenterEmailIT {
             () ->
                 Assertions.assertThat(mailpitCount("probe@crosshubber.test"))
                     .isGreaterThanOrEqualTo(1));
-  }
-
-  private Integer portalSmtpPort() {
-    String raw = String.valueOf(MAILPIT.getMappedPort(1025)); // same source the seed supplier reads
-    return Integer.parseInt(raw);
   }
 
   @Test

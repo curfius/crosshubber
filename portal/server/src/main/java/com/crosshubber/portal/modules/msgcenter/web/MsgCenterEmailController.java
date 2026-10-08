@@ -18,7 +18,6 @@ import com.crosshubber.portal.modules.msgcenter.email.SmtpConfigService.SmtpConf
 import com.crosshubber.portal.modules.usersettings.scopes.UserSettingsService;
 
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Email-channel endpoints (Phase 7):
@@ -36,17 +35,14 @@ public class MsgCenterEmailController {
   private final SmtpConfigService smtpConfigService;
   private final MsgCenterEmailSender sender;
   private final UserSettingsService userSettingsService;
-  private final ObjectMapper mapper;
 
   public MsgCenterEmailController(
       SmtpConfigService smtpConfigService,
       MsgCenterEmailSender sender,
-      UserSettingsService userSettingsService,
-      ObjectMapper mapper) {
+      UserSettingsService userSettingsService) {
     this.smtpConfigService = smtpConfigService;
     this.sender = sender;
     this.userSettingsService = userSettingsService;
-    this.mapper = mapper;
   }
 
   /** Masked SMTP settings view — the secret never leaves the server. */

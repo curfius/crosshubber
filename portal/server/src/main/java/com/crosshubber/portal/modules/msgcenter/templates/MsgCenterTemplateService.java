@@ -233,7 +233,6 @@ public class MsgCenterTemplateService {
     return versionRepo.findByTemplateIdOrderByVersionDesc(templateId);
   }
 
-  @SuppressWarnings("unchecked")
   private List<String> fieldNames(McTaskTemplateVersionEntity version) {
     List<String> names = new ArrayList<>();
     JsonNode fields = jsonUtils.parseTreeOrNull(version.getFieldsJson());
@@ -249,7 +248,7 @@ public class MsgCenterTemplateService {
   }
 
   private static ResponseStatusException unprocessable(String reason) {
-    return new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, reason);
+    return new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, reason);
   }
 
   private static ResponseStatusException conflict(String reason) {

@@ -99,7 +99,7 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Map<String, String>> handleEnvelopeValidation(
       com.crosshubber.portal.common.events.EnvelopeValidationException ex) {
     log.warn("[portal] 422 invalid envelope: {}", ex.getMessage());
-    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
         .body(Map.of("error", ex.getMessage()));
   }
 

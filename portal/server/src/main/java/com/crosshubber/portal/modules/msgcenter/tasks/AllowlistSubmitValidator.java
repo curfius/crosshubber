@@ -9,7 +9,6 @@ import org.springframework.web.server.ResponseStatusException;
 import com.crosshubber.portal.modules.msgcenter.domain.McMessageEntity;
 
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
@@ -25,12 +24,6 @@ import tools.jackson.databind.node.ObjectNode;
  */
 @Component
 public class AllowlistSubmitValidator implements SubmitDataValidator {
-
-  private final ObjectMapper mapper;
-
-  public AllowlistSubmitValidator(ObjectMapper mapper) {
-    this.mapper = mapper;
-  }
 
   @Override
   public Map<String, Object> validate(
@@ -100,7 +93,6 @@ public class AllowlistSubmitValidator implements SubmitDataValidator {
     }
   }
 
-  @SuppressWarnings("unchecked")
   private void checkScalar(String name, Object value, Map<String, Object> schema) {
     String type = (String) schema.getOrDefault("type", "string");
     switch (type) {
@@ -147,7 +139,6 @@ public class AllowlistSubmitValidator implements SubmitDataValidator {
     }
   }
 
-  @SuppressWarnings("unchecked")
   private void checkEnum(String name, Object value, Map<String, Object> schema) {
     Object options = schema.get("enum");
     if (options instanceof java.util.List<?> list

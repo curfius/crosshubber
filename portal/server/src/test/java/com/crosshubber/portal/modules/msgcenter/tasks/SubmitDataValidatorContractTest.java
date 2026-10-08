@@ -80,7 +80,7 @@ class SubmitDataValidatorContractTest {
 
   @Test
   void serverVerdictsMatchTheSharedFixture() {
-    var validator = new AllowlistSubmitValidator(MAPPER);
+    var validator = new AllowlistSubmitValidator();
     McMessageEntity message = messageWithFields();
     // the fixture's required field (comment) is always satisfied so single-field cases stay
     // focused on their own schema rules; the dedicated requiredProbe covers absence
@@ -121,7 +121,7 @@ class SubmitDataValidatorContractTest {
   /** Required-field probe shared with the browser suite (missingRequired / requireFields). */
   @Test
   void requiredProbeMatchesTheSharedFixture() {
-    var validator = new AllowlistSubmitValidator(MAPPER);
+    var validator = new AllowlistSubmitValidator();
     McMessageEntity message = messageWithFields();
     JsonNode requiredCase;
     try (var in = getClass().getResourceAsStream("/msgcenter/schema-contract.json")) {
@@ -129,7 +129,6 @@ class SubmitDataValidatorContractTest {
     } catch (Exception e) {
       throw new IllegalStateException(e);
     }
-    String field = requiredCase.path("field").asString();
     ObjectNode payload =
         requiredCase.path("payload").isObject()
             ? (ObjectNode) requiredCase.path("payload")

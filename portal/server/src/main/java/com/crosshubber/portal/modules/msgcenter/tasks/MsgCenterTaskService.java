@@ -329,7 +329,6 @@ public class MsgCenterTaskService {
     activityRepo.save(row);
   }
 
-  @SuppressWarnings("unchecked")
   private Map<String, Object> responseDetail(
       String outcome, Map<String, Object> data, String note) {
     Map<String, Object> detail = new LinkedHashMap<>();

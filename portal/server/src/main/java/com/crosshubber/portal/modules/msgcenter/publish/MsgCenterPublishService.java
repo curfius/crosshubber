@@ -69,7 +69,7 @@ public class MsgCenterPublishService {
   public long publish(String callerKey, JsonNode rawEnvelope) {
     JsonNode envelope = resolveTemplate(rawEnvelope);
     if (!modulesService.exists(moduleKeyOf(envelope))) {
-      throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "unknown moduleKey");
+      throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "unknown moduleKey");
     }
     envelopeValidator.validate(envelope);
     String subject = subjectOf(envelope);

@@ -89,12 +89,12 @@ class MsgCenterTemplateServiceTest {
         assertThrows(
             ResponseStatusException.class,
             () -> service.resolve("nope", 1, MAPPER.createObjectNode()));
-    assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, badKey.getStatusCode());
+    assertEquals(HttpStatus.UNPROCESSABLE_CONTENT, badKey.getStatusCode());
     ResponseStatusException badVersion =
         assertThrows(
             ResponseStatusException.class,
             () -> service.resolve("expense-approval", 9, MAPPER.createObjectNode()));
-    assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, badVersion.getStatusCode());
+    assertEquals(HttpStatus.UNPROCESSABLE_CONTENT, badVersion.getStatusCode());
   }
 
   @Test
@@ -109,7 +109,7 @@ class MsgCenterTemplateServiceTest {
         assertThrows(
             ResponseStatusException.class,
             () -> service.resolve("expense-approval", 2, withCompletion));
-    assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, e.getStatusCode());
+    assertEquals(HttpStatus.UNPROCESSABLE_CONTENT, e.getStatusCode());
   }
 
   @Test

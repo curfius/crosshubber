@@ -55,7 +55,7 @@ public class MsgCenterGroupService {
             org.springframework.data.domain.Sort.by(
                 org.springframework.data.domain.Sort.Order.asc("name")))
         .stream()
-        .filter(McGroupEntity::isLive)
+        .filter(g -> g.isLive())
         .map(g -> toDto(g, viewerSub))
         .toList();
   }
@@ -67,7 +67,7 @@ public class MsgCenterGroupService {
             membership ->
                 groupRepo
                     .findById(membership.getGroupId())
-                    .filter(McGroupEntity::isLive)
+                    .filter(g -> g.isLive())
                     .map(
                         g ->
                             new MembershipDto(

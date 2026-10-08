@@ -63,7 +63,7 @@ class MsgCenterIngestionIT {
   static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16-alpine");
 
   @Container
-  static final GenericContainer NATS =
+  static final GenericContainer<?> NATS =
       new GenericContainer<>(DockerImageName.parse("nats:2.12-alpine"))
           .withCommand("-js")
           .withExposedPorts(4222);

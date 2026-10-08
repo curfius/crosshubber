@@ -79,14 +79,6 @@ class AgentToolsControllerTest {
     SecurityContextHolder.clearContext();
   }
 
-  private static UsernamePasswordAuthenticationToken principal(String... roles) {
-    AgentPrincipal p = new AgentPrincipal("u1", "Dev Admin", List.of(roles));
-    return new UsernamePasswordAuthenticationToken(
-        p,
-        null,
-        java.util.Arrays.stream(roles).map(r -> new SimpleGrantedAuthority("ROLE_" + r)).toList());
-  }
-
   @Test
   void listProjectsReturnsPayloadDirectly() throws Exception {
     when(projectService.listProjects(isNull(), isNull(), isNull())).thenReturn(List.of(project));

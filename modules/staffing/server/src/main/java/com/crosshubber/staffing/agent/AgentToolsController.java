@@ -178,7 +178,7 @@ public class AgentToolsController {
 
   private static String textOrNull(JsonNode args, String field) {
     JsonNode node = args.path(field);
-    if (!node.isTextual()) {
+    if (!node.isString()) {
       return null;
     }
     String value = node.asString();

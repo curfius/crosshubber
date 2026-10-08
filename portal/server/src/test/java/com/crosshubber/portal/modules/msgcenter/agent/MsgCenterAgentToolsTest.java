@@ -52,7 +52,7 @@ class MsgCenterAgentToolsTest {
             taskService,
             responsePublisher,
             publishService,
-            new AllowlistSubmitValidator(MAPPER),
+            new AllowlistSubmitValidator(),
             MAPPER);
     when(publishService.publish(anyString(), any(JsonNode.class))).thenReturn(7L);
     when(queryService.unread(anyString(), any())).thenReturn(1L);

@@ -10,12 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.crosshubber.portal.modules.msgcenter.domain.McMessageEntity;
-import com.crosshubber.portal.modules.msgcenter.groups.McGroupMemberEntity;
 import com.crosshubber.portal.modules.msgcenter.groups.McGroupMemberRepository;
 import com.crosshubber.portal.modules.msgcenter.groups.McGroupRepository;
 import com.crosshubber.portal.modules.usersettings.scopes.UserSettingsService;
-
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Immediate-mirror delivery (Phase 7, plan §10): event-driven hook fired by the ingest loop AFTER
@@ -38,7 +35,6 @@ public class MsgCenterEmailMirror {
   private final McGroupRepository groupRepo;
   private final McGroupMemberRepository memberRepo;
   private final UserSettingsService userSettingsService;
-  private final ObjectMapper mapper;
   private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
   public MsgCenterEmailMirror(
@@ -46,14 +42,12 @@ public class MsgCenterEmailMirror {
       MsgCenterEmailSender sender,
       McGroupRepository groupRepo,
       McGroupMemberRepository memberRepo,
-      UserSettingsService userSettingsService,
-      ObjectMapper mapper) {
+      UserSettingsService userSettingsService) {
     this.smtpConfigService = smtpConfigService;
     this.sender = sender;
     this.groupRepo = groupRepo;
     this.memberRepo = memberRepo;
     this.userSettingsService = userSettingsService;
-    this.mapper = mapper;
   }
 
   /** Ingest-loop hook — returns immediately; sending happens on virtual threads. */
@@ -98,7 +92,7 @@ public class MsgCenterEmailMirror {
             .ifPresent(
                 group ->
                     memberRepo.findByGroupId(group.getId()).stream()
-                        .filter(McGroupMemberEntity::isEmailFlag)
+                        .filter(m -> m.isEmailFlag())
                         .forEach(m -> addIfSubscribed(out, m.getUserSub())));
       }
     }
@@ -138,7 +132,7 @@ public class MsgCenterEmailMirror {
               Object fallback = e.getValue().get("emailFallback");
               return Boolean.TRUE.equals(fallback);
             })
-        .map(Map.Entry::getKey)
+        .map(e -> e.getKey())
         .toList();
   }
 

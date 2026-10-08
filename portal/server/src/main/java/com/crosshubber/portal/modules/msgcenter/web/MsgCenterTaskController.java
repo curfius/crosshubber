@@ -18,7 +18,6 @@ import com.crosshubber.portal.modules.msgcenter.tasks.MsgCenterTaskService;
 import com.crosshubber.portal.modules.msgcenter.tasks.SubmitDataValidator;
 
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Task lifecycle endpoints (plan §6): respond / claim / release / reset / draft / adopt. All
@@ -32,19 +31,16 @@ public class MsgCenterTaskController {
   private final MsgCenterResponsePublisher responsePublisher;
   private final McTaskResponseRepository responseRepo;
   private final SubmitDataValidator dataValidator;
-  private final ObjectMapper mapper;
 
   public MsgCenterTaskController(
       MsgCenterTaskService taskService,
       MsgCenterResponsePublisher responsePublisher,
       McTaskResponseRepository responseRepo,
-      SubmitDataValidator dataValidator,
-      ObjectMapper mapper) {
+      SubmitDataValidator dataValidator) {
     this.taskService = taskService;
     this.responsePublisher = responsePublisher;
     this.responseRepo = responseRepo;
     this.dataValidator = dataValidator;
-    this.mapper = mapper;
   }
 
   /** Submit a response (approve/deny/submit/skip + optional data + note). */
