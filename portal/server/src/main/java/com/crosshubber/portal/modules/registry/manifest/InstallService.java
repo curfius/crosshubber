@@ -164,6 +164,46 @@ public class InstallService {
   }
 
   /**
+   * Re-asserts the code-owned manifest for a builtin module (AI plan D5, B1 storage): inserts the
+   * ACTIVE version row when absent, rewrites it in place when the digest drifted (no supersede
+   * churn per boot), and syncs the owning module's {@code manifest_digest}. Never touches {@code
+   * managedBy}/{@code active} (config-owned) or draft rows — called by the Reconciler inside its
+   * transaction after the builtin module rows are upserted.
+   */
+  @Transactional
+  public void reassertBuiltinManifest(JsonNode manifest, String version, String installedBy) {
+    String moduleKey = manifest.path("key").asString();
+    String digest = digest(manifest);
+    Optional<ModuleVersionEntity> active =
+        versionRepo.findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(
+            moduleKey, VersionStatus.ACTIVE);
+    if (active.isEmpty()) {
+      ModuleVersionEntity row = new ModuleVersionEntity();
+      row.setModuleKey(moduleKey);
+      row.setVersion(version);
+      row.setDigest(digest);
+      row.setManifest(writeJson(manifest));
+      row.setInstalledBy(installedBy);
+      row.setStatus(VersionStatus.ACTIVE);
+      versionRepo.save(row);
+      log.debug("[reconcile] builtin manifest v{} recorded for module \"{}\"", version, moduleKey);
+    } else if (!digest.equals(active.get().getDigest())) {
+      ModuleVersionEntity row = active.get();
+      row.setDigest(digest);
+      row.setManifest(writeJson(manifest));
+      versionRepo.save(row);
+      log.info("[reconcile] builtin manifest re-asserted for module \"{}\"", moduleKey);
+    }
+    moduleRepo
+        .findById(moduleKey)
+        .ifPresent(
+            module -> {
+              module.setManifestDigest(digest);
+              moduleRepo.save(module);
+            });
+  }
+
+  /**
    * Best-effort Keycloak realm-role sync for the roles declared in a manifest. Non-transactional by
    * design — call it AFTER the install transaction commits so the HTTP round-trip never runs inside
    * a DB transaction. Failures are logged, never propagated.

@@ -15,7 +15,8 @@ import tools.jackson.databind.JsonNode;
  * @param modelName name exposed to the model — must be provider-safe, so remote entries are
  *     flattened to {@code <moduleKey>_<name>} with {@code -} replaced by {@code _} (dots/colons are
  *     not portable across function-calling providers)
- * @param moduleKey owning module key, null for built-in tools
+ * @param moduleKey owning module key — attribution + active-gating for built-in tools (AI plan D5;
+ *     null = platform-global), owning module for remote/agent entries
  * @param name tool name as declared (manifest name, or registry name for builtins)
  * @param description what the tool does — shown to the model
  * @param arguments JSON Schema for the arguments object, null when the tool takes no arguments
@@ -59,8 +60,33 @@ public record AgentTool(
 
   public static AgentTool builtin(
       String name, String description, JsonNode arguments, boolean mutates, List<String> roles) {
+    return builtin(null, name, description, arguments, mutates, roles);
+  }
+
+  /**
+   * A portal-native tool attributed to an embedded module (AI plan D5): {@code id} and {@code
+   * modelName} stay plain {@code name} so model prompts and audit rows never churn; {@code
+   * moduleKey} only drives catalogue gating and manifest synthesis.
+   */
+  public static AgentTool builtin(
+      String moduleKey,
+      String name,
+      String description,
+      JsonNode arguments,
+      boolean mutates,
+      List<String> roles) {
     return new AgentTool(
-        name, name, null, name, description, arguments, mutates, roles, Kind.BUILTIN, null, null);
+        name,
+        name,
+        moduleKey,
+        name,
+        description,
+        arguments,
+        mutates,
+        roles,
+        Kind.BUILTIN,
+        null,
+        null);
   }
 
   public static AgentTool remote(

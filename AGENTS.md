@@ -102,6 +102,12 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
 - Feature-based packaging: `modules.<feature>` owns everything for that feature. Cross-
   cutting code lives in `config/`, `security/`, `common/`. Features never import each
   other's internals — go through services.
+- Builtin agent tools declare themselves: feature-owned `BuiltinToolProvider` beans (SPI
+  in `modules/aihub/agent`) own declaration + handler; `BuiltinToolHandlers` only
+  aggregates. A set `moduleKey` gates the tool on that module's active state and puts it
+  in the module's Reconciler-synthesized manifest (manifest name snake-cased —
+  `Keys.AGENT_NAME_RE`; catalogue/model-facing name stays camelCase). Null moduleKey =
+  platform-global, never gated, in no manifest.
 - Controllers stay thin: routing + status codes. Business logic in services.
 - HTTP calls (Keycloak admin, LLM providers, module manifest fetches) must stay **out of
   database transactions** — blocking I/O inside `@Transactional` holds a Hikari

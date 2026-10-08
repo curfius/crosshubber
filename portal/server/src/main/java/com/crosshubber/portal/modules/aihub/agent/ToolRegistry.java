@@ -2,6 +2,7 @@ package com.crosshubber.portal.modules.aihub.agent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -27,7 +28,8 @@ import tools.jackson.databind.node.ObjectNode;
  * <p>Remote contributions are resolved from the installed manifests on demand and cached for 60s —
  * install/uninstall changes take effect within a minute without reconciler coupling. Invalid
  * entries cannot reach this registry: {@code ManifestValidator} rejects malformed manifests at
- * install/boot time (fail-fast).
+ * install/boot time (fail-fast). Built-in tools are declared by feature-owned {@link
+ * BuiltinToolProvider} beans (AI plan D5) and gated on their module's active state.
  */
 @Service
 public class ToolRegistry {
@@ -40,7 +42,8 @@ public class ToolRegistry {
   private final ObjectMapper objectMapper;
 
   /** Remote catalogue slice — tools and sub-agents resolved together from active manifests. */
-  private record RemoteCatalog(List<AgentTool> tools, List<AgentTool> agents) {}
+  private record RemoteCatalog(
+      List<AgentTool> tools, List<AgentTool> agents, Set<String> activeKeys) {}
 
   /** Short-lived catalogue cache — same lifetime model as the ChatClient cache. */
   private final Cache<String, RemoteCatalog> remoteCache =
@@ -57,9 +60,16 @@ public class ToolRegistry {
     this.objectMapper = objectMapper;
   }
 
-  /** Built-in portal tools (AI plan B1 seed set — low-risk reads). */
+  /**
+   * Built-in portal tools (AI plan B1 seed set — low-risk reads), gated on module state (AI plan
+   * D5): a tool attributed to an embedded module disappears while that module is inactive;
+   * platform-global tools (null moduleKey) are never gated.
+   */
   public List<AgentTool> builtinTools() {
-    return builtinHandlers.tools();
+    Set<String> activeKeys = remoteCache.get("catalogue", k -> resolveRemote()).activeKeys();
+    return builtinHandlers.tools().stream()
+        .filter(t -> t.moduleKey() == null || activeKeys.contains(t.moduleKey()))
+        .toList();
   }
 
   /** Tools contributed by active installed modules (manifest {@code agentic.tools[]}). */
@@ -94,7 +104,9 @@ public class ToolRegistry {
   private RemoteCatalog resolveRemote() {
     List<AgentTool> tools = new ArrayList<>();
     List<AgentTool> agents = new ArrayList<>();
+    Set<String> activeKeys = new java.util.HashSet<>();
     for (ModuleEntity module : modulesService.list(false)) {
+      activeKeys.add(module.getKey());
       if (module.getBaseUrl() == null || module.getBaseUrl().isBlank()) {
         continue;
       }
@@ -143,7 +155,7 @@ public class ToolRegistry {
       }
     }
     log.debug("[agent] remote catalogue: {} tools, {} sub-agents", tools.size(), agents.size());
-    return new RemoteCatalog(List.copyOf(tools), List.copyOf(agents));
+    return new RemoteCatalog(List.copyOf(tools), List.copyOf(agents), Set.copyOf(activeKeys));
   }
 
   private List<String> rolesOf(JsonNode entry) {

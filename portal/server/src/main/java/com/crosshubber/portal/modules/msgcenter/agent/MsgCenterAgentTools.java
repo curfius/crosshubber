@@ -1,11 +1,15 @@
 package com.crosshubber.portal.modules.msgcenter.agent;
 
+import static com.crosshubber.portal.modules.aihub.agent.ToolSchemas.arg;
+import static com.crosshubber.portal.modules.aihub.agent.ToolSchemas.schema;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 
 import com.crosshubber.portal.modules.aihub.agent.AgentTool;
+import com.crosshubber.portal.modules.aihub.agent.BuiltinToolProvider;
 import com.crosshubber.portal.modules.msgcenter.domain.MsgCenterQueryService;
 import com.crosshubber.portal.modules.msgcenter.domain.MsgCenterQueryService.InboxItemDto;
 import com.crosshubber.portal.modules.msgcenter.publish.MsgCenterPublishService;
@@ -20,15 +24,18 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Message-center portal agent tools (MESSAGE_CENTER plan §12, Phase 6) — registered in the same
- * builtin catalogue as the B1 seeds; dispatch, confirmation parking and audit come free from {@code
- * ToolDispatcher}. Identity is the session user (audience gates apply — the agent never sees beyond
- * the caller's inbox); {@code msgcenter_send} reuses the exact publish path of the HTTP endpoint
- * (validators, template resolution, moduleKey check) minus the secret header.
+ * Message-center portal agent tools (MESSAGE_CENTER plan §12, Phase 6) — declared through the
+ * {@link BuiltinToolProvider} SPI against the {@code msgcenter} module (AI plan D5), so
+ * deactivating the module hides them from the agent catalogue; dispatch, confirmation parking and
+ * audit come free from {@code ToolDispatcher}. Identity is the session user (audience gates apply —
+ * the agent never sees beyond the caller's inbox); {@code msgcenter_send} reuses the exact publish
+ * path of the HTTP endpoint (validators, template resolution, moduleKey check) minus the secret
+ * header.
  */
 @Service
-public class MsgCenterAgentTools {
+public class MsgCenterAgentTools implements BuiltinToolProvider {
 
+  private static final String MODULE_KEY = "msgcenter";
   private static final int MAX_LIST_ROWS = 50;
 
   private final MsgCenterQueryService queryService;
@@ -54,15 +61,18 @@ public class MsgCenterAgentTools {
   }
 
   /** The msgcenter tool catalogue (stable order: reads first, then mutating). */
+  @Override
   public List<AgentTool> tools() {
     List<AgentTool> tools = new ArrayList<>();
     tools.add(
         AgentTool.builtin(
+            MODULE_KEY,
             "msgcenter_list",
             "Lists the caller's Message Center inbox (notifications, messages, tasks) with read "
                 + "and status flags. Audience gating applies — this is exactly what the caller "
                 + "sees in their inbox.",
-            objectSchema(
+            schema(
+                objectMapper,
                 arg("type", "string", "Filter: notification | message | task. Omit for all."),
                 arg("status", "string", "Task filter: open | claimed | done."),
                 arg("unreadOnly", "boolean", "When true, return only items without a read marker."),
@@ -71,26 +81,30 @@ public class MsgCenterAgentTools {
             List.of()));
     tools.add(
         AgentTool.builtin(
+            MODULE_KEY,
             "msgcenter_get",
             "Returns one inbox item by id: title, body sections, deep-link and the full task "
                 + "spec (fields, claim state) plus the caller's own response for completed tasks.",
-            objectSchema(arg("id", "integer", "The inbox item id.")),
+            schema(objectMapper, arg("id", "integer", "The inbox item id.")),
             false,
             List.of()));
     tools.add(
         AgentTool.builtin(
+            MODULE_KEY,
             "msgcenter_claim_task",
             "Takes an unclaimed claim-mode task on the caller's behalf (CAS: one winner, losers "
                 + "get a 409-style error). Returns any released draft available for adoption.",
-            objectSchema(arg("id", "integer", "The task id.")),
+            schema(objectMapper, arg("id", "integer", "The task id.")),
             true,
             List.of()));
     tools.add(
         AgentTool.builtin(
+            MODULE_KEY,
             "msgcenter_respond_task",
             "Responds to a task: outcome approve|deny|submit|skip, optional validated form data "
                 + "(collect fields) and note. Same validation and CAS rules as the HTTP endpoint.",
-            objectSchema(
+            schema(
+                objectMapper,
                 arg("id", "integer", "The task id."),
                 arg("outcome", "string", "approve | deny | submit | skip."),
                 arg(
@@ -102,18 +116,20 @@ public class MsgCenterAgentTools {
             List.of()));
     tools.add(
         AgentTool.builtin(
+            MODULE_KEY,
             "msgcenter_send",
             "Publishes a portal message/notification/task envelope on the caller's behalf. The "
                 + "envelope must match the v1 contract (moduleKey, audience, title, body, task "
                 + "shape or task.template{key,version}); same validators and caps as the publish "
                 + "endpoint.",
-            objectSchema(arg("envelope", "object", "The complete v1 envelope object.")),
+            schema(objectMapper, arg("envelope", "object", "The complete v1 envelope object.")),
             true,
             List.of()));
     return List.copyOf(tools);
   }
 
   /** Executes a msgcenter builtin tool for the caller. */
+  @Override
   public JsonNode handle(AgentTool tool, PortalUser user, JsonNode args) {
     return switch (tool.name()) {
       case "msgcenter_list" -> list(user, args);
@@ -242,25 +258,5 @@ public class MsgCenterAgentTools {
     ObjectNode node = objectMapper.createObjectNode();
     node.put("error", message);
     return node;
-  }
-
-  // ── Argument schema helpers ──────────────────────────────────────────
-
-  private record Arg(String name, String type, String description) {}
-
-  private static Arg arg(String name, String type, String description) {
-    return new Arg(name, type, description);
-  }
-
-  private ObjectNode objectSchema(Arg... args) {
-    ObjectNode schema = objectMapper.createObjectNode();
-    schema.put("type", "object");
-    ObjectNode properties = schema.putObject("properties");
-    for (Arg arg : args) {
-      ObjectNode prop = properties.putObject(arg.name());
-      prop.put("type", arg.type());
-      prop.put("description", arg.description());
-    }
-    return schema;
   }
 }

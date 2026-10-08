@@ -76,6 +76,7 @@ public class Reconciler implements ApplicationRunner {
   private final ModuleRepository moduleRepo;
   private final ModuleContentRepository contentRepo;
   private final ModuleVersionRepository versionRepo;
+  private final BuiltinManifestSynthesizer builtinManifestSynthesizer;
   private final NavigationSettingsRepository navigationSettingsRepo;
   private final I18nLanguageRepository languageRepo;
   private final I18nLabelRepository labelRepo;
@@ -94,6 +95,7 @@ public class Reconciler implements ApplicationRunner {
       ModuleRepository moduleRepo,
       ModuleContentRepository contentRepo,
       ModuleVersionRepository versionRepo,
+      BuiltinManifestSynthesizer builtinManifestSynthesizer,
       NavigationSettingsRepository navigationSettingsRepo,
       I18nLanguageRepository languageRepo,
       I18nLabelRepository labelRepo,
@@ -110,6 +112,7 @@ public class Reconciler implements ApplicationRunner {
     this.moduleRepo = moduleRepo;
     this.contentRepo = contentRepo;
     this.versionRepo = versionRepo;
+    this.builtinManifestSynthesizer = builtinManifestSynthesizer;
     this.navigationSettingsRepo = navigationSettingsRepo;
     this.languageRepo = languageRepo;
     this.labelRepo = labelRepo;
@@ -137,6 +140,7 @@ public class Reconciler implements ApplicationRunner {
         status -> {
           upgradeLegacyStoredManifests();
           reconcileBuiltins(tenant);
+          reconcileBuiltinManifests();
           persistExternalModules(tenant, externalManifests);
           reconcileProviders(tenant);
           reconcileNavigationSettings(tenant);
@@ -349,6 +353,24 @@ public class Reconciler implements ApplicationRunner {
                     retiredEp[1]);
               });
     }
+  }
+
+  /**
+   * Re-asserts each embedded module's synthesized manifest (AI plan D5, B1 storage): content from
+   * {@link EmbeddedCatalog}, agent tool declarations from the owning feature's {@code
+   * BuiltinToolProvider} beans, validated fail-fast by the synthesizer and stored as the module's
+   * ACTIVE version row so the registry UI renders builtin contributions (D4). Drifted rows are
+   * rewritten in place at every boot — builtin manifests are code-owned; admin edits to them are
+   * reset on the next restart (draft rows are left alone).
+   */
+  private void reconcileBuiltinManifests() {
+    int reasserted = 0;
+    for (EmbeddedCatalog.Module mod : EmbeddedCatalog.CATALOG) {
+      JsonNode synthesized = builtinManifestSynthesizer.synthesize(mod);
+      installService.reassertBuiltinManifest(synthesized, mod.version(), "builtin-reconcile");
+      reasserted++;
+    }
+    log.info("[reconcile] re-asserted {} builtin manifests", reasserted);
   }
 
   /** Fetches an external manifest with 6 attempts, 3s apart; fail-fast after the last attempt. */

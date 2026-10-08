@@ -141,4 +141,23 @@ class ToolRegistryTest {
     verify(modulesService, times(1)).list(false);
     verify(installService, times(1)).activeManifest("solutions");
   }
+
+  @Test
+  void builtinToolsAreGatedOnModuleActiveState() {
+    // D5: attributed builtins vanish with their module; platform-global (null moduleKey) never gate
+    when(builtinHandlers.tools())
+        .thenReturn(
+            List.of(
+                AgentTool.builtin("getShellConfig", "config", null, false, List.of()),
+                AgentTool.builtin("msgcenter", "msgcenter_list", "inbox", null, false, List.of()),
+                AgentTool.builtin(
+                    "navigation", "getInstanceSettings", "settings", null, false, List.of())));
+    listReturns(module("msgcenter", null));
+
+    assertThat(registry.builtinTools())
+        .extracting(AgentTool::name)
+        .containsExactly("getShellConfig", "msgcenter_list");
+    assertThat(registry.byModelName("getInstanceSettings")).isNull();
+    assertThat(registry.byModelName("msgcenter_list")).isNotNull();
+  }
 }
