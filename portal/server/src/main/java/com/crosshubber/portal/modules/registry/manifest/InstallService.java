@@ -1,6 +1,5 @@
 package com.crosshubber.portal.modules.registry.manifest;
 
-import java.security.MessageDigest;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -288,11 +287,11 @@ public class InstallService {
       bootstrap.put("name", mod.getName());
       bootstrap.put("baseUrl", mod.getBaseUrl() != null ? mod.getBaseUrl() : "");
       bootstrap.put("health", mod.getHealth() != null ? mod.getHealth() : "/healthz");
-      ObjectNode content = bootstrap.putObject("content");
-      content.putArray("applications");
-      content.putArray("features");
-      content.putArray("adminSettings");
-      content.putArray("userSettings");
+      ObjectNode shell = bootstrap.putObject("shell");
+      shell.putArray("applications");
+      shell.putArray("features");
+      shell.putArray("adminSettings");
+      shell.putArray("userSettings");
       bootstrap.putObject("security").putArray("roles");
       manifest = bootstrap;
       activeVersion = "0.1";
@@ -514,57 +513,9 @@ public class InstallService {
     }
   }
 
-  /**
-   * sha256 over Node's digest JSON — {@code JSON.stringify(manifest,
-   * Object.keys(manifest).sort())}. The replacer array allow-lists the manifest's top-level key
-   * names at EVERY depth; V8 emits keys in replacer-array order (sorted), so nested objects not
-   * containing those exact key names collapse to empty objects.
-   */
+  /** sha256 over Node's digest JSON — see {@link ManifestDigest}. */
   private String digest(JsonNode manifest) {
-    List<String> allow = new java.util.ArrayList<>();
-    allow.addAll(manifest.propertyNames());
-    java.util.Collections.sort(allow);
-    try {
-      Object filtered = filterKeys(manifest, allow);
-      byte[] bytes = objectMapper.writeValueAsBytes(filtered);
-      byte[] hash = MessageDigest.getInstance("SHA-256").digest(bytes);
-      StringBuilder hex = new StringBuilder();
-      for (byte b : hash) {
-        hex.append(String.format("%02x", b));
-      }
-      return hex.toString();
-    } catch (Exception e) {
-      throw new IllegalStateException("digest failed", e);
-    }
-  }
-
-  private Object filterKeys(JsonNode node, List<String> allow) {
-    if (node.isObject()) {
-      Map<String, Object> out = new LinkedHashMap<>();
-      for (String name : allow) {
-        if (node.has(name)) {
-          out.put(name, filterKeys(node.get(name), allow));
-        }
-      }
-      return out;
-    }
-    if (node.isArray()) {
-      List<Object> out = new java.util.ArrayList<>();
-      for (JsonNode item : node) {
-        out.add(filterKeys(item, allow));
-      }
-      return out;
-    }
-    if (node.isString()) {
-      return node.asString();
-    }
-    if (node.isBoolean()) {
-      return node.asBoolean();
-    }
-    if (node.isNumber()) {
-      return node.numberValue();
-    }
-    return node.isNull() ? null : node.toString();
+    return ManifestDigest.sha256(manifest, objectMapper);
   }
 
   private JsonNode readJson(String raw) {

@@ -4,7 +4,7 @@
   "name": "Staffing",
   "baseUrl": "http://staffing:8091",
   "health": "/healthz",
-  "content": {
+  "shell": {
     "applications": [
       {
         "key": "rfps",
@@ -36,9 +36,8 @@
       { "key": "staffing-admin", "name": "Staffing Admin" }
     ]
   },
-  "capabilities": [],
   "events": { "published": [], "consumed": [] },
-  "agentContributions": {
+  "agentic": {
     "tools": [
       {
         "name": "list_rfps",

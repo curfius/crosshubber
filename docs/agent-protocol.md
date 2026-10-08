@@ -54,8 +54,8 @@ New conversation ids are returned via the `X-Conversation-Id` response header.
 ## Tool loop semantics (AI plan B)
 
 - Tools come from the server-side registry: built-in portal reads plus every active
-  installed module's manifest `agentContributions.tools[]` and
-  `agentContributions.agents[]` (sub-agent delegations, below). Remote entry names are
+  installed module's manifest `agentic.tools[]` and
+  `agentic.agents[]` (sub-agent delegations, below). Remote entry names are
   flattened to `moduleKey_name` for provider compatibility (function names must be
   alphanumeric + `_`/`-`; hyphens are folded to `_`).
 - The loop runs with **native model tool calling** (Spring AI), capped at 8
@@ -107,7 +107,7 @@ failures are fail-soft (tool-result errors, never portal 500s).
 
 ## Sub-agent dispatch (AI_PLAN F / AI_MODULES_PLAN P7)
 
-Manifest `agentContributions.agents[]` entries (`name`, `description`, `endpoint`,
+Manifest `agentic.agents[]` entries (`name`, `description`, `endpoint`,
 `roles[]`) hydrate into the same catalogue as tools — surfaced to the model as a
 delegating tool named `moduleKey_name` (e.g. `solutions_projects_agent`). Calling it
 runs the F1 task-envelope round-trip:

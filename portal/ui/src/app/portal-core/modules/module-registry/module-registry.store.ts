@@ -218,11 +218,11 @@ export class RegistryService {
     if (typeof m['name'] !== 'string' || !m['name']) throw new Error('name is required');
     if (typeof m['baseUrl'] !== 'string' || !m['baseUrl']) throw new Error('baseUrl is required');
     try { new URL(String(m['baseUrl'])); } catch { throw new Error('baseUrl must be a valid URL'); }
-    if (m['content'] && typeof m['content'] === 'object') {
-      const c = m['content'] as Record<string, unknown>;
+    if (m['shell'] && typeof m['shell'] === 'object') {
+      const c = m['shell'] as Record<string, unknown>;
       for (const group of ['applications', 'features', 'adminSettings', 'userSettings']) {
         if (c[group] !== undefined && !Array.isArray(c[group])) {
-          throw new Error(`content.${group} must be an array`);
+          throw new Error(`shell.${group} must be an array`);
         }
       }
     }

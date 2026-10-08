@@ -192,7 +192,7 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
 ## Backlog pointers
 
 - `plan/AI_PLAN.md` — roadmap for the portal agent (session context pack, manifest
-  `agentContributions` v2, MCP tool execution, A2A-shaped sub-agents, module-owned
+  `agentic` block, MCP tool execution, A2A-shaped sub-agents, module-owned
   knowledge retrieval). Dogfood consumers in `plan/archive/AI_MODULES_PLAN.md`
   (`solutions`, `staffing` — built, S1–S7 verified; archived 2026-10-08). F4
   (portal-native sub-agents) dropped 2026-10-02 — module-owned HTTP agents proved

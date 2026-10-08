@@ -7,9 +7,9 @@ import tools.jackson.databind.JsonNode;
 /**
  * A tool callable by the model (or another agent) through the dispatcher. Built-in tools are
  * portal-native reads; remote tools are contributed by installed modules via the manifest {@code
- * agentContributions.tools[]} (AI plan B1/B2/D3); agents are manifest {@code
- * agentContributions.agents[]} entries — delegations to a module-owned sub-agent over the F1 task
- * envelope (AI plan F, AI_MODULES_PLAN P7).
+ * agentic.tools[]} (AI plan B1/B2/D3); agents are manifest {@code agentic.agents[]} entries —
+ * delegations to a module-owned sub-agent over the F1 task envelope (AI plan F, AI_MODULES_PLAN
+ * P7).
  *
  * @param id unique registry id ({@code <name>} for builtin, {@code <moduleKey>:<name>} for remote)
  * @param modelName name exposed to the model — must be provider-safe, so remote entries are

@@ -4,7 +4,7 @@
   "name": "Solutions",
   "baseUrl": "http://solutions:8090",
   "health": "/healthz",
-  "content": {
+  "shell": {
     "applications": [
       {
         "key": "pipeline",
@@ -36,9 +36,8 @@
       { "key": "solutions-admin", "name": "Solutions Admin" }
     ]
   },
-  "capabilities": [],
   "events": { "published": [], "consumed": [] },
-  "agentContributions": {
+  "agentic": {
     "tools": [
       {
         "name": "list_projects",

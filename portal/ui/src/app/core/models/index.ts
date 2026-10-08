@@ -197,7 +197,6 @@ export interface ManifestContentEntry {
   allow?: string;
   requiredRoles?: string[];
   multi?: boolean;
-  sortOrder?: number;
 }
 
 export interface ManifestRole {
@@ -206,19 +205,21 @@ export interface ManifestRole {
   description?: string;
 }
 
-/** Manifest agentContributions v2 (snake-case names; server-side validator is the authority). */
+/** Manifest `agentic` block (snake-case names; server-side validator is the authority). */
 export interface ManifestAgentTool {
   name: string;
   description: string;
   arguments?: Record<string, unknown>;
   mutates?: boolean;
   roles?: string[];
+  path?: string;
 }
 
 export interface ManifestAgentSkill {
   name: string;
   description: string;
   prompts?: string[];
+  promptRef?: string;
 }
 
 export interface ManifestAgentEntry {
@@ -235,22 +236,26 @@ export interface ManifestKnowledge {
   ref: string;
 }
 
+/**
+ * Baseline module manifest layout (2026-10, `manifestVersion: 1`): portal UI contributions under
+ * `shell`, AI contributions under `agentic`. Legacy `content`/`agentContributions` keys are
+ * rejected server-side.
+ */
 export interface PortalModuleManifest {
   manifestVersion: number;
   key: string;
   name: string;
   baseUrl: string;
   health?: string;
-  content: {
+  shell: {
     applications: ManifestContentEntry[];
     features: ManifestContentEntry[];
     adminSettings: ManifestContentEntry[];
     userSettings: ManifestContentEntry[];
   };
   security: { roles: ManifestRole[] };
-  capabilities?: { scope: string }[];
   events?: { published?: { subject: string; schemaVersion?: number; description?: string }[]; consumed?: { subject: string; schemaVersion?: number; description?: string }[] };
-  agentContributions?: {
+  agentic?: {
     tools?: ManifestAgentTool[];
     skills?: ManifestAgentSkill[];
     agents?: ManifestAgentEntry[];

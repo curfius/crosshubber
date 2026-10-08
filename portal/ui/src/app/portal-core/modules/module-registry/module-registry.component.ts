@@ -85,7 +85,6 @@ export class ModuleRegistry {
     const m = this.workingManifest() ?? this.activeManifest();
     if (!m) return false;
     if (sectionTitle === 'Security Roles') return (m.security?.roles?.length ?? 0) > 0;
-    if (sectionTitle === 'Capabilities') return (m.capabilities?.length ?? 0) > 0;
     if (sectionTitle === 'Events') return ((m.events?.published?.length ?? 0) > 0 || (m.events?.consumed?.length ?? 0) > 0);
     return false;
   }
@@ -662,7 +661,6 @@ export class ModuleRegistry {
   // ── Manifest section mutations ──────────────────────────────────────
 
   protected readonly ROLE_KEY_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
-  protected readonly SCOPE_RE = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
   protected readonly EVENT_SUBJECT_RE = /^[a-z0-9][a-z0-9_-]*(?:\.[a-z0-9_*><-]+)+$/;
 
   addRole(): void {
@@ -699,38 +697,6 @@ export class ModuleRegistry {
 
   roleKeyValid(key: string): boolean {
     return this.ROLE_KEY_RE.test(key);
-  }
-
-  addCapability(): void {
-    if (!this.isEditing()) return;
-    const m = this.workingManifest();
-    if (!m) return;
-    this.workingManifest.update((prev) => prev ? ({
-      ...prev, capabilities: [...(prev.capabilities ?? []), { scope: '' }]
-    }) : prev);
-  }
-
-  updateCapabilityScope(index: number, value: string): void {
-    if (!this.isEditing()) return;
-    this.workingManifest.update((prev) => {
-      if (!prev) return prev;
-      const caps = [...(prev.capabilities ?? [])];
-      caps[index] = { scope: value };
-      return { ...prev, capabilities: caps };
-    });
-  }
-
-  removeCapability(index: number): void {
-    if (!this.isEditing()) return;
-    this.workingManifest.update((prev) => {
-      if (!prev) return prev;
-      const caps = (prev.capabilities ?? []).filter((_, i) => i !== index);
-      return { ...prev, capabilities: caps.length > 0 ? caps : undefined };
-    });
-  }
-
-  scopeValid(scope: string): boolean {
-    return this.SCOPE_RE.test(scope);
   }
 
   addEvent(section: 'published' | 'consumed'): void {
@@ -779,25 +745,25 @@ export class ModuleRegistry {
   contentEntries(category: string): ManifestContentEntry[] {
     const m = this.workingManifest() ?? this.activeManifest();
     if (!m) return [];
-    return (m.content?.[category as keyof typeof m.content] ?? []) as ManifestContentEntry[];
+    return (m.shell?.[category as keyof typeof m.shell] ?? []) as ManifestContentEntry[];
   }
 
   addContent(category: 'applications' | 'features' | 'adminSettings' | 'userSettings'): void {
     if (!this.isEditing()) return;
     const m = this.workingManifest();
     if (!m) return;
-    const list = [...((m.content?.[category] ?? []) as ManifestContentEntry[])];
+    const list = [...((m.shell?.[category] ?? []) as ManifestContentEntry[])];
     let newKey = 'new-entry';
     let i = 1;
     const allKeys = new Set<string>();
     for (const cat of CONTENT_GROUPS) {
-      for (const e of (m.content?.[cat.key as keyof typeof m.content] ?? []) as ManifestContentEntry[]) allKeys.add(e.key);
+      for (const e of (m.shell?.[cat.key as keyof typeof m.shell] ?? []) as ManifestContentEntry[]) allKeys.add(e.key);
     }
     while (allKeys.has(newKey)) newKey = `new-entry-${i++}`;
     list.push({ key: newKey, name: 'New Entry', type: 'embedded', loadPath: this.loadPaths[0] ?? 'default' } as ManifestContentEntry);
     this.workingManifest.update((prev) => {
       if (!prev) return prev;
-      return { ...prev, content: { ...prev.content, [category]: list } };
+      return { ...prev, shell: { ...prev.shell, [category]: list } };
     });
   }
 
@@ -805,9 +771,9 @@ export class ModuleRegistry {
     if (!this.isEditing()) return;
     this.workingManifest.update((prev) => {
       if (!prev) return prev;
-      const list = [...((prev.content?.[category as keyof typeof prev.content] ?? []) as ManifestContentEntry[])];
+      const list = [...((prev.shell?.[category as keyof typeof prev.shell] ?? []) as ManifestContentEntry[])];
       list[index] = { ...list[index], [field]: value } as ManifestContentEntry;
-      return { ...prev, content: { ...prev.content, [category]: list } };
+      return { ...prev, shell: { ...prev.shell, [category]: list } };
     });
   }
 
@@ -815,8 +781,8 @@ export class ModuleRegistry {
     if (!this.isEditing()) return;
     this.workingManifest.update((prev) => {
       if (!prev) return prev;
-      const list = ((prev.content?.[category as keyof typeof prev.content] ?? []) as ManifestContentEntry[]).filter((_, i) => i !== index);
-      return { ...prev, content: { ...prev.content, [category]: list } };
+      const list = ((prev.shell?.[category as keyof typeof prev.shell] ?? []) as ManifestContentEntry[]).filter((_, i) => i !== index);
+      return { ...prev, shell: { ...prev.shell, [category]: list } };
     });
   }
 
@@ -837,7 +803,7 @@ export class ModuleRegistry {
     const m = this.workingManifest();
     if (!m) return;
     for (const cat of CONTENT_GROUPS) {
-      const list = (m.content?.[cat.key as keyof typeof m.content] ?? []) as ManifestContentEntry[];
+      const list = (m.shell?.[cat.key as keyof typeof m.shell] ?? []) as ManifestContentEntry[];
       const idx = list.findIndex((e) => e.key === ep.contentKey);
       if (idx >= 0) {
         this.editingContentKey.set(ep.contentKey);
@@ -928,26 +894,25 @@ export class ModuleRegistry {
         allow: f.type === 'iframe' ? f.allow?.trim() || undefined : undefined,
         requiredRoles: undefined,
         multi: f.multi,
-        sortOrder: 0,
       } as unknown as ManifestContentEntry;
       const editingKey = this.editingContentKey();
       const editingCat = this.editingContentCategory();
       this.workingManifest.update((prev) => {
         if (!prev) return prev;
-        const content = { ...prev.content } as Record<string, ManifestContentEntry[]>;
+        const shell = { ...prev.shell } as Record<string, ManifestContentEntry[]>;
         // Remove from old category if editing
         if (editingKey && editingCat) {
           const oldCatKey = catKeyMap[editingCat] ?? editingCat;
-          content[oldCatKey] = (content[oldCatKey] ?? []).filter((e) => e.key !== editingKey);
+          shell[oldCatKey] = (shell[oldCatKey] ?? []).filter((e) => e.key !== editingKey);
         }
         // If creating, ensure no duplicate key
         if (!editingKey) {
           const allKeys = new Set<string>();
-          for (const k of Object.keys(content)) for (const e of content[k] ?? []) allKeys.add(e.key);
+          for (const k of Object.keys(shell)) for (const e of shell[k] ?? []) allKeys.add(e.key);
           if (allKeys.has(entry.key)) { this.error.set(this.i18n.t('registry.error.contentKeyExists', { key: entry.key })); return prev; }
         }
-        content[cat] = [...(content[cat] ?? []), entry];
-        return { ...prev, content: content as unknown as PortalModuleManifest['content'] };
+        shell[cat] = [...(shell[cat] ?? []), entry];
+        return { ...prev, shell: shell as unknown as PortalModuleManifest['shell'] };
       });
       if (this.error()) return;
       this.closeEpForm();
@@ -1010,7 +975,7 @@ export class ModuleRegistry {
       const m = this.workingManifest();
       if (!m) return;
       for (const cat of CONTENT_GROUPS) {
-        const list = (m.content?.[cat.key as keyof typeof m.content] ?? []) as ManifestContentEntry[];
+        const list = (m.shell?.[cat.key as keyof typeof m.shell] ?? []) as ManifestContentEntry[];
         const idx = list.findIndex((e) => e.key === ep.contentKey);
         if (idx >= 0) { this.removeContent(cat.key as never, idx); break; }
       }
@@ -1163,7 +1128,7 @@ export class ModuleRegistry {
       name: this.manualName(),
       baseUrl: this.manualBaseUrl(),
       ...(this.manualHealth() ? { health: this.manualHealth() } : {}),
-      content: { applications: apps, features: [], adminSettings: [], userSettings: [] },
+      shell: { applications: apps, features: [], adminSettings: [], userSettings: [] },
       ...(roles.length ? { security: { roles } } : {}),
     } as PortalModuleManifest;
   });
@@ -1454,7 +1419,6 @@ export class ModuleRegistry {
       'Admin Settings': 'registry.category.adminSettings',
       'User Settings': 'registry.category.userSettings',
       'Security Roles': 'registry.section.securityRoles',
-      'Capabilities': 'registry.section.capabilities',
       'Events': 'registry.section.events',
       'Agent Tools': 'registry.section.agentTools',
       'Agent Skills': 'registry.section.agentSkills',

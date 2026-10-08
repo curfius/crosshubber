@@ -28,8 +28,13 @@ import com.crosshubber.portal.modules.navigation.settings.NavigationSettingsEnti
 import com.crosshubber.portal.modules.navigation.settings.NavigationSettingsRepository;
 import com.crosshubber.portal.modules.registry.dto.SecurityRoleDto;
 import com.crosshubber.portal.modules.registry.manifest.InstallService;
+import com.crosshubber.portal.modules.registry.manifest.LegacyManifests;
+import com.crosshubber.portal.modules.registry.manifest.ManifestDigest;
 import com.crosshubber.portal.modules.registry.manifest.ManifestFetcher;
 import com.crosshubber.portal.modules.registry.manifest.ManifestValidator;
+import com.crosshubber.portal.modules.registry.manifest.ModuleVersionEntity;
+import com.crosshubber.portal.modules.registry.manifest.ModuleVersionRepository;
+import com.crosshubber.portal.modules.registry.manifest.VersionStatus;
 import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentCategory;
 import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
 import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
@@ -45,8 +50,9 @@ import tools.jackson.databind.node.ObjectNode;
  * Reconciles DB state with embedded catalog and tenant config at boot.
  *
  * <p>Upserts builtin modules/module content, seeds AI Hub providers, navigation settings, i18n
- * languages/labels, and tenant_meta. All steps are idempotent and non-destructive (user data is
- * never touched). Fails fast: any seeding error aborts boot instead of serving an empty portal.
+ * languages/labels, and tenant_meta, and upgrades manifests stored by pre-2026-10 releases ({@link
+ * LegacyManifests}). All steps are idempotent and non-destructive (user data is never touched).
+ * Fails fast: any seeding error aborts boot instead of serving an empty portal.
  */
 @Component
 public class Reconciler implements ApplicationRunner {
@@ -69,6 +75,7 @@ public class Reconciler implements ApplicationRunner {
   private final TenantConfigLoader tenantLoader;
   private final ModuleRepository moduleRepo;
   private final ModuleContentRepository contentRepo;
+  private final ModuleVersionRepository versionRepo;
   private final NavigationSettingsRepository navigationSettingsRepo;
   private final I18nLanguageRepository languageRepo;
   private final I18nLabelRepository labelRepo;
@@ -86,6 +93,7 @@ public class Reconciler implements ApplicationRunner {
       TenantConfigLoader tenantLoader,
       ModuleRepository moduleRepo,
       ModuleContentRepository contentRepo,
+      ModuleVersionRepository versionRepo,
       NavigationSettingsRepository navigationSettingsRepo,
       I18nLanguageRepository languageRepo,
       I18nLabelRepository labelRepo,
@@ -101,6 +109,7 @@ public class Reconciler implements ApplicationRunner {
     this.tenantLoader = tenantLoader;
     this.moduleRepo = moduleRepo;
     this.contentRepo = contentRepo;
+    this.versionRepo = versionRepo;
     this.navigationSettingsRepo = navigationSettingsRepo;
     this.languageRepo = languageRepo;
     this.labelRepo = labelRepo;
@@ -126,6 +135,7 @@ public class Reconciler implements ApplicationRunner {
     Map<String, JsonNode> externalManifests = fetchExternalManifests(tenant);
     transactionTemplate.executeWithoutResult(
         status -> {
+          upgradeLegacyStoredManifests();
           reconcileBuiltins(tenant);
           persistExternalModules(tenant, externalManifests);
           reconcileProviders(tenant);
@@ -196,6 +206,55 @@ public class Reconciler implements ApplicationRunner {
   private void syncExternalRealmRoles(Map<String, JsonNode> externalManifests) {
     for (JsonNode manifest : externalManifests.values()) {
       installService.syncRealmRoles(manifest);
+    }
+  }
+
+  /**
+   * One-time format upgrade: rewrites manifests stored before the 2026-10 baseline layout rename
+   * ({@code content} → {@code shell}, {@code agentContributions} → {@code agentic}, dead keys
+   * dropped — see {@link LegacyManifests}); recomputes each rewritten row's digest and re-syncs the
+   * owning module's {@code manifest_digest}. Idempotent: rows without legacy keys are left
+   * untouched, so the pass costs one small table scan per boot and no-op cleans after the first
+   * upgrade.
+   */
+  private void upgradeLegacyStoredManifests() {
+    Set<String> touchedModules = new HashSet<>();
+    int upgradedRows = 0;
+    try {
+      for (ModuleVersionEntity row : versionRepo.findAll()) {
+        JsonNode raw = objectMapper.readTree(row.getManifest());
+        if (!LegacyManifests.isLegacy(raw)) {
+          continue;
+        }
+        JsonNode upgraded = LegacyManifests.upgrade(raw);
+        row.setManifest(objectMapper.writeValueAsString(upgraded));
+        row.setDigest(ManifestDigest.sha256(upgraded, objectMapper));
+        versionRepo.save(row);
+        touchedModules.add(row.getModuleKey());
+        upgradedRows++;
+      }
+    } catch (IllegalStateException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new IllegalStateException("legacy manifest upgrade failed while rewriting rows", e);
+    }
+    for (String moduleKey : touchedModules) {
+      moduleRepo
+          .findById(moduleKey)
+          .ifPresent(
+              module -> {
+                versionRepo
+                    .findFirstByModuleKeyAndStatusOrderByInstalledAtDesc(
+                        moduleKey, VersionStatus.ACTIVE)
+                    .ifPresent(active -> module.setManifestDigest(active.getDigest()));
+                moduleRepo.save(module);
+              });
+    }
+    if (upgradedRows > 0) {
+      log.info(
+          "[reconcile] upgraded {} legacy manifest version(s) for module(s) [{}]",
+          upgradedRows,
+          String.join(", ", touchedModules));
     }
   }
 

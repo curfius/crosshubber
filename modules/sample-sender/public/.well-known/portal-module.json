@@ -4,7 +4,7 @@
   "name": "Sample Sender",
   "baseUrl": "http://sample-sender:8092",
   "health": "/healthz",
-  "content": {
+  "shell": {
     "applications": [
       {
         "key": "composer",
@@ -20,7 +20,6 @@
     "userSettings": []
   },
   "security": { "roles": [] },
-  "capabilities": [],
   "events": {
     "published": [
       "portal.msg.sample-sender.*",
@@ -28,5 +27,5 @@
     ],
     "consumed": ["portal.taskresponse.sample-sender.>"]
   },
-  "agentContributions": { "tools": [], "skills": [], "agents": [], "knowledge": [] }
+  "agentic": { "tools": [], "skills": [], "agents": [], "knowledge": [] }
 }

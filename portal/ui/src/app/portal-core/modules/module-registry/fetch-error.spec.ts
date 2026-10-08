@@ -86,7 +86,7 @@ describe('friendlyFetchError', () => {
   });
 
   it('passes the 422 issues through untouched', () => {
-    const issues = ['content.applications[0].url must be http(s)'];
+    const issues = ['shell.applications[0].url must be http(s)'];
     const result = friendlyFetchError(
       apiError('invalid-manifest', 'the manifest is not valid', issues),
       t,

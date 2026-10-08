@@ -9,7 +9,7 @@ function manifest(overrides: Partial<PortalModuleManifest>): PortalModuleManifes
     name: 'My Mod',
     baseUrl: 'http://localhost:3000',
     health: '/healthz',
-    content: { applications: [], features: [], adminSettings: [], userSettings: [] },
+    shell: { applications: [], features: [], adminSettings: [], userSettings: [] },
     ...overrides,
   } as PortalModuleManifest;
 }
@@ -54,7 +54,7 @@ describe('manifest-diff engine', () => {
   it('new content entry is reported as create', () => {
     const sections = buildDiffSections(
       manifest({}),
-      manifest({ content: { applications: [app('a1', 'App', 'http://x/a')], features: [], adminSettings: [], userSettings: [] } as unknown as PortalModuleManifest['content'] }),
+      manifest({ shell: { applications: [app('a1', 'App', 'http://x/a')], features: [], adminSettings: [], userSettings: [] } as unknown as PortalModuleManifest['shell'] }),
     );
     const applications = sections.find((s) => s.title === 'Applications')!;
     expect(applications.action).toBe('create');
@@ -63,7 +63,7 @@ describe('manifest-diff engine', () => {
 
   it('removed content entry is reported as update with deleted field', () => {
     const old = manifest({
-      content: { applications: [app('a1', 'App', 'http://x/a')], features: [], adminSettings: [], userSettings: [] } as unknown as PortalModuleManifest['content'],
+      shell: { applications: [app('a1', 'App', 'http://x/a')], features: [], adminSettings: [], userSettings: [] } as unknown as PortalModuleManifest['shell'],
     });
     const sections = buildDiffSections(old, manifest({}));
     const applications = sections.find((s) => s.title === 'Applications')!;
@@ -74,10 +74,10 @@ describe('manifest-diff engine', () => {
 
   it('modified entry URL is a changed field; key/type/description are skipped', () => {
     const old = manifest({
-      content: { applications: [{ ...app('a1', 'App', 'http://x/a'), description: 'd' }], features: [], adminSettings: [], userSettings: [] } as unknown as PortalModuleManifest['content'],
+      shell: { applications: [{ ...app('a1', 'App', 'http://x/a'), description: 'd' }], features: [], adminSettings: [], userSettings: [] } as unknown as PortalModuleManifest['shell'],
     });
     const next = manifest({
-      content: { applications: [{ ...app('a1', 'App', 'http://x/b'), description: 'other' }], features: [], adminSettings: [], userSettings: [] } as unknown as PortalModuleManifest['content'],
+      shell: { applications: [{ ...app('a1', 'App', 'http://x/b'), description: 'other' }], features: [], adminSettings: [], userSettings: [] } as unknown as PortalModuleManifest['shell'],
     });
     const applications = buildDiffSections(old, next).find((s) => s.title === 'Applications')!;
     const fields = applications.items![0].fields;
@@ -98,8 +98,8 @@ describe('manifest-diff engine', () => {
 
   it('section action is unchanged when every item is unchanged', () => {
     const entry = app('a1', 'App', 'http://x/a');
-    const content = { applications: [entry], features: [], adminSettings: [], userSettings: [] } as unknown as PortalModuleManifest['content'];
-    const sections: PreviewSection[] = buildDiffSections(manifest({ content }), manifest({ content }));
+    const shell = { applications: [entry], features: [], adminSettings: [], userSettings: [] } as unknown as PortalModuleManifest['shell'];
+    const sections: PreviewSection[] = buildDiffSections(manifest({ shell }), manifest({ shell }));
     const applications = sections.find((s) => s.title === 'Applications')!;
     expect(applications.action).toBe('unchanged');
     expect(applications.items![0].action).toBe('unchanged');
@@ -112,7 +112,7 @@ describe('manifest-diff engine', () => {
       agents: [{ name: 'projects_agent', description: 'Delivery status agent', endpoint: '/agent/tasks', roles: ['solutions-user'] }],
       knowledge: [{ id: 'doc-1', title: 'Proposal', kind: 'docsource' as const, ref: 'fake:proposal-scope' }],
     };
-    const sections = buildDiffSections(manifest({}), manifest({ agentContributions: contributions }));
+    const sections = buildDiffSections(manifest({}), manifest({ agentic: contributions }));
     const tools = sections.find((s) => s.title === 'Agent Tools')!;
     expect(tools.action).toBe('create');
     expect(tools.items![0].key).toBe('list_projects');
@@ -130,7 +130,7 @@ describe('manifest-diff engine', () => {
 
   it('agent contributions diff between versions (update and delete)', () => {
     const old = manifest({
-      agentContributions: {
+      agentic: {
         tools: [
           { name: 'list_projects', description: 'List projects', mutates: false },
           { name: 'get_project', description: 'Get a project', mutates: false },
@@ -141,7 +141,7 @@ describe('manifest-diff engine', () => {
       },
     });
     const next = manifest({
-      agentContributions: {
+      agentic: {
         tools: [{ name: 'list_projects', description: 'List projects', mutates: true }],
         skills: [],
         agents: [],
@@ -156,7 +156,7 @@ describe('manifest-diff engine', () => {
     expect(tools.items!.find((i) => i.key === 'get_project')!.fields[0].key).toBe('_deleted');
   });
 
-  it('manifests without agentContributions emit no agent sections', () => {
+  it('manifests without agentic emit no agent sections', () => {
     const sections = buildDiffSections(manifest({}), manifest({}));
     expect(sections.filter((s) => s.title.startsWith('Agent') || s.title === 'Knowledge')).toEqual([]);
   });

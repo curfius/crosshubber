@@ -86,7 +86,7 @@ function diffKeyed<T extends KeyedEntry>(oldList: T[], newList: T[], deletedLabe
   return items;
 }
 
-const CONTENT_GROUPS: Array<{ key: keyof PortalModuleManifest['content'] & string; label: string }> = [
+const CONTENT_GROUPS: Array<{ key: keyof PortalModuleManifest['shell'] & string; label: string }> = [
   { key: 'applications', label: 'Applications' },
   { key: 'features', label: 'Features' },
   { key: 'adminSettings', label: 'Admin Settings' },
@@ -121,8 +121,8 @@ function buildDiffSections(oldManifest: PortalModuleManifest | null, newManifest
 
   // Content groups
   for (const g of CONTENT_GROUPS) {
-    const newEntries = (newManifest.content?.[g.key as keyof typeof newManifest.content] ?? []) as ManifestContentEntry[];
-    const oldEntries = (oldManifest?.content?.[g.key as keyof typeof oldManifest.content] ?? []) as ManifestContentEntry[];
+    const newEntries = (newManifest.shell?.[g.key as keyof typeof newManifest.shell] ?? []) as ManifestContentEntry[];
+    const oldEntries = (oldManifest?.shell?.[g.key as keyof typeof oldManifest.shell] ?? []) as ManifestContentEntry[];
     if (oldEntries.length === 0 && newEntries.length === 0) continue;
     const items = diffKeyed(oldEntries, newEntries, 'deleted');
     sections.push({ title: g.label, items, action: computeSectionAction(items) });
@@ -136,10 +136,10 @@ function buildDiffSections(oldManifest: PortalModuleManifest | null, newManifest
     sections.push({ title: 'Security Roles', items, action: computeSectionAction(items) });
   }
 
-  // Agent contributions (D4 — read-only visibility; keyed by name/id)
-  type AgentContribs = NonNullable<PortalModuleManifest['agentContributions']>;
-  const oldAgent: AgentContribs = oldManifest?.agentContributions ?? ({} as AgentContribs);
-  const newAgent: AgentContribs = newManifest.agentContributions ?? ({} as AgentContribs);
+  // Agent contributions (agentic — read-only visibility; keyed by name/id)
+  type AgentContribs = NonNullable<PortalModuleManifest['agentic']>;
+  const oldAgent: AgentContribs = oldManifest?.agentic ?? ({} as AgentContribs);
+  const newAgent: AgentContribs = newManifest.agentic ?? ({} as AgentContribs);
   const agentGroups: Array<{
     title: string;
     field: 'tools' | 'skills' | 'agents' | 'knowledge';

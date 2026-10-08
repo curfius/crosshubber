@@ -6,26 +6,24 @@ Crosshubber is a **modular enterprise portal** that serves as an integration pla
 
 The portal acts as an **integration backbone** that:
 
-- **Enables module interoperability** — Modules remain self-contained but declare their capabilities (applications, settings, agents, tools, skills, permissions, published/consumed events) through a standardized manifest. The portal discovers, validates, and surfaces these capabilities to users and other modules.
+- **Enables module interoperability** — Modules remain self-contained but declare their portal contributions (screens, portal elements, settings, agent tools, skills, permissions, published/consumed events) through a standardized manifest. The portal discovers, validates, and surfaces these to users and other modules.
 - **Provides unified navigation** — A single shell composes module content from all installed modules into a coherent navigation structure (applications, settings, features, user settings) with role-based visibility.
 - **Delivers cross-cutting functionality** — Authentication (OIDC/OAuth2 with Keycloak), notifications, messaging, theming, internationalization (i18n), centralized instance settings, and per-user preferences are handled once at the portal level.
-- **Implements an event broker** — A NATS-backed event bus enables asynchronous, decoupled integration between modules via published/consumed event declarations in manifests.
+- **Implements an event broker** — A NATS-backed event bus links modules asynchronously; the manifest's published/consumed event declarations are documentation-grade today (consumed by the registry UI, not yet enforced against the broker).
 - **Embeds an AI super-agent** — The AI Hub is a first-class citizen: it consumes module-provided data, documentation, tools, and skills to guide users through the portal, execute tasks on their behalf, and enable workflow automation across module boundaries.
 
 ## Module Integration Model
 
-Modules integrate with the portal by providing a **manifest** (`portal-module.json`) that declares:
+Modules integrate with the portal by providing a **manifest** (`portal-module.json`, layout baseline 2026-10, `manifestVersion: 1`) that declares:
 
 | Manifest Section | Purpose |
 |---|---|
-| `content.applications` | UI module content (iframe, embedded, MFE, link) surfaced in the main navigation |
-| `content.features` | Feature toggles exposed to users |
-| `content.adminSettings` / `userSettings` | Configuration forms injected into the portal's settings UI |
+| `shell.applications` | UI module content (iframe, embedded, MFE, link) surfaced in the main navigation |
+| `shell.features` | Gated portal elements the shell checks for presence — served, never a nav node (e.g. a quick-chat flyout contributed by a module) |
+| `shell.adminSettings` / `shell.userSettings` | Configuration forms injected into the portal's settings UIs |
 | `security.roles` | Module-specific permission keys (e.g., `module-x:admin`) |
-| `capabilities` | Scoped capabilities the module provides to other modules |
-| `events.published` / `events.consumed` | Event contracts for async integration via the broker |
-| `agentContributions.tools` / `skills` | AI functions and skills the module contributes to the super-agent |
-| `security.roles` | RBAC keys the module requires/defines |
+| `events.published` / `events.consumed` | Event contracts declared for the broker (declaration-only for now) |
+| `agentic.tools` / `skills` / `agents` / `knowledge` | AI functions, skills, sub-agent delegations and knowledge sources the module contributes to the AI Hub |
 
 Modules are installed, versioned, and managed through the **Registry** — a built-in module lifecycle manager supporting draft creation, validation, installation, rollback, and activation.
 

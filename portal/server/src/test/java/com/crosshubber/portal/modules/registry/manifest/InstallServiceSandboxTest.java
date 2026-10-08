@@ -76,7 +76,7 @@ class InstallServiceSandboxTest {
           "key": "demo",
           "name": "Demo",
           "baseUrl": "https://demo.example.com",
-          "content": {
+          "shell": {
             "applications": [
               {"key": "home", "name": "Home", "type": "iframe",
                "url": "https://demo.example.com/app", "sandbox": %s}

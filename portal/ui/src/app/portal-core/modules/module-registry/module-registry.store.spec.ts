@@ -124,7 +124,7 @@ describe('RegistryApiError', () => {
   });
 
   it('carries the 422 validation issues for an invalid manifest', async () => {
-    const issues = ['content.applications[0].url must be http(s)'];
+    const issues = ['shell.applications[0].url must be http(s)'];
     respond(422, { error: 'the manifest is not valid', code: 'invalid-manifest', issues });
 
     const caught = await capture(

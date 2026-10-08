@@ -22,6 +22,13 @@ import tools.jackson.databind.node.ObjectNode;
  * Manifest schema validation — strict allow-list of top-level keys, per-type entry rules, and
  * domain checks (key/name/baseUrl, at-least-one entry, portal-origin recursion guard). Issues use
  * {@code "path: message"} strings, surfaced verbatim by the registry UI.
+ *
+ * <p>Baseline layout (2026-10, {@code manifestVersion: 1}): portal UI contributions live in {@code
+ * shell} ({@code applications}/{@code features}/{@code adminSettings}/{@code userSettings}), the AI
+ * contributions block is {@code agentic} ({@code tools}/{@code skills}/ {@code agents}/{@code
+ * knowledge}). The legacy 2026-09 names ({@code content}, {@code agentContributions}, {@code
+ * capabilities}, {@code *SettingsSchema}) are rejected with rename hints; the Reconciler upgrades
+ * previously stored manifests at boot via {@link LegacyManifests}.
  */
 @Service
 public class ManifestValidator {
@@ -33,19 +40,25 @@ public class ManifestValidator {
           "name",
           "baseUrl",
           "health",
-          "content",
-          "userSettingsSchema",
-          "adminSettingsSchema",
+          "shell",
           "security",
-          "capabilities",
           "events",
-          "agentContributions");
+          "agentic");
   private static final Map<String, String> CATEGORY_MAP =
       Map.of(
           "applications", "applications",
           "features", "features",
           "adminSettings", "admin-settings",
           "userSettings", "user-settings");
+
+  /** Old top-level key → cleared-up message for the 2026-09 → 2026-10 layout rename. */
+  private static final Map<String, String> LEGACY_KEY_HINTS =
+      Map.of(
+          "content", "renamed to \"shell\"",
+          "agentContributions", "renamed to \"agentic\"",
+          "capabilities", "removed",
+          "userSettingsSchema", "removed",
+          "adminSettingsSchema", "removed");
 
   private final PortalProperties props;
   private final ObjectMapper objectMapper;
@@ -83,26 +96,24 @@ public class ManifestValidator {
     }
     for (String key : manifest.propertyNames()) {
       if (!TOP_LEVEL_KEYS.contains(key)) {
-        issues.add(key + ": unknown field");
+        String hint = LEGACY_KEY_HINTS.get(key);
+        issues.add(key + ": unknown field" + (hint != null ? " (" + hint + ")" : ""));
       }
     }
 
-    // content — default all groups to []
-    ObjectNode content =
-        manifest.has("content") && manifest.get("content").isObject()
-            ? (ObjectNode) manifest.get("content")
+    // shell — default all groups to []
+    ObjectNode shell =
+        manifest.has("shell") && manifest.get("shell").isObject()
+            ? (ObjectNode) manifest.get("shell")
             : objectMapper.createObjectNode();
     for (String group : CATEGORY_MAP.keySet()) {
-      if (!content.has(group) || !content.get(group).isArray()) {
-        content.set(group, objectMapper.createArrayNode());
+      if (!shell.has(group) || !shell.get(group).isArray()) {
+        shell.set(group, objectMapper.createArrayNode());
       }
     }
-    manifest.set("content", content);
+    manifest.set("shell", shell);
 
-    // capabilities, events, agentContributions defaults
-    if (!manifest.has("capabilities") || !manifest.get("capabilities").isArray()) {
-      manifest.set("capabilities", objectMapper.createArrayNode());
-    }
+    // events, agentic defaults
     if (!manifest.has("events") || !manifest.get("events").isObject()) {
       ObjectNode events = objectMapper.createObjectNode();
       events.set("published", objectMapper.createArrayNode());
@@ -117,15 +128,15 @@ public class ManifestValidator {
         events.set("consumed", objectMapper.createArrayNode());
       }
     }
-    if (!manifest.has("agentContributions") || !manifest.get("agentContributions").isObject()) {
+    if (!manifest.has("agentic") || !manifest.get("agentic").isObject()) {
       ObjectNode agent = objectMapper.createObjectNode();
       agent.set("tools", objectMapper.createArrayNode());
       agent.set("skills", objectMapper.createArrayNode());
       agent.set("agents", objectMapper.createArrayNode());
       agent.set("knowledge", objectMapper.createArrayNode());
-      manifest.set("agentContributions", agent);
+      manifest.set("agentic", agent);
     } else {
-      ObjectNode agent = (ObjectNode) manifest.get("agentContributions");
+      ObjectNode agent = (ObjectNode) manifest.get("agentic");
       normalizeArray(agent, "tools");
       normalizeArray(agent, "skills");
       normalizeArray(agent, "agents");
@@ -138,15 +149,15 @@ public class ManifestValidator {
 
     Set<String> seenKeys = new LinkedHashSet<>();
     for (Map.Entry<String, String> groupEntry : CATEGORY_MAP.entrySet()) {
-      ArrayNode entries = (ArrayNode) content.get(groupEntry.getKey());
+      ArrayNode entries = (ArrayNode) shell.get(groupEntry.getKey());
       for (int i = 0; i < entries.size(); i++) {
         JsonNode entry = entries.get(i);
-        String prefix = "content." + groupEntry.getKey() + "[" + i + "]";
+        String prefix = "shell." + groupEntry.getKey() + "[" + i + "]";
         validateEntry(entry, prefix, issues);
         String key = entry.path("key").asString(null);
         if (key != null) {
           if (!seenKeys.add(key)) {
-            issues.add("content: duplicate entry key \"" + key + "\" across content groups");
+            issues.add("shell: duplicate entry key \"" + key + "\" across shell groups");
           }
         }
       }
@@ -241,15 +252,15 @@ public class ManifestValidator {
     if (!nonEmptyString(manifest.path("baseUrl"))) {
       errors.add("baseUrl: Base URL is required");
     }
-    boolean hasContent = false;
+    boolean hasShell = false;
     for (String group : CATEGORY_MAP.keySet()) {
-      if (manifest.path("content").path(group).isArray()
-          && manifest.path("content").path(group).size() > 0) {
-        hasContent = true;
+      if (manifest.path("shell").path(group).isArray()
+          && manifest.path("shell").path(group).size() > 0) {
+        hasShell = true;
       }
     }
-    if (!hasContent) {
-      errors.add("content: At least one content entry is required");
+    if (!hasShell) {
+      errors.add("shell: At least one content entry is required");
     }
     String baseUrl = manifest.path("baseUrl").asString("");
     for (FlatEntry flat : flattenEntries(manifest)) {
@@ -259,7 +270,7 @@ public class ManifestValidator {
       String candidate = "mfe".equals(entry.path("type").asString()) ? entryUrl : url;
       if (candidate != null && isPortalOrigin(candidate)) {
         errors.add(
-            "content."
+            "shell."
                 + entry.path("key").asString()
                 + ": Entry \""
                 + entry.path("key").asString()
@@ -279,9 +290,9 @@ public class ManifestValidator {
   /** Flattens content entries with their DB category. */
   public List<FlatEntry> flattenEntries(JsonNode manifest) {
     List<FlatEntry> result = new ArrayList<>();
-    JsonNode content = manifest.path("content");
+    JsonNode shell = manifest.path("shell");
     for (Map.Entry<String, String> groupEntry : CATEGORY_MAP.entrySet()) {
-      JsonNode entries = content.path(groupEntry.getKey());
+      JsonNode entries = shell.path(groupEntry.getKey());
       if (entries.isArray()) {
         for (JsonNode entry : entries) {
           result.add(new FlatEntry(entry, groupEntry.getValue()));
@@ -332,7 +343,7 @@ public class ManifestValidator {
     return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
   }
 
-  // ── agentContributions v2 ────────────────────────────────────────────
+  // ── agentic (tools / skills / agents / knowledge) ────────────────────
 
   private static final List<String> KNOWLEDGE_KINDS = List.of("markdown", "url", "docsource");
 
@@ -351,7 +362,7 @@ public class ManifestValidator {
     Set<String> seen = new LinkedHashSet<>();
     for (int i = 0; i < tools.size(); i++) {
       JsonNode tool = tools.get(i);
-      String prefix = "agentContributions.tools[" + i + "]";
+      String prefix = "agentic.tools[" + i + "]";
       if (!tool.isObject()) {
         issues.add(prefix + ": must be an object");
         continue;
@@ -381,7 +392,7 @@ public class ManifestValidator {
   private void validateSkills(ArrayNode skills, List<String> issues) {
     for (int i = 0; i < skills.size(); i++) {
       JsonNode skill = skills.get(i);
-      String prefix = "agentContributions.skills[" + i + "]";
+      String prefix = "agentic.skills[" + i + "]";
       if (!skill.isObject()) {
         issues.add(prefix + ": must be an object");
         continue;
@@ -419,7 +430,7 @@ public class ManifestValidator {
   private void validateAgents(ArrayNode agents, List<String> issues) {
     for (int i = 0; i < agents.size(); i++) {
       JsonNode agentEntry = agents.get(i);
-      String prefix = "agentContributions.agents[" + i + "]";
+      String prefix = "agentic.agents[" + i + "]";
       if (!agentEntry.isObject()) {
         issues.add(prefix + ": must be an object");
         continue;
@@ -442,7 +453,7 @@ public class ManifestValidator {
   private void validateKnowledge(ArrayNode knowledge, List<String> issues) {
     for (int i = 0; i < knowledge.size(); i++) {
       JsonNode doc = knowledge.get(i);
-      String prefix = "agentContributions.knowledge[" + i + "]";
+      String prefix = "agentic.knowledge[" + i + "]";
       if (!doc.isObject()) {
         issues.add(prefix + ": must be an object");
         continue;

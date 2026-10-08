@@ -15,8 +15,8 @@ portal-native ones). C2 was already done (`ChatCoreService`). G2 dropped
 (2026-10-02 — keyword retrieval adequate; embeddings premature infra). E
 extracted to `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md` (approved, not started —
 build when an external MCP server is actually needed).
-Phase A go scope remains A1–A3 + A5 (A4
-deferred). Two dogfood modules (`solutions`, `staffing`) drive sequencing — see
+Phase A go scope remains A1–A3 + A5 (A4 dropped 2026-10-08 — folded into the
+observability backlog). Two dogfood modules (`solutions`, `staffing`) drive sequencing — see
 `plan/archive/AI_MODULES_PLAN.md` ("Phase H"); there they are the reference consumer for
 phases A/B/D/F/G. Related: `plan/UX_PLAN.md` (navigation),
 `plan/archive/OPTIMIZATIONS.md` (backend, closed). Note: the AGENTS.md
@@ -30,9 +30,9 @@ owns both surfaces.
   tools, skills, knowledge, and sub-agents via the manifest — never hardcode
   module-specific logic into the shell.
 - **Manifest is the only integration surface.** Everything a module exposes to the
-  agent lives under `agentContributions` (v1 today: `tools[]`, `skills[]` as empty
-  default arrays). Validation stays in `ManifestValidator`; the reconciler keeps
-  stored manifests normalized.
+  agent lives under `agentic` (baseline layout 2026-10: `tools[]`, `skills[]`,
+  `agents[]`, `knowledge[]`). Validation stays in `ManifestValidator`; the reconciler
+  keeps stored manifests normalized (and upgrades pre-2026-10 shapes at boot).
 - **Agent actions are ordinary portal APIs first.** A tool is a typed call into an
   existing service (registry, settings, workspaces, i18n…) with the caller's roles
   enforced — the agent never gets a privilege bypass. New agent-only endpoints are
@@ -51,13 +51,13 @@ owns both surfaces.
 
 | Area | Where | Notes |
 |---|---|---|
-| Manifest `agentContributions` | `ManifestValidator.java` (defaults `tools[]`/`skills[]`), README table | v1 schema only — arrays are never populated or read by runtime code |
+| Manifest `agentic` | `ManifestValidator.java` (defaults `tools[]`/`skills[]`/`agents[]`/`knowledge[]`), README table | Baseline layout 2026-10; `tools[]`/`agents[]` feed the runtime ToolRegistry, `skills[]`/`knowledge[]` are declaration-only |
 | Chat orchestration | `modules/aihub/chat/AiHubChatService` | Spring AI `ChatClient` per (provider, token, model), 60s cache, `ChatMemory` → `ai_hub_chat_memory`, SSE stream |
 | Providers/tokens/models | `modules/aihub/providers/*` | Admin-managed under `portal-ai-hub-edit`; encrypted tokens (`CryptoService`) |
 | Conversations | `modules/aihub/conversations/*` | Per-user CRUD + message history endpoints |
 | Quick Chat entry | EmbeddedCatalog EP `ai-hub:quick-chat` (features, roles `[]`) + UI `quick-chat.component` | EP-driven since C1 (2026-10-01): Shell gates the flyout + sidebar dock button on the EP (server-filtered); availability drop auto-closes the flyout. Chat and quick-chat already share `ChatCoreService` (C2 prerequisite done) |
 | Shell config / RBAC | `ShellConfigService` triple filter; `Roles`, `@PreAuthorize` on mutating endpoints | Agent tool dispatcher must reuse the same role checks |
-| Module registry | `modules/registry/*` (manifest fetch, validate, install) | Source of installed modules' `agentContributions` |
+| Module registry | `modules/registry/*` (manifest fetch, validate, install) | Source of installed modules' `agentic` contributions |
 | Event bus | NATS (compose service; health surfaced in `/api/config` services) | Portal currently only reports the NATS URL — no publish/subscribe client in Java yet |
 | i18n / settings / workspaces | respective feature modules | Candidate first-wave tools (read + benign write) |
 
@@ -71,7 +71,7 @@ the model answers with awareness of who is asking, where they are, and what is o
 | A1 | Define `SessionContextPack` DTO | `user` (name, roles), `tenant` (slug, locale), `location` (active tab key, app key, module path from URL/nav state), `openTabs` (key + title only), `workspace` (name or null), `contentVersion`. **Server-authoritative**: `user`, `tenant`, `contentVersion` are filled by the server from the authenticated principal/tenant context — the client cannot spoof them. No secrets, no tokens, no other users' data. |
 | A2 | Client → server handoff | UI collects the fields it already has (Shell/workbench/url-sync signals) — `location`, `openTabs`, `workspace` only — and sends them on `POST /api/ai-hub/chat` as an optional `context` object. Server fills identity fields. Missing context = today's behavior (backwards compatible). |
 | A3 | Server-side system prompt assembly | `AiHubChatService` prepends a system message: persona ("Crosshubber portal agent"), context pack JSON, active tool catalogue (Phase B). Keep under a hard budget (~1–2k tokens); drop oldest optional sections first. |
-| A4 | Persist pack snapshot | **Deferred (2026-09-29 go decision).** Persisting the pack (or its hash + diff) with the conversation turn moves to a follow-up after A1–A3/A5 ship. |
+| A4 | ~~Persist pack snapshot~~ — **DROPPED 2026-10-08** | Was deferred 2026-09-29. Dropped: the pack is deterministic (server principal + client payload), so any turn can be replayed for debugging; `agent_tool_calls` covers agent actions; a DB row for context forensics had no consumer. When observability lands (OTel), emit `aihub.context.hash` — full pack DEBUG-only, PII stays out of exported spans — as span attributes on the chat span; that subsumes the debugging value with zero schema. Revisit only on a concrete audit/compliance need to prove per-turn context alongside the transcript. |
 | A5 | Tests | Unit: pack builder + prompt assembler (stable ordering, redaction). Integration: chat SSE still streams with and without `context`. |
 
 **Exit criteria:** ask "what settings can I change here?" and the reply reflects the
@@ -84,7 +84,7 @@ caller's roles and current module; no schema break for clients that omit `contex
 | # | Work item | Detail |
 |---|---|---|
 | B1 | Tool registry v1 | Server-side registry of built-in tools: id, JSON Schema args, description, required roles, mutability (read/write), handler (`BiFunction`/service method). Seed with low-risk reads: `getShellConfig`, `listModules`, `listEntryPoints`, `getI18nLabels`, `listWorkspaces`, `getInstanceSettings`. |
-| B2 | Manifest `agentContributions.tools` → registry entries | At reconciler/install time, parse each installed module's `tools[]` entries (v2 schema, Phase D) into the same registry shape. Unknown/invalid entries fail validation loudly (fail-fast reconciler). |
+| B2 | Manifest `agentic.tools` → registry entries | At reconciler/install time, parse each installed module's `tools[]` entries (Phase D schema) into the same registry shape. Unknown/invalid entries fail validation loudly (fail-fast reconciler). |
 | B3 | Model tool-calling loop | Spring AI tool-calling (`ChatClient` tools) wired to the registry; support multi-step loops with a max-iteration cap; stream tool-call / tool-result events on the existing SSE channel (new frame types alongside `{"content"}` — document the protocol). |
 | B4 | Authorization | Dispatch runs as the authenticated user: tool handler checks `Roles` / `@PreAuthorize` equivalents. Agent never elevates. Denied tool → tool-result error the model can narrate, not a 500. |
 | B5 | Audit log | New table (Flyway `V<n>__agent_tool_calls.sql`): timestamp, user, conversation, tool id, args hash/summary, outcome, duration. UI: read-only list under AI Hub settings (Phase C). |
@@ -106,7 +106,7 @@ explains refusal — never mutates without role; every call lands in the audit t
 | C4 | Confirmation + audit surfaces | Confirm dialog for write tools; AI Hub settings gains "Agent tool calls" list (filter by user/tool/outcome). |
 | C5 | i18n | All new strings are catalog keys (`agent.*`) seeded via reconciler + migration for existing installs. |
 
-## Phase D — Manifest `agentContributions` v2
+## Phase D — Manifest `agentic` block
 
 **Goal:** modules declare agent surface with enough structure for validation, UI, and
 dispatch — still Crosshubber-owned schema (no external standard mandated).
@@ -138,7 +138,7 @@ tasks with a typed envelope — Agent-to-Agent *shape*, not necessarily a full A
 | # | Work item | Detail |
 |---|---|---|
 | F1 | Envelope draft | `{ task, context, expectedOutput, constraints, timeoutMs, callback? }` + result `{ status, output, artifacts[], auditRef }`. Own the schema; note where it could map to A2A tasks later. |
-| F2 | Sub-agent registration | Manifest `agentContributions.agents[]` (name, description, endpoint or in-process handler, roles). Validator + reconciler as in Phase D. |
+| F2 | Sub-agent registration | Manifest `agentic.agents[]` (name, description, endpoint or in-process handler, roles). Validator + reconciler as in Phase D. |
 | F3 | Orchestrator | Super-agent can spawn one sub-agent per turn (depth cap 1–2); sub-agent runs with the **same user identity**; results fold back into the parent conversation as a tool-result-like frame. Phase H refines transport: remote modules make **HTTP-first** (forwarded user token) the v1 shape, replacing "in-process first" here. |
 | F4 | ~~Portal-native sub-agents~~ — **DROPPED 2026-10-02** | Candidates were "navigation helper", "registry doctor", "i18n auditor". Module-owned HTTP agents (solutions projects-agent) proved the envelope pattern end to end; portal-native sub-agents have no current consumer. Revisit only on a concrete portal-native need. |
 | F5 | UX | Sub-agent activity visible in the transcript (Phase C3 pattern); no separate agent chat window in v1. |
@@ -151,7 +151,7 @@ without the portal indexing the world.
 
 | # | Work item | Detail |
 |---|---|---|
-| G1 | Knowledge source contract | Manifest `agentContributions.knowledge[]`: `{ id, title, kind: markdown|url, ref }` — content either inline (small) or fetched from module `baseUrl` at ask-time / install-time. |
+| G1 | Knowledge source contract | Manifest `agentic.knowledge[]`: `{ id, title, kind: markdown|url, ref }` — content either inline (small) or fetched from module `baseUrl` at ask-time / install-time. |
 | G2 | ~~Retrieval strategy v1~~ — **DROPPED 2026-10-02** | Keyword fetch-on-demand + truncate proved adequate (S4 verified meaningful retrieval); embeddings would be premature infra for the current corpora. Revisit trigger: a module with a real corpus reports retrieval misses. |
 | G3 | Citation — **DONE 2026-10-01** | Answers cite `knowledge[]` ids/titles in the stream (Phase C3 row type `citation`). |
 | G4 | Privacy | Knowledge is tenant-scoped (per-schema), never cross-tenant; URL fetches go through `SsrfGuard` + existing HTTP client config. |
@@ -181,6 +181,9 @@ land as H0b/H5.
 - **Cost/abuse controls:** per-user token budget, max tool iterations, max sub-agent
   depth — configurable, default-safe.
 - **Observability:** structured logs + audit table metrics; no prompt/PII in logs.
+  No tracing stack exists today — when OpenTelemetry lands, the chat span carries
+  `aihub.context.hash` (+ full pack DEBUG-only), which is the agreed replacement for
+  the dropped A4 context persistence.
 - **i18n:** user-visible agent strings only via catalog keys.
 - **Flyway owns DDL:** any new tables (audit, knowledge cache) = new `V<n>__*.sql`.
 - **TX hygiene:** LLM/MCP HTTP calls stay **outside** `@Transactional` (AGENTS.md
@@ -239,5 +242,7 @@ as H0b/H5. E is extracted and parked — `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md`
 | 2026-10-01 | **C1 (UX Plan #11) landed — quick-chat is EP-driven.** Shell gates the flyout on the served `ai-hub:quick-chat` module content (`wb.findModuleContent('ai-hub','quick-chat')` — ShellConfigService already filters by module active, content active, hidden and roles, so the client check is authoritative-by-construction); `toggleQuickChat` no-ops without the EP; an effect auto-closes the flyout when availability drops mid-session (registry/config refresh after deactivation or role change); Sidebar gained a `quickChatAvailable` input and hides the dock button without the EP (its `moduleContents` input is applications-only, so the computed lives in Shell and passes down as a plain input). Live-verified on dev: button visible + flyout opens as `dev`; EP `active:false` via registry API -> button hidden, flyout absent; re-activated -> both return. UI-only change: npm test 155 green (18 files), build exit 0. |
 | 2026-10-02 | **D4 landed; F4 dropped.** D4: `PortalModuleManifest` gained the typed `agentContributions` (tools/skills/agents/knowledge, matching the server validator schema); `buildDiffSections` emits four keyed sections (`Agent Tools`/`Agent Skills`/`Agents`/`Knowledge`, keyed by name/id) — the registry module detail renders them read-only via the existing generic-sections loop, and install/upgrade previews show contribution diffs for free; `fieldValue` formatter prints objects as JSON (no more `[object Object]`); 11 new `registry.section/field.*` keys x 4 languages (reconciler insert-if-absent). Live-verified: Solutions shows 5 tools (mutates=true on update_project_stage) + projects-agent, Staffing shows 5 tools with no Agents section, AI Hub shows none. Tests: UI 18 files green (+3 diff-engine specs), build exit 0. **F4 dropped by owner decision** — module-owned HTTP sub-agents (H0b/S6) proved the envelope pattern; portal-native sub-agents have no current consumer; revisit on a concrete need. |
 | 2026-10-02 | **G2 dropped; E extracted.** G2 (retrieval strategy): keyword fetch-on-demand + truncate proved adequate for the dogfood corpora (S4 verified meaningful retrieval with citations); an embedding store would be premature infra — module teams revisit only if a real corpus reports retrieval misses (open question 5 closed). E (MCP): owner confirmed the intent to connect external MCP servers eventually — Phase E extracted to `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md` with a complete decision record (transport = MCP `2026-07-28` Streamable HTTP, hand-rolled client, DB-backed admin registry with encrypted secrets, `mcp:` namespace, fail-soft health, E5 no-go); status: approved, not started — build when a concrete external server exists. |
+| 2026-10-08 | **A4 dropped** (last Phase A item). Context-pack persistence had two purposes: debugging ("what did this turn see?") and durable per-turn audit. Debugging is better served by future observability — no tracing stack exists today (no Micrometer/actuator/otel in the server), and when OpenTelemetry lands the chat span will carry `aihub.context.hash` (full pack DEBUG-only; exported spans keep no PII per the cross-cutting rule). Audit has no consumer: the pack is deterministic (server principal + client payload) so any turn is replayable, `agent_tool_calls` already covers agent actions, and the context itself is not persisted anywhere by design (system prompt is per-request, `MessageChatMemoryAdvisor` stores user/assistant only). Revisit only on a concrete compliance need to prove per-turn context alongside the transcript. |
+| 2026-10-08 | **Manifest baseline rename: `content` → `shell`, `agentContributions` → `agentic`** (hard break, `manifestVersion` stays 1). Dropped with owner sign-off: `capabilities` (never had a consumer), `userSettingsSchema`/`adminSettingsSchema` (allow-listed but never validated/read), entry-level `sortOrder` (TS-only; install never read it). Kept: `events` (declaration-only; msgcenter/WORKFLOWER reserve the slots) and all four `agentic` arrays. `shell.features` stays — it is the served-but-not-nav category the shell gates on (quick-chat flyout, settings/user-settings shells). Validator rejects legacy keys with rename hints; the Reconciler upgrades previously stored `registry_module_versions` JSONB at boot (`LegacyManifests`) and recomputes digests (`ManifestDigest` extracted from InstallService). In-repo manifests (`sample-sender`, `solutions`, `staffing`) and docs updated to the new shape. |
 
 

@@ -17,8 +17,8 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Manifest schema tests — focus on {@code agentContributions} v2 (AI plan D2): tools/skills/
- * agents/knowledge shape validation plus v1 backwards compatibility (empty arrays normalize).
+ * Manifest schema tests — focus on the {@code agentic} block (tools/skills/agents/knowledge; AI
+ * plan D2) on the 2026-10 baseline layout, plus legacy-key rejection hints.
  */
 class ManifestValidatorTest {
 
@@ -38,24 +38,23 @@ class ManifestValidatorTest {
         """
         {"manifestVersion":1,"key":"test-module","name":"Test Module",
          "baseUrl":"http://test:8080",
-         "content":{"applications":[{"key":"main","name":"Main","type":"iframe","url":"http://test:8080/app"}]}}
+         "shell":{"applications":[{"key":"main","name":"Main","type":"iframe","url":"http://test:8080/app"}]}}
         """;
     JsonNode node = mapper.readTree(base);
     if (agentJson != null) {
-      ((tools.jackson.databind.node.ObjectNode) node)
-          .set("agentContributions", mapper.readTree(agentJson));
+      ((tools.jackson.databind.node.ObjectNode) node).set("agentic", mapper.readTree(agentJson));
     }
     return node;
   }
 
-  // --- v1 backwards compatibility ---
+  // --- agentic defaults ---
 
   @Test
-  void parseDefaultsAllAgentArraysWhenContributionsAbsent() {
+  void parseDefaultsAllAgentArraysWhenAgenticAbsent() {
     ManifestValidator.Result result = validator.parse(manifest(null));
 
     assertTrue(result.ok());
-    JsonNode agent = result.manifest().path("agentContributions");
+    JsonNode agent = result.manifest().path("agentic");
     assertTrue(agent.path("tools").isArray());
     assertTrue(agent.path("tools").isEmpty());
     assertTrue(agent.path("skills").isArray());
@@ -64,11 +63,11 @@ class ManifestValidatorTest {
   }
 
   @Test
-  void parseNormalizesV1ShapeWithOnlyToolsAndSkills() {
+  void parseNormalizesPartialAgenticBlockWithOnlyToolsAndSkills() {
     ManifestValidator.Result result = validator.parse(manifest("{\"tools\":[],\"skills\":[]}"));
 
     assertTrue(result.ok());
-    JsonNode agent = result.manifest().path("agentContributions");
+    JsonNode agent = result.manifest().path("agentic");
     assertTrue(agent.path("agents").isArray());
     assertTrue(agent.path("knowledge").isArray());
   }
@@ -89,7 +88,7 @@ class ManifestValidatorTest {
     ManifestValidator.Result result = validator.parse(manifest(agent));
 
     assertTrue(result.ok(), "issues: " + result.issues());
-    assertEquals(2, result.manifest().path("agentContributions").path("tools").size());
+    assertEquals(2, result.manifest().path("agentic").path("tools").size());
   }
 
   @Test
@@ -227,6 +226,37 @@ class ManifestValidatorTest {
         result.issues().stream().anyMatch(i -> i.contains("knowledge[2].kind")), issues(result));
     assertTrue(
         result.issues().stream().anyMatch(i -> i.contains("knowledge[3].ref")), issues(result));
+  }
+
+  // --- legacy-key rejection (2026-10 baseline hard break) ---
+
+  @Test
+  void parseRejectsLegacyKeysWithRenameHints() {
+    String legacy =
+        """
+        {"manifestVersion":1,"key":"test-module","name":"Test Module","baseUrl":"http://test:8080",
+         "content":{"applications":[{"key":"main","name":"Main","type":"iframe","url":"http://test:8080/app"}]},
+         "capabilities":[],"agentContributions":{"tools":[]},"userSettingsSchema":{}}
+        """;
+    ManifestValidator.Result result = validator.parse(mapper.readTree(legacy));
+
+    assertFalse(result.ok());
+    assertTrue(
+        result.issues().stream()
+            .anyMatch(i -> i.contains("content: unknown field (renamed to \"shell\")")),
+        issues(result));
+    assertTrue(
+        result.issues().stream()
+            .anyMatch(
+                i -> i.contains("agentContributions: unknown field (renamed to \"agentic\")")),
+        issues(result));
+    assertTrue(
+        result.issues().stream().anyMatch(i -> i.contains("capabilities: unknown field (removed)")),
+        issues(result));
+    assertTrue(
+        result.issues().stream()
+            .anyMatch(i -> i.contains("userSettingsSchema: unknown field (removed)")),
+        issues(result));
   }
 
   private String issues(ManifestValidator.Result result) {

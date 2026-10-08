@@ -21,8 +21,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * AI plan D3/F2: catalogue hydration from active manifests — remote tools and sub-agent entries
- * (manifest {@code agentContributions.agents[]}) resolve together, skip incomplete modules, and
- * cache for 60s.
+ * (manifest {@code agentic.agents[]}) resolve together, skip incomplete modules, and cache for 60s.
  */
 class ToolRegistryTest {
 
@@ -35,7 +34,7 @@ class ToolRegistryTest {
   private static final String MANIFEST =
       """
       {
-        "agentContributions": {
+        "agentic": {
           "tools": [
             {"name": "list_projects", "description": "Lists projects", "mutates": false,
              "roles": ["solutions-user"]}

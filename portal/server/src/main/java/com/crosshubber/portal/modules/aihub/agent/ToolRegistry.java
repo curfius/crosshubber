@@ -20,9 +20,9 @@ import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Registry of tools the model may call (AI plan B1/B2): the built-in portal reads plus the {@code
- * agentContributions.tools[]} and {@code agentContributions.agents[]} declared by every active
- * installed module. Sub-agent entries surface to the model as ordinary delegating tools (AI plan
- * F2/F3); dispatch folds them through the same RBAC/audit pipeline as everything else.
+ * agentic.tools[]} and {@code agentic.agents[]} declared by every active installed module.
+ * Sub-agent entries surface to the model as ordinary delegating tools (AI plan F2/F3); dispatch
+ * folds them through the same RBAC/audit pipeline as everything else.
  *
  * <p>Remote contributions are resolved from the installed manifests on demand and cached for 60s —
  * install/uninstall changes take effect within a minute without reconciler coupling. Invalid
@@ -62,16 +62,14 @@ public class ToolRegistry {
     return builtinHandlers.tools();
   }
 
-  /**
-   * Tools contributed by active installed modules (manifest {@code agentContributions.tools[]}).
-   */
+  /** Tools contributed by active installed modules (manifest {@code agentic.tools[]}). */
   public List<AgentTool> remoteTools() {
     return remoteCache.get("catalogue", k -> resolveRemote()).tools();
   }
 
   /**
    * Sub-agent delegations contributed by active installed modules (manifest {@code
-   * agentContributions.agents[]}) — AI plan F2.
+   * agentic.agents[]}) — AI plan F2.
    */
   public List<AgentTool> remoteAgents() {
     return remoteCache.get("catalogue", k -> resolveRemote()).agents();
@@ -104,7 +102,7 @@ public class ToolRegistry {
       if (manifest == null) {
         continue;
       }
-      JsonNode contributions = manifest.path("agentContributions");
+      JsonNode contributions = manifest.path("agentic");
       JsonNode toolEntries = contributions.path("tools");
       if (toolEntries.isArray()) {
         for (JsonNode tool : toolEntries) {
