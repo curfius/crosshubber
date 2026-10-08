@@ -99,4 +99,15 @@ public class JsonUtils {
   public String write(Object value) {
     return mapper.writeValueAsString(value);
   }
+
+  /**
+   * Converts a JSON object subtree to a mutable map (jsonb column payloads); null/absent or
+   * non-object nodes yield null.
+   */
+  public Map<String, Object> toMap(JsonNode node) {
+    if (node == null || node.isNull() || !node.isObject()) {
+      return null;
+    }
+    return mapper.convertValue(node, new TypeReference<LinkedHashMap<String, Object>>() {});
+  }
 }

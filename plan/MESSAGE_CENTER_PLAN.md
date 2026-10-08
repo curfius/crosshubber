@@ -1,9 +1,10 @@
 # MESSAGE_CENTER_PLAN — Message Center module (inbox, notifications, tasks)
 
-Status: **approved plan** (2026-09-29). Builtin embedded module `msgcenter` that renders notifications,
-messages and tasks derived from NATS to the right audience, acts as the audit trail, and pushes task
-completion events back onto the broker. No business logic inside the portal — task ownership stays
-with the publishers (other modules or third-party apps).
+Status: **approved plan** (2026-09-29; amended 2026-10-06 — claim/draft lifecycle, groups, task
+templates, agent tools, Phase 5–7 resequence). Builtin embedded module `msgcenter` that renders
+notifications, messages and tasks derived from NATS to the right audience, acts as the audit trail,
+and pushes task completion events back onto the broker. No business logic inside the portal — task
+ownership stays with the publishers (other modules or third-party apps).
 
 Decisions locked during planning (2026-09-29):
 
@@ -23,6 +24,43 @@ Decisions locked during planning (2026-09-29):
    with title/description referencing flat `fields[]` by name).
 9. **Plain-text rendering only** — no markdown/HTML.
 
+Decisions locked during amendment (2026-10-06):
+
+10. **Claim mode** (`task.claim{enabled, mode:"single"}`, `completion:"any"` only): the whole
+    audience sees the task; one user claims it (CAS, one winner — 409 losers), works on it across
+    sessions (saved drafts), may release (keeping drafts as takeover context) or submit; others see
+    "in progress by `<name>`" (display-name snapshot at claim time — zero extra lookup dependency).
+    Claim is **not** a completion event.
+11. **Drafts** (collect tasks only): explicit save (no autosave), shape-checked only — never
+    schema-validated (partial data by design); the submit endpoint remains the sole schema authority.
+    Personal drafts for `each`/plain tasks; a single working draft rides the claim in claim mode.
+12. **Done is terminal** — no reopen, ever. Re-collection = the publisher sends a new task (new
+    event id). Release/reset by the current claimer; **`portal-msgcenter-edit` admin override**
+    (force-release / reset) from the admin surface. Reset clears claim + drafts but never the audit.
+13. **Groups = membership-driven subscriptions**: users cannot unsubscribe items addressed to them
+    personally; they opt out by leaving membership groups. Audience gains a 4th read-time channel
+    `groups ∩ myGroups`. Groups: `visibility open|closed` — open = self-join/leave freely;
+    closed = owners add/remove members, **self-leave always allowed**. Owners are notified of
+    membership churn via the message center itself (dogfooding). Participation pins visibility
+    (claimed/drafted/responded items stay visible until done even after leaving).
+14. **Group governance**: creation = new dedicated role `portal-msgcenter-groups` (Reconciler
+    upsert auto-syncs it); owners manage members; membership rows carry the per-group email flag
+    (Phase 7 channel).
+15. **Task templates** (`msg-center-templates` entry, dedicated `portal-msgcenter-templates` role):
+    shape-only (no approval-chain semantics in the portal — chains stay publisher/tools concern;
+    Workflower automates later). Versions immutable, edits = new version; envelope references
+    `task.template{key, version}` ⊕ inline `fields/sections` are mutually exclusive (422);
+    overridable at publish: `completion`, `completionEvent`, `expiresAt` only. **Resolved at
+    publish** (expand → validate → store); strict refs: unknown key/version → 422, retired versions
+    still resolve (new picks blocked); **delete only when the template has zero published
+    versions**, otherwise retire-only. Ingest and read paths never re-resolve.
+16. **Portal agent tools** (registry `Kind.BUILTIN`): `msgcenter_list`, `msgcenter_get` (read, no
+    confirmation), `msgcenter_claim_task`, `msgcenter_respond_task`, `msgcenter_send` (all
+    `needsConfirmation`); same validators/caps/CAS paths as the HTTP endpoints; template-aware send.
+17. **Email channel = Phase 7** (deferred, not v1): SMTP config card + per-group membership email
+    flags + one global per-user fallback switch for pinned/roles/allUsers deliveries; toggles are
+    not rendered until the channel exists.
+
 ---
 
 ## 1. Goals & non-goals
@@ -38,14 +76,17 @@ Decisions locked during planning (2026-09-29):
 - Light form validation via standard JSON Schema with a keyword allowlist, so task senders describe
   fields in a standard language and the portal never learns field semantics.
 
-**Non-goals (v1)**
+**Non-goals (v1, as amended 2026-10-06)**
 
 - No markdown/HTML (plain text only, line breaks honored); no attachments; no multi-select/array
   fields; no nested objects; no conditional-required/cross-field rules; no default values.
-- No Keycloak groups; no named recipient lists (§14 backlog).
+- No Keycloak groups (portal groups live in `mc_groups` — Keycloak group sync stays out of scope).
+- Named recipient lists: **superseded in scope by mc groups** (decision 13) rather than deferred.
 - No retention/archiving job; no per-user content overrides.
 - No scheduler — expiry computed at read time.
-- No execution of task logic inside the portal — responses are events; ownership stays with publishers.
+- No execution of task logic inside the portal — responses are events; ownership stays with
+  publishers; approval chains are composed by publishers/tools (Workflower later), not by templates.
+- No email sending until Phase 7; no autosave of drafts; no per-message muting.
 
 ## 2. Architecture — broker as transport, DB as focused store
 
@@ -97,6 +138,7 @@ manifest declaration slots (`events.published[]` / `events.consumed[]`, `Manifes
   "audience": {
     "users":    ["<kc-sub>"],                  // ≤ 200; pinned recipients
     "roles":    ["portal-approver"],           // ≤ 20; resolved at read time
+    "groups":   ["back-office"],               // ≤ 20; portal groups, resolved at read time
     "allUsers": false
   },
   "title": { "en": "Timesheet due", "de": "Zeiterfassung fällig" },
@@ -114,6 +156,9 @@ manifest declaration slots (`events.published[]` / `events.consumed[]`, `Manifes
     "completion": "any | each",                            // each ⇒ audience.users required
     "completionEvent": "hours.submitted",                  // dotCase; REQUIRED for collect, optional for approval
     "expiresAt": "2026-10-05T17:00:00Z",
+    "claim": { "enabled": true, "mode": "single" },        // optional (2026-10-06); completion:"any" only
+    "template": { "key": "expense-approval", "version": 3 },
+                                                           // ⊕ fields/sections — mutually exclusive (422)
     "sections": [                                          // optional form grouping, ≤ 5
       { "title": {"en": "Hours", "de": "Stunden"},
         "description": {"en": "Per project", "de": "Pro Projekt"},
@@ -136,11 +181,37 @@ manifest declaration slots (`events.published[]` / `events.consumed[]`, `Manifes
 
 - **Recipients (`audience`)**: one row per *event* in `mc_messages`, never per recipient; per-user
   state lives in side tables (`mc_message_reads`, `mc_task_responses`). At least one channel must be
-  set. Role-addressed messages follow role changes (read-time resolution:
-  `users ∋ me OR roles ∩ myRoles OR allUsers`); `users[]` pins the audience at send time.
-  Recipients are format-validated but **not existence-checked** — no Keycloak I/O in the ingest
-  path; unknown values simply never match (harmless dead recipients).
-  `completion: "each"` requires a concrete `users[]` (validated at publish; role/allUsers + each is a 422).
+  set. Role- and group-addressed messages read at time of read (read-time resolution:
+  `users ∋ me OR roles ∩ myRoles OR groups ∩ myGroups OR allUsers`); `users[]` pins the audience at
+  send time. Recipients are format-validated but **not existence-checked** — no Keycloak I/O and no
+  group-table I/O in the ingest path; unknown values simply never match (harmless dead recipients).
+    Group membership churn is therefore retroactive for group-addressed items; the **participation
+    pin** (decision 13) keeps items visible to users who have state on them: audience match adds an OR
+    branch `OR EXISTS my claim/draft/response row` — leaving a group never hides work you already
+    touched until the task is done.
+    Named-recipient-lists backlog item: superseded by mc groups (decision 13).
+  `completion: "each"` requires a concrete `users[]` (validated at publish; role/allUsers/groups +
+  each is a 422). `claim.enabled = true` requires `completion: "any"` (combined with `each` is a 422).
+- **Claim (decision 10)**: claim-mode tasks surface a **Take task** action to the whole audience;
+  claim = CAS `open → claimed` (`mc_messages.claimed_by_sub/name/at`, display-name snapshot from the
+  session principal — `PortalUser.name()`, same resolution as `OidcSuccessHandler`; no lookup
+  dependency); losing claimers get 409. Only the claimer sees the respond form; others see
+  "in progress by `<name>`" + a read-only card, but the task stays visible to everyone for context.
+  Release (`claimed → open`) keeps drafts as takeover context; the next claimer sees "draft available
+  from `<name>`" and may **adopt** it or start fresh. Claim publishes **no** completion event.
+- **Drafts (decision 11)**: `mc_task_drafts` — one working draft in claim mode (attached to the
+  claim, released with it), personal drafts otherwise (`UNIQUE (message_id, user_sub)`). Saved only
+  via explicit "Save draft" (no autosave in v1). Draft writes are shape-checked only (flat object,
+  known field names, string ≤ 2,000, fields ≤ 20) — **never schema-validated**; the submit endpoint
+  remains the sole schema authority. Started-over via reset; `done` tasks keep their final data only.
+- **Template reference (decision 15)**: `task.template{key, version}` xor inline `fields/sections`
+  (422 when both or neither shape source is present… inline always allowed; the 422 is template +
+  inline simultaneously). Publish-time resolution: merge template shape with the inline overrides
+  (`completion`, `completionEvent`, `expiresAt` only — envelope fields/sections alongside template
+  is a 422), validate the merged envelope against the standard allowlist/caps, **store the expanded
+  form** in `mc_messages.task_json` + `template:{key, version}` markers. Ingest and read never
+  re-resolve, so later template edits never mutate in-flight tasks. Unknown key/version → 422 at
+  publish; retired versions still resolve.
 - **Sender display**: `sender.name/color` if present, else `registry_modules.name` + icon, joined
   server-side when composing the read DTO. Plain strings, not i18n maps, not free-form branding.
 - **Body/labels**: i18n maps, `en` required, other languages optional with fallback per existing
@@ -149,12 +220,14 @@ manifest declaration slots (`events.published[]` / `events.consumed[]`, `Manifes
   → plain card.
 - **Response routing**: `portal.task.response.<moduleKey>.<completionEvent>`; if no
   `completionEvent`: `portal.task.response.<moduleKey>.approved|denied` (approval) / `.submit`
-  (collect). Published **after** the response row commits (audit row first; publish last).
+  (collect). Published **after** the response row commits (audit row first; publish last). Claim /
+  release / reset publish no events.
 
 **Caps (enforced at publish + ingest; 422 at publish, DLQ path at ingest)**
 Fields ≤ 20; enum options ≤ 50; per-field schema ≤ 8 KB; submitted string values ≤ 2,000 chars;
-`pattern` ≤ 128 chars (ReDoS guard); `users[]` ≤ 200; `roles[]` ≤ 20; `body.sections` ≤ 5;
-`task.sections` ≤ 5.
+`pattern` ≤ 128 chars (ReDoS guard); `users[]` ≤ 200; `roles[]` ≤ 20; `groups[]` ≤ 20;
+`body.sections` ≤ 5; `task.sections` ≤ 5; template `key` = KEY_RE, `version` ≥ 1;
+group `key` = KEY_RE; group name ≤ 100 chars.
 
 ## 4. Validation stack — one schema, two engines
 
@@ -186,7 +259,7 @@ date (`string` + `format: "date"`).
    then* response row + completion-event publish; nothing unvalidated is ever recorded or published.
 4. Browser pre-submit (Ajv): instant field errors before POST.
 
-Contract tested in both suites: browser-pass ⇒ server-pass (schema-equivalence spot checks).
+Contract tested in both suites: browser-pass <=> server-pass - SHIPPED 2026-10-07 as a shared fixture (portal/server/src/test/resources/msgcenter/schema-contract.json, 27 cases) read by both SubmitDataValidatorContractTest (JUnit) and task-form-model.contract.spec.ts (vitest); the TS task-form-model also gained enum/minLength/format/strict-type checks for parity.
 
 ## 5. DDL — `V30__message_center.sql`
 
@@ -201,7 +274,7 @@ CREATE TABLE mc_messages (
   nats_subject  TEXT NOT NULL,
   nats_seq      BIGINT,                        -- stream sequence, replay/debug
   occurred_at   TIMESTAMPTZ NOT NULL,
-  audience_json JSONB NOT NULL,                -- {users[], roles[], allUsers} as declared
+  audience_json JSONB NOT NULL,                -- {users[], roles[], groups[], allUsers} as declared
   sender_name   TEXT,
   sender_color  TEXT,
   title_json    JSONB NOT NULL,
@@ -209,13 +282,20 @@ CREATE TABLE mc_messages (
   severity      TEXT,
   thread_id     TEXT,
   link_json     JSONB,                         -- {moduleKey, path}
-  task_json     JSONB,                         -- kind/completion/completionEvent/expiresAt/fields/sections
-  status        TEXT NOT NULL DEFAULT 'open',  -- tasks: open | done ('each' flips on final response)
+  task_json     JSONB,                         -- kind/completion/completionEvent/expiresAt/claim/fields/sections
+                                               -- + template:{key,version} markers (resolved/expanded shape)
+  status        TEXT NOT NULL DEFAULT 'open',  -- tasks: open | claimed | done
+                                               -- ('any'+claim CAS open→claimed→done; 'any' plain open→done;
+                                               --  'each' flips on final response)
+  claimed_by_sub  TEXT,                        -- claim-mode: winner of the CAS (snapshot, not audience)
+  claimed_by_name TEXT,                        -- display-name snapshot at claim time
+  claimed_at      TIMESTAMPTZ,
   UNIQUE (event_id)
 );
 CREATE INDEX idx_mc_msgs_audience ON mc_messages USING GIN (audience_json);
 CREATE INDEX idx_mc_msgs_type     ON mc_messages (msg_type, status, occurred_at DESC);
 CREATE INDEX idx_mc_msgs_module   ON mc_messages (module_key, occurred_at DESC);
+CREATE INDEX idx_mc_msgs_claim    ON mc_messages (claimed_by_sub) WHERE claimed_by_sub IS NOT NULL;
 
 CREATE TABLE mc_task_responses (
   id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -235,12 +315,88 @@ CREATE TABLE mc_message_reads (
   read_at    TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (message_id, user_sub)
 );
+
+CREATE TABLE mc_task_drafts (                  -- current drafts only; history lives in activity
+  id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  message_id   BIGINT NOT NULL REFERENCES mc_messages(id) ON DELETE CASCADE,
+  user_sub     TEXT NOT NULL,                  -- personal draft owner; in claim mode = current claimer
+  data_json    JSONB NOT NULL,                 -- shape-checked only, never schema-validated
+  note         TEXT,
+  updated_at   TIMESTAMPTZ NOT NULL,
+  UNIQUE (message_id, user_sub)
+);
+
+CREATE TABLE mc_task_activity (                -- append-only audit trail, one timeline per task
+  id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  message_id   BIGINT NOT NULL REFERENCES mc_messages(id) ON DELETE CASCADE,
+  actor_sub    TEXT NOT NULL,
+  actor_name   TEXT,                           -- snapshot at action time
+  action       TEXT NOT NULL,                  -- claim | release | adopt | draft_save | draft_discard
+                                               -- | reset | respond | admin_force_release | admin_reset
+  detail_json  JSONB,                          -- snapshot: draft payload / outcome / note / override
+  created_at   TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX idx_mc_act_msg ON mc_task_activity (message_id, created_at DESC);
+
+-- final responses are mirrored here as action='respond' rows (full payload, capped) so the
+-- timeline tells the whole story; group membership churn gets its own timeline entries below.
+
+CREATE TABLE mc_groups (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  key         TEXT NOT NULL UNIQUE,            -- KEY_RE
+  name        TEXT NOT NULL,                   -- ≤ 100 chars
+  visibility  TEXT NOT NULL DEFAULT 'open',    -- open (self-join/leave) | closed (owner-managed, self-leave always)
+  created_by  TEXT,
+  created_at  TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE mc_group_owners (
+  group_id  BIGINT NOT NULL REFERENCES mc_groups(id) ON DELETE CASCADE,
+  user_sub  TEXT NOT NULL,
+  PRIMARY KEY (group_id, user_sub)
+);
+
+CREATE TABLE mc_group_members (
+  group_id   BIGINT NOT NULL REFERENCES mc_groups(id) ON DELETE CASCADE,
+  user_sub   TEXT NOT NULL,
+  email_flag BOOLEAN NOT NULL DEFAULT false,   -- Phase 7: email channel per-group opt-in (column from day one)
+  added_by   TEXT NOT NULL,                    -- 'self' | owner sub | admin
+  joined_at  TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (group_id, user_sub)
+);
+CREATE INDEX idx_mc_grp_mem_user ON mc_group_members (user_sub);
+
+CREATE TABLE mc_task_templates (
+  id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  key        TEXT NOT NULL UNIQUE,             -- KEY_RE
+  name       TEXT NOT NULL,
+  created_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL,
+  retired_at TIMESTAMPTZ                       -- retire-only unless zero published versions (delete)
+);
+
+CREATE TABLE mc_task_template_versions (
+  id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  template_id  BIGINT NOT NULL REFERENCES mc_task_templates(id) ON DELETE CASCADE,
+  version      INT NOT NULL,                   -- immutable once saved; edits create version n+1
+  kind         TEXT NOT NULL,                  -- approval | collect
+  completion   TEXT NOT NULL,
+  fields_json  JSONB NOT NULL,                 -- same shape as envelope task.fields[] (allowlist-bounded)
+  sections_json JSONB,
+  status       TEXT NOT NULL DEFAULT 'published',  -- published | retired (retired still resolves for old refs)
+  created_by   TEXT,
+  created_at   TIMESTAMPTZ NOT NULL,
+  UNIQUE (template_id, version)
+);
 ```
 
 Semantics: insert-only arrivals (event_id conflict = ingest no-op); responses insert-on-conflict
-update scoped to `user_sub`; `completion=any` CAS `open → done` inside the submit transaction;
-`completion=each` completes in the transaction inserting the final missing response;
-`expired` is computed at read time via `expiresAt` (`task_json`) — no scheduler.
+update scoped to `user_sub`; `completion=any` CAS `open → done` inside the submit transaction
+(claim-mode variant: `open → claimed` on claim CAS, `claimed → done` on respond submit, claimer
+guard `claimed_by_sub = me`); `completion=each` completes in the transaction inserting the final
+missing response; `expired` is computed at read time via `expiresAt` (`task_json`) — no scheduler.
+Reset = claim columns cleared + drafts deleted + status back to `open` **inside one transaction; the
+activity rows survive** (audit is never deleted).
 
 ## 6. Backend (`modules/msgcenter/` + cross-cutting plumbing)
 
@@ -259,19 +415,44 @@ Module vertical slices (ai-hub-style feature packaging, entity/repo/service/cont
   validate → TX insert (or event_id-conflict no-op) → commit → **ack after commit**;
   final-failure → DLQ publish + ack. `MsgCenterIngestionService` owns the transactional insert.
 - `domain/` — `McMessageEntity/Repository`, `McTaskResponseEntity/Repository`,
-  `McMessageReadEntity/Repository` + `MsgCenterQueryService` (GIN audience filter
-  `users ∋ me OR roles ∩ myRoles OR allUsers`, unread count via `mc_message_reads` join,
-  cursor pagination by `occurred_at` desc, sender/link joined from registry)
-  + `MsgCenterTaskService` (schema synthesis, `data` validation via networknt, CAS
-  status transitions / unique-user insert, 409 on raced/pre-empted/expired — V26 pattern).
+  `McMessageReadEntity/Repository`, `McTaskDraftEntity/Repository`,
+  `McTaskActivityEntity/Repository` + `MsgCenterQueryService` (GIN audience filter
+  `users ∋ me OR roles ∩ myRoles OR groups ∩ myGroups OR allUsers` + participation-pin OR branch,
+  unread count via `mc_message_reads` join, cursor pagination by `occurred_at` desc, sender/link
+  joined from registry) + `MsgCenterTaskService` (schema synthesis, `data` validation via networknt,
+  CAS status transitions / unique-user insert, 409 on raced/pre-empted/expired — V26 pattern;
+  claim/release/reset/draft/adopt CAS + activity-append logic; all transitions in one TX, activity
+  append rides the same TX).
+- `groups/` — `McGroupEntity/Repository`, `McGroupOwnerEntity/Repository`,
+  `McGroupMemberEntity/Repository` + `MsgCenterGroupService` (CRUD gated
+  `portal-msgcenter-groups` for create/owner-mgmt, admin edit via `portal-msgcenter-edit`;
+  join/leave/add/remove with visibility rules; owner-notification publishes on membership churn
+  **after commit** via `EventPublisher`, subject `portal.msg.msgcenter.group.<event>`).
+- `templates/` — `McTaskTemplateEntity/Repository`, `McTaskTemplateVersionEntity/Repository` +
+  `MsgCenterTemplateService` (CRUD + publish-new-version + retire + delete-if-zero-published;
+  publish-time resolution: fetch key+version → merge overrides → hand merged envelope to the
+  standard validator), read-only listing for senders at `GET /api/msgcenter/templates`.
 - `web/` — `MsgCenterInboxController` (all routes authenticated-user level): `GET
   /api/msgcenter/messages`, `GET /api/msgcenter/unread`, `POST /api/msgcenter/messages/{id}/read`,
-  `POST /api/msgcenter/tasks/{id}/respond` (`outcome`, `data`, `note`).
-- `MsgCenterResponsePublisher` — response-event publish, after commit.
+  `POST /api/msgcenter/tasks/{id}/respond` (`outcome`, `data`, `note`), `POST
+  /api/msgcenter/tasks/{id}/claim`, `POST /api/msgcenter/tasks/{id}/release` (`discardDraft`
+  flag), `POST /api/msgcenter/tasks/{id}/reset` (claimer), `PUT /api/msgcenter/tasks/{id}/draft`,
+  `DELETE …/draft`, `POST …/draft/adopt` (claimer adopts predecessor draft).
+- `web/` — `MsgCenterAdminController` (`portal-msgcenter-edit`): task activity timelines
+  (`GET /api/msgcenter/tasks/{id}/activity`), DLQ listing, per-module counts,
+  `POST /api/msgcenter/admin/tasks/{id}/release|reset` (force-release / admin override).
+- `web/` — `MsgCenterGroupController` (self-service: `GET /api/msgcenter/groups` browse,
+  `POST /api/msgcenter/groups/{key}/join|leave`; owner/admin management:
+  `POST /api/msgcenter/groups`, member add/remove, owner grant/revoke — create gated
+  `portal-msgcenter-groups`, owner-mgmt gated by ownership or `portal-msgcenter-edit`) and
+  `MsgCenterTemplateController` (`portal-msgcenter-templates`: create/publish-version/retire/
+  delete-unused; plus the read-only sender listing at `GET /api/msgcenter/templates`).
+- `MsgCenterResponsePublisher` — response-event publish, after commit; also owner-notification
+  publishes for group churn (same after-commit discipline; no NATS I/O inside TX).
 - **Third-party publish endpoint** — `POST /api/msgcenter/publish`: secret-header auth modeled on
-  `AgentCallAuthorizer` / `X-Portal-Agent` (`RemoteToolInvoker`), envelope validation +
-  `moduleKey`-exists check (422), Caffeine rate limit keyed by caller identity. Builtin modules
-  publish directly via `EventPublisher` (no HTTP hop).
+  `AgentCallAuthorizer` / `X-Portal-Agent` (`RemoteToolInvoker`), envelope validation (including
+  template resolution) + `moduleKey`-exists check (422), Caffeine rate limit keyed by caller
+  identity. Builtin modules publish directly via `EventPublisher` (no HTTP hop).
 
 ## 7. Subscription contract (publisher-facing)
 
@@ -288,32 +469,53 @@ original message `event_id`.
 ## 8. Builtin registration & tenant ownership
 
 - `bootstrap/EmbeddedCatalog.java`: new `Module("msgcenter", "Message Center", "inbox", "1.0",
-  ["portal-msgcenter-edit"], [
+  ["portal-msgcenter-edit", "portal-msgcenter-groups", "portal-msgcenter-templates"], [
   `Entry("main", "applications", "Message Center", "msg-center", color, -2, false, [])`,
   `Entry("admin", "settings", "Message Center Admin", "msg-center-admin", color, 5, false,
-  ["portal-msgcenter-edit"])])`.
-- Reconciler upsert + `builtinRealmRoles()` union pick the new role up automatically; `active`
+  ["portal-msgcenter-edit"])`,
+  `Entry("admin", "settings", "Task Template Studio", "msg-center-templates", color, 6, false,
+  ["portal-msgcenter-templates"])])`.
+- Reconciler upsert + `builtinRealmRoles()` union pick the three roles up automatically; `active`
   stays tenant-config-owned (`modules.builtin` semantics — registry PATCH → 409, UI toggle hidden;
   zero extra code).
-- Inbox content: open to **all authenticated users** (audience filtering is the gate). Only the
-  admin content/endpoint is `portal-msgcenter-edit`-gated.
+- Inbox content: open to **all authenticated users** (audience filtering is the gate). Admin
+  content/endpoints are `portal-msgcenter-edit`-gated; group creation/owner-mgmt additionally
+  exposes `portal-msgcenter-groups`; template authoring is `portal-msgcenter-templates`-gated.
 
 ## 9. UI (Angular 22, zoneless, signals, ds-tokens only)
 
-- `portal/core/workarea/embedded-modules.ts`: add lazy `msg-center` and `msg-center-admin`
-  imports; `EMBEDDED_LOAD_PATHS` auto-derives; backend `EmbeddedCatalog` must stay in sync
-  (already pinned by `embedded-modules.spec.ts`).
-- `core/msg-center/msg-center.store.ts`: signals store (`items`, `filter`, `unread`), `apiFetch`
-  with explicit throw policy, 15s badge polling (no SSE in v1).
+- `portal/core/workarea/embedded-modules.ts`: add lazy `msg-center`, `msg-center-admin` and
+  `msg-center-templates` imports; `EMBEDDED_LOAD_PATHS` auto-derives; backend `EmbeddedCatalog`
+  must stay in sync (already pinned by `embedded-modules.spec.ts`).
+- `core/msg-center/msg-center.store.ts`: signals store (`items`, `filter`, `unread`, `groups`),
+  `apiFetch` with explicit throw policy, 15s badge polling (no SSE in v1).
 - Inbox component: tabs Inbox / Notifications / Tasks / History (history = `status ≠ open` or done
   tasks); cards with sender-color accent strip, severity chip, i18n title/body + `body.sections`,
   deep-link button through Bridge (`navigateFromModule`).
+- Task detail claim/draft states: **Take task** (audience-wide, claim mode) → for the claimer the
+  full form with **Save draft / Release / Reset** actions; for others "in progress by `<name>`"
+  chip + read-only card; "draft available from `<name>` — adopt / start fresh" prompt on takeover;
+  personal drafts (non-claim tasks) get Save draft / Resume on reopen.
 - Task detail: `kind: "approval"` → approve/deny + optional note; `kind: "collect"` → generic form
   renderer built from `task_json`: Ajv client-side validation, per-field attrs mirrored onto
   `ds-*` controls, `task.sections` render as titled/described groupings; completed tasks render
   read-only with responses (audit view).
 - Unread badge in `app-sidebar` fed from the store signal.
-- Admin surface (`msg-center-admin`): read-only audit view — history, DLQ listing, per-module counts.
+- Admin surface (`msg-center-admin`): audit view — history, DLQ listing, per-module counts, task
+  activity timelines, **force-release / admin-reset** actions, **group management** (create /
+  visibility toggle / retire, add-remove owners, add-remove members, member email flags read-only
+  until Phase 7).
+- Template Studio (`msg-center-templates`): template list (key, name, version history with status),
+  **drag & drop form builder** — palette limited to the field-type matrix (short/long text,
+  number/integer, boolean, enum ≤ 50 labeled options, date), sections grouping (≤ 5),
+  required/label(i18n-map, en required)/multiline/min-max/pattern attrs, live preview against an
+  inline envelope; publish (stamp immutable version) / retire / delete-if-zero-published; starter
+  presets ("1-level approval", "comments/feedback request", "stage 2 of 2 approval" for
+  publisher-orchestrated chains). DnD tech (custom HTML5 vs @angular/cdk) decided at
+  implementation against the build budget (falls in list with §14 Ajv fallback).
+- User settings — "My groups" card (`usersettings` module scope `msgcenter`): browse/search all
+  groups (open + closed, closed marked "owner-managed"), join open groups, leave any group,
+  members see their per-group email flag cells greyed "available with email channel" until Phase 7.
 - All strings via i18n catalog keys (4 languages), `i18n.t()` calls (no TranslatePipe per AGENTS.md).
 
 ## 10. Staged rollout
@@ -325,18 +527,37 @@ original message `event_id`.
   Files: `docker-compose.yml`, `portal/server/pom.xml`, `config/NatsConnectionConfig.java`,
   `PortalProperties.java`, both application ymls, `common/events/*.java` + unit tests.
 - **Phase 1 — ingest & inbox**
-  `V30__message_center.sql`; ingest package; domain package + query/read controllers;
-  `embedded-modules.ts` entries; store; inbox UI; sidebar badge; i18n catalog keys (4 languages).
-  IT: `MsgCenterIngestionIT`.
-- **Phase 2 — tasks & responses**
+  `V30__message_center.sql` (all tables, day one — unused ones just sit); ingest package; domain
+  package + query/read controllers; `embedded-modules.ts` entries; store; inbox UI; sidebar badge;
+  i18n catalog keys (4 languages). IT: `MsgCenterIngestionIT`.
+- **Phase 2 — tasks, claim lifecycle, drafts, groups audience**
   Submit loop (networknt schema validate, CAS/409, uniqueness), `mc_task_responses` writes,
-  response publisher, collect-form renderer + approval UI.
+  response publisher, collect-form renderer + approval UI; **claim/release/reset/draft/adopt** CAS
+  machinery + card states; **groups as a 4th audience channel** (read-time resolution +
+  participation pin in `MsgCenterQueryService`; group tables already in V30).
 - **Phase 3 — admin & third-party publish**
-  `/api/msgcenter/publish` endpoint (rate limit, secret header), admin audit view, README design
-  notes entry.
-- **Phase 4 — sample sender app (§12)**
+  `/api/msgcenter/publish` endpoint (rate limit, secret header), admin audit view (activity
+  timelines, force-release/reset), **group CRUD + owner/members management + owner-notify
+  publishes**, user-settings "My groups" card, README design notes entry.
+- **Phase 4 — sample sender app (§13)**
   Compose service + app; can start in parallel with Phase 2 (needs Phase 0 + envelope contract;
-  the task demos validate Phase 2).
+  the task demos validate Phase 2). Presets #4 (claim takeover) and #5 (group-addressed).
+- **Phase 5 — task templates**
+  Template Studio UI + template CRUD/versioning + publish-time resolution in all publish paths +
+  read-only sender listing; sample-sender preset #6 (template-referenced task).
+- **Phase 6 — portal agent tools (§12)**
+  Registry entries, confirmation policy, task-audit integration; template-aware `msgcenter_send`.
+- **Phase 7 — email channel**
+  Compose `mailpit` (default-on dev catcher — UI :28025, SMTP :31025) as the anti-leak target;
+  `spring-boot-starter-mail`; SMTP config stored in `module_settings` (`msgcenter`, group
+  `email`, password AES-GCM encrypted via CryptoService, masked in reads), `PORTAL_SMTP_*` env
+  seeds insert-if-absent at boot (admin edits win); per-group `email_flag` toggles go live in
+  the My-groups card; global per-user fallback switch (`user_settings` scope `msgcenter`,
+  default off) governs pinned/roles/allUsers deliveries; **immediate-mirror** delivery inside
+  the ingest path (event-driven, virtual threads — **no scheduler**; digest/summary deferred to
+  Workflower-era); mirror fires on arrival only; plain-text rendering via the item's i18n maps
+  with the recipient language (user_settings general.language, en fallback); Caffeine noise cap
+  (~50 mails/recipient/day). ITs: Mailpit container (`GenericContainer` + REST assertions).
 
 Phase gate: `mvn spotless:apply` then `mvn verify` (checkstyle runs at validate) and
 `npm test` / `npm run build` green before moving on; validate `V30` against a fresh `PGSCHEMA`
@@ -345,19 +566,45 @@ boot (Flyway applies DDL; Reconciler stays idempotent).
 ## 11. Test plan
 
 - **Unit**: envelope validate/reject matrix (every cap, every reject keyword, audience baseline,
-  `completionEvent` token rules); audience match predicate (`users/roles/allUsers`, intersections,
-  unknown-key dead recipients); CAS transitions incl. `each` final-response race (409);
+  `completionEvent` token rules); audience match predicate (`users/roles/groups/allUsers`,
+  intersections, unknown-key dead recipients, participation pin); CAS transitions incl. `each`
+  final-response race (409), claim race both directions (409 losers), release/reset outcomes,
+  draft shape-check matrix (caps, unknown fields, non-object); group visibility rules (closed
+  join = owner-only, self-leave always) + owner-notification publish payload; template resolution
+  matrix (unknown key → 422, unknown version → 422, retired resolves, template ⊕ inline = 422,
+  override-only-not-shape, version immutability, delete-with-published-versions → 409,
+  snapshot-at-store: a later version edit never mutates a stored message);
   read model pagination + unread; response subject composition; publish-payload shape.
 - **IT `MsgCenterIngestionIT`** (Testcontainers `nats:2.12` started with `-js` + the existing PG
   container): publish while consumer offline → portal boots → arrives exactly once (event_id
   dedupe); redelivery double-ack safety; malformed envelope/schema → `portal.dlq.msgcenter`;
-  `completion:"each"` across a user set; approval + collect flows end to end; HTTP publish path
-  (missing secret → 401; unknown `moduleKey` → 422).
+  `completion:"each"` across a user set; approval + collect flows end to end; claim takeover E2E
+  (claim → draft → release → re-claim → adopt → submit); reset-with-draft audit survival; group
+  join → membership notification on `portal.msg.msgcenter.*`; HTTP publish path (missing secret →
+  401; unknown `moduleKey` → 422; template-ref expands at publish).
 - **UI specs**: store spec (filters, unread, errors, res.ok discipline), form-renderer spec
-  (per-type attrs, Ajv error rendering), i18n fallback helper.
+  (per-type attrs, Ajv error rendering), claim/draft card state machine spec, template-builder
+  form-model spec (allowlist-constrained palette), i18n fallback helper.
 - **Sample sender app**: no CI tests (dev-only demo); manual smoke checklist in its README.
 
-## 12. Sample sender app — `modules/sample-sender/` (iframe demo)
+## 12. Portal agent tools (registry `Kind.BUILTIN`, Phase 6)
+
+Registered like the B1 builtin seeds (`getShellConfig`, `listModules`, …) so the existing dispatch,
+confirm-dialog and audit machinery (`agent_tool_calls`, V29) applies unchanged:
+
+| Tool | Kind | Confirmation | Behavior |
+|---|---|---|---|
+| `msgcenter_list` | read | none | list own inbox items (`type`/`status`/`unread` filters) with the same audience/predicate gate |
+| `msgcenter_get` | read | none | single item: body/sections/task spec (+ own response for completed tasks) |
+| `msgcenter_claim_task` | write | needsConfirmation | claim CAS as the HTTP endpoint; 409 races surface as narratable tool-result errors |
+| `msgcenter_respond_task` | write | needsConfirmation | same validation + CAS path as the respond endpoint (claim-guard for claim-mode) |
+| `msgcenter_send` | write | needsConfirmation | publish on the user's behalf — same envelope validators/caps/template resolution as `/publish`; no secret-header (session identity already RBAC-attested) |
+
+Tool args are JSON-Schema declarations in the registry; `msgcenter_send` accepts both inline task
+shapes and `template{key, version}` references (resolved server-side, identically to the HTTP
+publish path). No draft/reset tools — drafts and resets are human-workspace operations.
+
+## 13. Sample sender app — `modules/sample-sender/` (iframe demo)
 
 A minimal standalone third-party app in the compose stack, registered in the portal as an
 **iframe module content**. It is the reference implementation of the sender contract and doubles as
@@ -390,20 +637,24 @@ sample-sender:
 **Demo UI (3 screens, vanilla):**
 
 1. **Composer** — free-form envelope builder: type dropdown (notification/message/task), audience
-   editor (users/roles/allUsers), title/body i18n-map inputs, sections editor, optional task kind +
-   field editor with live form preview. Transport toggle: **NATS direct** (default) vs **HTTP**
-   (`POST /api/msgcenter/publish` with the secret header) — exercises both sender paths.
+   editor (users/roles/groups/allUsers), title/body i18n-map inputs, sections editor, optional task
+   kind + template-ref editor + field editor with live form preview. Transport toggle: **NATS
+   direct** (default) vs **HTTP** (`POST /api/msgcenter/publish` with the secret header) —
+   exercises both sender paths.
 2. **Send log** — chronological sent envelopes with ack/off status.
 3. **Responses** — subscription on `portal.task.response.sample-sender.>` rendered as a timeline
    (responder, outcome, data, note) — proves the completion loop back to the sender.
 
-**3 implemented demo tasks (one-click presets):**
+**6 implemented demo tasks (one-click presets):**
 
 | # | Task | kind | completion | fields | mapping |
 |---|---|---|---|---|---|
 | 1 | Expense approval (note + context text in body) | approval | any | — (note only) | default `approved`/`denied` subjects |
 | 2 | Daily hours report | collect | each | `hours` number 0–24 required; `comment` multiline | `hours.submitted` |
 | 3 | Off-site RSVP | collect | each | `attending` boolean; `meal` enum (≤ 6 labeled) | `rsvp.submitted` |
+| 4 | Loaner laptop request (claim pool) | collect | any | `claim.single`; `justification` short text; `days` integer 1–30 | default `submit` |
+| 5 | Group broadcast test | notification | — | audience `groups: [<visible group>]` (UI-free preset: pick any group key already created in dev) | — |
+| 6 | Template-referenced task | task via `task.template{key, version}` | per template | any published template listed by `GET /api/msgcenter/templates` | per template `completionEvent` |
 
 Task #3 groups its fields under one `task.sections[]` entry (title + description) to demo form sections.
 
@@ -421,18 +672,110 @@ its own endpoints — consistent with dev insecure-by-design, mirrored by soluti
 and can publish anything to the stream — same trust level as the dogfood modules; documented risk,
 `portal.dlq.msgcenter` + registry exist-check keep it observable.
 
-## 13. Risks
+## 14. Risks
 
 - Consumer redelivery correctness → `event_id` idempotency + boot-replay IT case.
 - Stream growth → 8-day retention + DLQ policy; retention job deferred.
-- Bundle budget → Ajv rides a lazy chunk; fallback `@cfworker/json-schema` if `npm run build`
-  budget fails.
+- Bundle budget → Ajv **and** the Template Studio DnD machinery ride lazy chunks; fallbacks
+  `@cfworker/json-schema` (validation) and custom HTML5 DnD (no CDK) if `npm run build` budgets fail.
 - Single durable-consumer throughput → fine at expected volumes; parallel sharding deferred.
 - Sample app trust level → dev-only by design; documented; never registered on a real tenant.
+- Group churn notifications → could get noisy for large groups; dedupe/digest rules deferred
+  (owners may mute via leaving… owners own the group, so worst case the portal-admin retires it).
+- Template drift → resolved by expand-at-publish + snapshot-at-store (decision 15); reference
+  strictness keeps senders deterministic.
 
-## 14. Deferred (backlog)
+## 15. Deferred (backlog)
 
-Named recipient lists; Keycloak groups; retention/archiving job; markdown rendering; attachments;
-arrays/multi-select fields; conditional/cross-field rules; `default` field values; SSE live inbox
-updates (v1 = 15s polling); per-message note toggles; msg-center admin UI for publisher onboarding;
-sample-sender multi-tenant support.
+Keycloak-group backing for mc groups; retention/archiving job (incl. `mc_task_activity` growth);
+markdown rendering; attachments; arrays/multi-select fields; conditional/cross-field rules;
+`default` field values; SSE live inbox updates (v1 = 15s polling); per-message note toggles;
+per-user email fallback switch UI polish; digest/summary emails (needs a scheduler → Workflower
+era); msg-center admin UI for publisher onboarding; sample-sender multi-tenant support;
+auto-claim-and-submit combined action (strict claim-first is the v1 contract; relaxing is
+backward-compatible later); template picker inside the agent tool schema (send tool takes raw
+refs in Phase 6).
+- **Hooks for Workflower** (`plan/WORKFLOWER_PLAN.md` owns these): portal-agent wake-up on
+  `portal.task.response.*` (matches pending agent-filed tasks → agent continuation), task
+  timeout/expiry *events* (expiry is read-time only in v1 — a waiting agent learns a timeout only
+  by polling `msgcenter_list`). The message center's contract stays: durable, correlated
+  (`eventRef`/`threadId`), auditable events with at-least-once semantics.
+
+## 16. Decision log
+
+| Date | Decision |
+|---|---|
+| 2026-09-29 | Original plan approved (decisions 1–9). |
+| 2026-10-06 | Claim + draft + takeover + audit + reset added (case "one of group completes"); claimed-by visible with display-name snapshot; done terminal; admin override for release/reset; activity timeline admin-only. |
+| 2026-10-06 | Groups introduced (membership = subscription; 4th read-time audience channel); participation pin; creation role `portal-msgcenter-groups`; owners notified of churn via msgcenter itself; per-`user_settings` mute idea replaced by group model. |
+| 2026-10-06 | Group `visibility open\|closed` — self-leave always allowed, closed join = owner-managed. |
+| 2026-10-06 | Task templates added (shape-only; dedicated role; immutable versions; strict publish-time resolution; snapshot-at-store; delete only if zero published versions). |
+| 2026-10-06 | Agent tools approved as full loop incl. `msgcenter_send`; email deferred to Phase 7 (per-group flags + global fallback switch); phases resequenced 0–7. |
+| 2026-10-06 | **Phases 0-3 + Phase 5 implemented** (backend + UI, 226 server tests / 169 UI tests / build+verify green; live dev-stack verified end-to-end). Deviations recorded below. |
+| 2026-10-07 | **Phases 4 + 6 implemented** (sample-sender + portal agent tools; 235 server tests / 20 UI spec files green; live-stack verified - HMAC publish to ingest, DLQ no-poison-pill, NATS-direct, response-tree fix confirmed on the running stack). Response subjects moved to portal.taskresponse.* (see deviation 8). Remaining: Phase 7 (email), schema-equivalence spot checks, e2e pack coverage. |
+| 2026-10-07 | **Phase 7 spec locked** (Mailpit default-on catcher + REST-asserted container ITs; SMTP config in module_settings msgcenter/email with AES-GCM secret + insert-if-absent env seed; immediate-mirror arrival-only engine, virtual-thread send, plain-text i18n rendering, recipient language from user_settings, Caffeine noise cap; no scheduler, no inbound email, digest deferred to Workflower). |
+
+**Implementation deviations (2026-10-06, Phase 0–3+5 build):**
+
+1. **Submit validation engine**: hand-rolled rule engine per the allowlist semantics
+   (`AllowlistSubmitValidator`) instead of `networknt:json-schema-validator` — deterministic,
+   dependency-free; same contract (required/type/enum/format/pattern/bounds/caps). Ajv
+   browser-side replaced by the TS `task-form-model` helpers (same rules; Ajv stays the approved
+   upgrade path). Envelope shape unaffected.
+2. **DLQ subject**: `portal.dlq.>` added to the PORTAL_MESSAGES stream subjects (the plan listed
+   only portal.msg/task prefixes; the DLQ must live on the durable stream to be observable).
+   NATS compose now runs `-js -m 8222` (monitoring port needed by the compose healthcheck).
+3. **`mc_message_reads` / `mc_group_owners` / `mc_group_members`**: surrogate `BIGSERIAL id` +
+   UNIQUE(message,user)/(group,user) instead of composite PKs (Hibernate IdClass friction); 
+   `mc_task_drafts.user_name` added — display-name snapshot for takeover UX.
+4. **Query predicate arrays**: roles/groups/users elements embedded as `ARRAY[...]::text[]`
+   literals after regex-filtering (`[A-Za-z0-9_-]`) instead of JDBC array params (GIN-hitting,
+   driver-agnostic); all identity values stay bound parameters.
+5. **Template Studio DnD**: native HTML5 drag events (draggable rows) instead of `@angular/cdk`
+   — reorder-only palette, inside the bundle budget; field editing is signal-driven.
+6. **HTTP publish auth**: `X-MsgCenter-Key` + `X-MsgCenter-Secret` = base64url(HMAC-SHA256(session
+   secret, callerKey)); envelope moduleKey must equal the caller key (anti-spoof); SecurityConfig
+   permits the path (auth is the controller's HMAC gate, never session-based).
+7. **2026-10-06 live bugfix (inbox 500s)**: the audience predicate originally spelled the `?|`
+   JSONB operator, whose bare `?` is a bind placeholder for the Postgres JDBC driver → "No value
+   specified for parameter N" 500s on `GET /messages` and `/unread`. Fixed by switching to the
+   function form `jsonb_exists_any()` (no `?` characters) plus a paren-closure contract
+   (predicate appended unclosed; every caller appends exactly one `)`). Regression pinned by
+   `MsgCenterIngestionIT#inboxReadModelRunsTheAudiencePredicate` — the ONLY tests executing
+   listOwn/unread/markRead against real SQL; auth-gated endpoints had defaulted out of IT scope.
+8. **Response-subject tree moved (Phase 4 prerequisite)**: response events publish on
+   `portal.taskresponse.<moduleKey>.<event>` instead of `portal.task.response.…` — the old tree
+   fell INSIDE the durable consumer's filter (`portal.task.>`), so msgcenter would have ingested
+   its own completion events into the inbox/DLQ on every task completion. The stream now carries
+   four subject families (`portal.msg.>`, `portal.task.>`, `portal.taskresponse.>`,
+   `portal.dlq.>`); `ensureStream` patches subject drift on pre-existing streams at boot.
+9. **Phase 6 shipped 2026-10-07** (agent tools): `MsgCenterAgentTools`
+   (`modules/msgcenter/agent/`) merged into the builtin catalogue via `BuiltinToolHandlers`
+   (name-prefix routing, zero dispatcher changes — confirmation parking/RBAC/audit free). Reads
+   audience-gated via the new `MsgCenterQueryService.getOwn/visible`; `msgcenter_send` reuses
+   `MsgCenterPublishService` (validators, template resolution, moduleKey check) minus the
+   secret header. 9 unit tests.
+10. **Phase 4 shipped 2026-10-07** (sample-sender): `modules/sample-sender/` — Node 20 +
+    nats.js only; three transports (NATS-direct, HTTP publish with locally-computed HMAC secret,
+    light-check rejections), response + DLQ subscriptions feeding the SSE timeline, 6 presets +
+    malformed demo. Registered in the dev registry (runtime-owned row via registry insert —
+    NOT pinned in `dev/tenant.json`, keeping the fail-fast reconciler independent of a demo
+    container). Deviation from §13: DLQ echo subscribed directly (plan's "DLQ echoes"
+    implemented as a live portal.dlq.msgcenter subscription).
+    **Live-verified**: HMAC publish → ingest → mc_messages row; malformed severity → DLQ copy +
+    no poison-pill; NATS-direct publish → row; `portal.taskresponse.*` completion event → sender
+    timeline, durable consumer does NOT re-ingest (fix #8 confirmed on the live stack).
+11. **Phase 7 shipped 2026-10-07** (email channel): SmtpConfigService (module_settings
+    `msgcenter`.`email`, AES-GCM secret via CryptoService, PORTAL_SMTP_* insert-if-absent seed
+    runner @Order(200)), MsgCenterEmailMirror (arrival-only hook in the ingest loop —
+    dedupe no-ops never mirror; virtual-thread sender with per-recipient Caffeine cap 50/24h;
+    self-supplied address in user_settings msgcenter.{email,emailFallback}; recipient language
+    from user_settings general.language), MsgCenterEmailController (masked admin card GET/PUT +
+    send-test + self-service my-email), Mailpit in dev compose (default-on :28025/:31025).
+    Deviation: recipient addresses are SELF-SUPPLIED (user_settings), NOT Keycloak lookups —
+    keeps Keycloak I/O out of the mirror path (mirrors the ingest-path rule).
+    **Live-verified**: compose env seed landed (host=mailpit); allUsers publish via sample-sender
+    → fallback subscriber mirrored into Mailpit (UTF-8 quoted-printable, plain-text footer);
+    4 delivery ITs green. Test-stability lessons recorded: Mailpit search `to:` unreliable
+    through HTTP query params (client-side To filter instead), container readines gate
+    (@BeforeAll), shared-config restoring after the secret-masking test (JUnit random order).

@@ -1,0 +1,32 @@
+{
+  "manifestVersion": 1,
+  "key": "sample-sender",
+  "name": "Sample Sender",
+  "baseUrl": "http://sample-sender:8092",
+  "health": "/healthz",
+  "content": {
+    "applications": [
+      {
+        "key": "composer",
+        "name": "Message Composer",
+        "description": "Dev-only reference sender: compose envelopes, send over NATS/HTTP, watch responses.",
+        "type": "iframe",
+        "url": "http://localhost:28092",
+        "requiredRoles": []
+      }
+    ],
+    "features": [],
+    "adminSettings": [],
+    "userSettings": []
+  },
+  "security": { "roles": [] },
+  "capabilities": [],
+  "events": {
+    "published": [
+      "portal.msg.sample-sender.*",
+      "portal.task.sample-sender.*"
+    ],
+    "consumed": ["portal.taskresponse.sample-sender.>"]
+  },
+  "agentContributions": { "tools": [], "skills": [], "agents": [], "knowledge": [] }
+}

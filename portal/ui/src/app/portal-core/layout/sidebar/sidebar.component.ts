@@ -5,6 +5,7 @@ import type { PortalModuleContent, WorkspaceMeta } from '../../../core/models';
 import { moduleContentId } from '../../../core/models';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { BrandingService } from '../../../core/branding/branding.service';
+import { MsgCenterStore } from '../../../core/msg-center/msg-center.store';
 import type { PinnedNode } from '../../../core/navigation/navigation.models';
 import { NavigationStore } from '../../../core/navigation/navigation.store';
 import { WorkbenchService } from '../../features/workspaces/workspaces.store';
@@ -37,6 +38,7 @@ export class Sidebar {
   protected readonly branding = inject(BrandingService);
   protected readonly nav = inject(NavigationStore);
   private readonly wb = inject(WorkbenchService);
+  protected readonly msgCenter = inject(MsgCenterStore);
 
   protected readonly hovered = signal(false);
   protected readonly pinned = signal(false);
@@ -150,5 +152,10 @@ export class Sidebar {
 
   epId(ep: PortalModuleContent): string {
     return moduleContentId(ep);
+  }
+
+  /** Unread count badge on the Message Center row (0 = hidden). */
+  protected msgCenterUnread(epId: string): number {
+    return epId === 'msgcenter:main' ? this.msgCenter.unread() : 0;
   }
 }

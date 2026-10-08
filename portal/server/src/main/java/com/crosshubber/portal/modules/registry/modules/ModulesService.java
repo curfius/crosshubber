@@ -32,6 +32,12 @@ public class ModulesService {
     return includeInactive ? modules : modules.stream().filter(m -> m.getActive()).toList();
   }
 
+  /** Whether a module row exists for the key (message-center ingest/publish guard). */
+  @Transactional(readOnly = true)
+  public boolean exists(String key) {
+    return repo.existsById(key);
+  }
+
   /** Output DTO. */
   public ModuleDto toOutput(ModuleEntity m) {
     return ModuleDto.fromEntity(m, parseSecurityRoleDtos(m.getSecurityRoles()));

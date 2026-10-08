@@ -19,6 +19,7 @@ portal:
   ssrf-allow-private: ${SSRF_ALLOW_PRIVATE:false}
   cookie-secure: ${COOKIE_SECURE:false}
   nats-http-url: ${NATS_HTTP_URL:}
+  nats-url: ${NATS_URL:}
   keycloak-public-url: ${KEYCLOAK_PUBLIC_URL:}
 
 spring:

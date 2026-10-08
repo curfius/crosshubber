@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
+import { MsgCenterMyGroups } from '../msg-center/my-groups.component';
 
 /**
  * Portal-owned "General User Settings" screen: theme + language, persisted
@@ -9,7 +10,7 @@ import { I18nService } from '../../../core/i18n/i18n.service';
  */
 @Component({
   selector: 'app-user-settings-general',
-  imports: [],
+  imports: [MsgCenterMyGroups],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './user-settings-general.component.html',
   styleUrl: './user-settings-general.component.css',

@@ -62,6 +62,12 @@ public class PortalProperties {
   /** NATS HTTP monitoring URL. */
   private String natsHttpUrl = "";
 
+  /**
+   * NATS client URL (JetStream transport for the message center) — blank disables the whole feature
+   * (fail-soft, mirrors the kc-admin pattern).
+   */
+  private String natsUrl = "";
+
   /** Public Keycloak URL override. */
   private String keycloakPublicUrl = "";
 
@@ -192,6 +198,14 @@ public class PortalProperties {
 
   public void setNatsHttpUrl(String natsHttpUrl) {
     this.natsHttpUrl = natsHttpUrl;
+  }
+
+  public String getNatsUrl() {
+    return natsUrl;
+  }
+
+  public void setNatsUrl(String natsUrl) {
+    this.natsUrl = natsUrl;
   }
 
   public String getKeycloakPublicUrl() {

@@ -10,6 +10,7 @@ portal:
   session-secret: test-session-secret-32-chars-minimum
   encryption-key: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   nats-http-url: ""
+  nats-url: ""
   keycloak-public-url: ""
 
 # Datasource is provided by Testcontainers (PortalSmokeTest @DynamicPropertySource).

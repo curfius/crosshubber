@@ -76,6 +76,10 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/ai-hub/webhooks/**")
                     .permitAll()
+                    // Third-party message-center publish: secret-header auth in the controller
+                    // (plan §6), never session-based — permit the path here.
+                    .requestMatchers("/api/msgcenter/publish")
+                    .permitAll()
                     .requestMatchers("/api/login/**", "/logout")
                     .permitAll()
                     // OIDC authorization-code dance (P7.3)

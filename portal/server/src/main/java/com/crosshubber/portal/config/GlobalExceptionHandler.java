@@ -94,6 +94,15 @@ public class GlobalExceptionHandler {
         .body(Map.of("error", "conflict: resource changed concurrently - reload and retry"));
   }
 
+  /** Message-center envelope contract violations (publish path) — 422 with the first reason. */
+  @ExceptionHandler(com.crosshubber.portal.common.events.EnvelopeValidationException.class)
+  public ResponseEntity<Map<String, String>> handleEnvelopeValidation(
+      com.crosshubber.portal.common.events.EnvelopeValidationException ex) {
+    log.warn("[portal] 422 invalid envelope: {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+        .body(Map.of("error", ex.getMessage()));
+  }
+
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   public ResponseEntity<Map<String, String>> handleTypeMismatch(
       MethodArgumentTypeMismatchException ex) {

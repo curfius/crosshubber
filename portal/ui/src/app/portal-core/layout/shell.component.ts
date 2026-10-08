@@ -25,6 +25,7 @@ import { AiHubQuickChat } from '../modules/ai-hub/quick-chat/quick-chat.componen
 import { WorkbenchService } from '../features/workspaces/workspaces.store';
 import { SettingsService } from '../../core/settings/settings.service';
 import { AiHubService } from '../../core/ai-hub/ai-hub.service';
+import { MsgCenterStore } from '../../core/msg-center/msg-center.store';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { I18nAdminService } from '../../core/i18n/i18n-admin.service';
 import { ThemeService } from '../../core/theme/theme.service';
@@ -63,6 +64,7 @@ export class Shell implements OnDestroy {
   private readonly branding = inject(BrandingService);
   protected readonly toast = inject(ToastService);
   protected readonly showQuickChat = signal(false);
+  private readonly msgCenterStore = inject(MsgCenterStore);
 
   /**
    * Quick Chat is EP-driven (UX Plan #11): the flyout opens only when the
@@ -127,6 +129,8 @@ export class Shell implements OnDestroy {
       this.i18nAdmin.init(config.user);
       this.navAdmin.init(config.user);
       this.aiHub.init(config.user);
+      // Unread badge polling starts with the shell (sidebar renders it app-wide).
+      this.msgCenterStore.start();
       // Home tab needs the configured home app before state application.
       await this.settings.load();
       this.wb.setHomeApp(this.settings.homeApp());

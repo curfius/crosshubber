@@ -1,0 +1,146 @@
+@if (task(); as spec) {
+<div class="mt-2 flex flex-col gap-2 text-xs">
+  <div class="flex flex-wrap items-center gap-2">
+    <span class="ds-badge ds-badge-default">{{ spec.kind }}</span>
+    <span class="ds-badge ds-badge-info">{{ spec.completion }}</span>
+    @if (claimMode()) {
+    <span class="ds-badge ds-badge-warning">claim</span>
+    }
+    @if (spec.completionEvent) {
+    <span class="text-[var(--portal-text-muted)]">→ {{ spec.completionEvent }}</span>
+    }
+    @if (isExpired()) {
+    <span class="ds-badge ds-badge-danger">{{ i18n.t('msgcenter.state.done') }} / expired</span>
+    }
+  </div>
+
+  @if (claimedByOther()) {
+  <p class="text-[var(--portal-text-muted)]">
+    {{ i18n.t('msgcenter.state.claimed') }}: {{ item().claimedByName || item().claimedBySub }}
+  </p>
+  }
+
+  <!-- Claim CTA (open claim-mode task) -->
+  @if (claimMode() && item().status === 'open' && !claimedByMe()) {
+  <button type="button" (click)="claim()" [disabled]="busy()"
+    class="ds-btn ds-btn-primary self-start !py-1 !text-xs">
+    Take task
+  </button>
+  }
+
+  <!-- Takeover offer after claiming a task with a left-behind draft -->
+  @if (takeoverOffer(); as from) {
+  <div class="rounded-md border border-[var(--portal-border-default)] p-2">
+    <p class="mb-1">Draft available from {{ from }}.</p>
+    <div class="flex gap-2">
+      <button type="button" (click)="adopt()" [disabled]="busy()" class="ds-btn ds-btn-secondary !py-1 !text-xs">
+        Adopt
+      </button>
+      <button type="button" (click)="startFresh()" class="ds-btn ds-btn-secondary !py-1 !text-xs">
+        Start fresh
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- Collect form -->
+  @if (spec.kind === 'collect') {
+  <div class="flex flex-col gap-2">
+    @for (section of fieldBySection() ?? []; track $index) {
+    <div class="ds-fieldset">
+      @if (pickI18n(section.title)) {
+      <p class="ds-label">{{ pickI18n(section.title) }}</p>
+      }
+      @if (pickI18n(section.description)) {
+      <p class="text-[var(--portal-text-muted)]">{{ pickI18n(section.description) }}</p>
+      }
+      @for (field of section.fields; track field.name) {
+      <ng-container [ngTemplateOutlet]="fieldTpl" [ngTemplateOutletContext]="{ $implicit: field }" />
+      }
+    </div>
+    }
+    @for (field of unsectionedFields(); track field.name) {
+    <ng-container [ngTemplateOutlet]="fieldTpl" [ngTemplateOutletContext]="{ $implicit: field }" />
+    }
+  </div>
+  } @else {
+  <!-- Approval actions -->
+  @if (editable()) {
+  <div class="flex gap-2">
+    <button type="button" (click)="approve()" [disabled]="busy()" class="ds-btn ds-btn-primary !py-1 !text-xs">
+      Approve
+    </button>
+    <button type="button" (click)="deny()" [disabled]="busy()" class="ds-btn ds-btn-danger !py-1 !text-xs">
+      Deny
+    </button>
+  </div>
+  }
+  }
+
+  <!-- Claimer controls -->
+  @if (claimMode() && claimedByMe() && editable()) {
+  <div class="flex flex-wrap gap-2 border-t border-[var(--portal-border-default)] pt-2">
+    <button type="button" (click)="saveDraft()" [disabled]="busy()" class="ds-btn ds-btn-secondary !py-1 !text-xs">
+      Save draft
+    </button>
+    @if (spec.kind === 'collect') {
+    <button type="button" (click)="submit()" [disabled]="busy()" class="ds-btn ds-btn-primary !py-1 !text-xs">
+      Submit
+    </button>
+    }
+    <button type="button" (click)="release(false)" [disabled]="busy()" class="ds-btn ds-btn-secondary !py-1 !text-xs">
+      Release
+    </button>
+    <button type="button" (click)="release(true)" [disabled]="busy()" class="ds-btn ds-btn-secondary !py-1 !text-xs">
+      Release + discard
+    </button>
+    <button type="button" (click)="reset()" [disabled]="busy()" class="ds-btn ds-btn-danger !py-1 !text-xs">
+      Reset
+    </button>
+  </div>
+  }
+
+  @if (error(); as err) {
+  <p class="text-[var(--portal-btn-danger-bg)]">{{ err }}</p>
+  }
+</div>
+}
+
+<!-- Field renderer template (shared between sections and unsectioned) -->
+<ng-template #fieldTpl let-field>
+  <div class="flex flex-col gap-1">
+    <label class="ds-label" [attr.for]="'mcf-' + field.name">
+      {{ pickI18n(field.label) || field.name }}@if (field.required) {<span>*</span>}
+    </label>
+    @switch (field.schema.type) {
+      @case ('boolean') {
+        <input type="checkbox" class="ds-checkbox" [id]="'mcf-' + field.name"
+          [disabled]="!editable()" [checked]="checked(field.name)"
+          (change)="inputValue($event, field.name)" />
+      }
+      @case ('enum') {
+        <select class="ds-select" [id]="'mcf-' + field.name" [disabled]="!editable()"
+          [value]="valueOf(field.name)" (change)="inputValue($event, field.name)">
+          <option value=""></option>
+          @for (option of field.schema.enum ?? []; track $index) {
+          <option [value]="optionLabel(option)">{{ optionLabel(option) }}</option>
+          }
+        </select>
+      }
+      @default {
+        @if (field.multiline) {
+        <textarea class="ds-textarea" [id]="'mcf-' + field.name" rows="3" [disabled]="!editable()"
+          [value]="valueOf(field.name)" (change)="inputValue($event, field.name)"></textarea>
+        } @else {
+        <input
+          class="ds-input" [id]="'mcf-' + field.name" [disabled]="!editable()"
+          [type]="field.schema.type === 'number' || field.schema.type === 'integer' ? 'number' : 'text'"
+          [value]="valueOf(field.name)" (change)="inputValue($event, field.name)" />
+        }
+      }
+    }
+    @if (fieldError(field.name); as ferr) {
+    <p class="text-[var(--portal-btn-danger-bg)]">{{ ferr }}</p>
+    }
+  </div>
+</ng-template>

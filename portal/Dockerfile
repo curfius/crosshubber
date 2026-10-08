@@ -9,7 +9,7 @@ COPY ui/ ./
 RUN npm run build
 
 # Stage 2: Build Java server (Maven)
-FROM maven:3.9-eclipse-temurin-21 AS server-build
+FROM maven:3.9-eclipse-temurin-25 AS server-build
 WORKDIR /app
 # Copy pom and checkstyle config, cache dependencies first (fast rebuilds)
 COPY server/pom.xml ./pom.xml
@@ -22,7 +22,7 @@ COPY --from=ui-build /app/ui/dist/portal-ui/browser ./src/main/resources/static/
 RUN mvn -B -DskipTests -Dcheckstyle.skip=true -Dspotless.check.skip=true package
 
 # Stage 3: Runtime
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 # curl for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*

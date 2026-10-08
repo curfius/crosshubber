@@ -128,6 +128,12 @@
               <span class="ds-sidebar-item-label">{{ ep.name }}</span>
               <span class="ml-auto text-[10px] uppercase tracking-wide text-[var(--portal-text-disabled)]">{{ ep.type }}</span>
               }
+              @if (msgCenterUnread(epId(ep)) > 0) {
+              <span
+                class="ml-auto inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--portal-btn-danger-bg)] px-1 text-[10px] font-semibold text-white">
+                {{ msgCenterUnread(epId(ep)) }}
+              </span>
+              }
             </button>
           }
         }
@@ -157,6 +163,12 @@
         </span>
         @if (expanded()) {
         <span class="ds-sidebar-item-label">{{ ep.name }}</span>
+        }
+        @if (msgCenterUnread(epId(ep)) > 0) {
+        <span
+          class="ml-auto inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--portal-btn-danger-bg)] px-1 text-[10px] font-semibold text-white">
+          {{ msgCenterUnread(epId(ep)) }}
+        </span>
         }
       </button>
       }

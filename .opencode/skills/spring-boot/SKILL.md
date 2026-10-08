@@ -1,17 +1,17 @@
 ---
 name: spring-boot
-description: Use when scaffolding or refactoring the Crosshubber Spring Boot backend (Boot 4.x / Java 21 / Maven / JPA / Flyway / Spring Security OIDC / RestClient). Covers feature-based package layout, Boot 4 artifact names, Jackson 3, configuration properties, JPA entities, Flyway migrations, SecurityFilterChain, and Docker packaging.
+description: Use when scaffolding or refactoring the Crosshubber Spring Boot backend (Boot 4.x / Java 25 LTS / Maven / JPA / Flyway / Spring Security OIDC / RestClient). Covers feature-based package layout, Boot 4 artifact names, Jackson 3, configuration properties, JPA entities, Flyway migrations, SecurityFilterChain, and Docker packaging.
 ---
 
-# Spring Boot 4.x + Java 21 Architecture (Crosshubber)
+# Spring Boot 4.x + Java 25 LTS Architecture (Crosshubber)
 
-Opinionated layout for Spring Boot 4 + Java 21 + Maven, optimized for the crosshubber
+Opinionated layout for Spring Boot 4 + Java 25 LTS + Maven, optimized for the crosshubber
 multi-tenant portal. Keep it simple — controller → service → repository — no hexagonal
 overengineering unless 3+ integrations.
 
 ## Stack Baseline (verify against portal/server/pom.xml)
 
-- Java 21 (LTS), virtual threads enabled (`spring.threads.virtual.enabled=true`)
+- Java 25 LTS, virtual threads enabled (`spring.threads.virtual.enabled=true`)
 - Spring Boot **4.1.x** parent — Boot 4 artifact names:
   - `spring-boot-starter-webmvc` (NOT `starter-web`)
   - `spring-boot-starter-restclient` (RestClient over WebClient for blocking calls)

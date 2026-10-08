@@ -1,0 +1,14 @@
+{
+  "name": "crosshubber-sample-sender",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only reference sender for the Crosshubber message-center (NATS + HTTP publish, response timeline).",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "nats": "^2.19.0"
+  }
+}

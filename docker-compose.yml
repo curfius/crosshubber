@@ -47,13 +47,47 @@ services:
 
   nats:
     image: nats:2.12-alpine
+    command: ["-js", "-m", "8222"] # JetStream (message center) + monitoring for the healthcheck
     ports:
       - "${NATS_HTTP_PORT:-32252}:8222"
+      - "${NATS_CLIENT_PORT:-32253}:4222"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8222/healthz || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 12
+    networks: [tenant]
+
+  # Dev-only message-center reference sender (MESSAGE_CENTER_PLAN §13) — never install on a
+  # real tenant; in-memory state, no authentication on its own endpoints.
+  sample-sender:
+    build: { context: ./modules/sample-sender }
+    env_file:
+      - ${TENANT_SECRETS_FILE:-./config-management/tenants-config/dev/secrets.env}
+    environment:
+      PORT: 8092
+      NATS_URL: nats://nats:4222
+      PORTAL_URL: http://portal:3000
+    ports:
+      - "${SAMPLE_SENDER_HOST_PORT:-28092}:8092"
+    depends_on:
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8092/healthz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    networks: [tenant]
+
+  # Dev-only email catcher for the message-center Phase 7 mirror (MESSAGE_CENTER_PLAN §10) —
+  # UI at :28025, SMTP at :31025; nothing ever leaves the machine.
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "${MAILPIT_HTTP_PORT:-28025}:8025"
+      - "${MAILPIT_SMTP_PORT:-31025}:1025"
     networks: [tenant]
 
   portal:
@@ -74,6 +108,11 @@ services:
       KEYCLOAK_ADMIN_BASE_URL: http://keycloak:8080
       KEYCLOAK_ADMIN_CLIENT_ID: portal-admin
       KEYCLOAK_REALM: ${REALM_NAME:-dev}
+      NATS_URL: nats://nats:4222
+      # Message-center email mirror (Phase 7): insert-if-absent seed — Mailpit catch-all
+      PORTAL_SMTP_HOST: mailpit
+      PORTAL_SMTP_PORT: "1025"
+      PORTAL_SMTP_FROM: portal@crosshubber.local
       PGHOST: postgres
       PGPORT: 5432
       PGDATABASE: ${POSTGRES_DB:-crosshubber_dev}

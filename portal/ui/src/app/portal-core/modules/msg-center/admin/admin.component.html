@@ -1,0 +1,133 @@
+<div class="flex h-full flex-col overflow-y-auto p-6">
+  <h1 class="ds-heading-3 mb-4 !text-sm">{{ i18n.t('msgcenter.admin.title') }}</h1>
+
+  @if (error(); as err) {
+  <p class="mb-3 text-xs text-[var(--portal-btn-danger-bg)]">{{ err }}</p>
+  }
+
+  <!-- Per-module counters -->
+  <div class="ds-card p-4">
+    <h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--portal-text-muted)]">
+      {{ i18n.t('msgcenter.admin.perModule') }}
+    </h2>
+    @if (perModule().length === 0) {
+    <p class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('msgcenter.empty.inbox') }}</p>
+    } @else {
+    <table class="w-full text-xs">
+      <thead>
+        <tr class="text-left text-[var(--portal-text-muted)]">
+          <th class="py-1">{{ i18n.t('msgcenter.admin.module') }}</th>
+          <th class="py-1 text-right">{{ i18n.t('msgcenter.admin.total') }}</th>
+          <th class="py-1 text-right">{{ i18n.t('msgcenter.tab.tasks') }}</th>
+          <th class="py-1 text-right">{{ i18n.t('msgcenter.state.done') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of perModule(); track row.moduleKey) {
+        <tr class="border-t border-[var(--portal-border-default)]">
+          <td class="py-1 font-medium text-[var(--portal-text-primary)]">{{ row.moduleKey }}</td>
+          <td class="py-1 text-right">{{ row.total }}</td>
+          <td class="py-1 text-right">{{ row.open }}</td>
+          <td class="py-1 text-right">{{ row.done }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+    }
+  </div>
+
+  <!-- Task activity lookup -->
+  <div class="ds-card mt-4 p-4">
+    <h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--portal-text-muted)]">
+      {{ i18n.t('msgcenter.admin.activity') }}
+    </h2>
+    <div class="flex gap-2">
+      <input class="ds-input !py-1 !text-xs" type="number" min="1" name="adminTaskId"
+        [value]="taskId()" (input)="onTaskIdInput($event)"
+        [placeholder]="i18n.t('msgcenter.admin.taskIdPlaceholder')" />
+      <button type="button" (click)="loadActivity()" class="ds-btn ds-btn-secondary !py-1 !text-xs">
+        {{ i18n.t('msgcenter.admin.load') }}
+      </button>
+      <button type="button" (click)="forceRelease(false)" [disabled]="!taskId()"
+        class="ds-btn ds-btn-secondary !py-1 !text-xs">
+        {{ i18n.t('msgcenter.admin.forceRelease') }}
+      </button>
+      <button type="button" (click)="adminReset()" [disabled]="!taskId()"
+        class="ds-btn ds-btn-danger !py-1 !text-xs">
+        {{ i18n.t('msgcenter.admin.reset') }}
+      </button>
+    </div>
+    @if (activity(); as rows) {
+    <ul class="mt-3 flex flex-col gap-1">
+      @for (row of rows; track row.id) {
+      <li class="flex items-center gap-2 border-t border-[var(--portal-border-default)] py-1 text-xs">
+        <span class="ds-badge ds-badge-default">{{ row.action }}</span>
+        <span class="text-[var(--portal-text-primary)]">{{ row.actorName || row.actorSub }}</span>
+        <span class="ml-auto text-[var(--portal-text-muted)]">{{ row.createdAt | date: 'medium' }}</span>
+      </li>
+      }
+      @if (rows.length === 0) {
+      <li class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('msgcenter.empty.history') }}</li>
+      }
+    </ul>
+    }
+  </div>
+
+  <!-- DLQ peek -->
+  <div class="ds-card mt-4 p-4">
+    <h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--portal-text-muted)]">
+      {{ i18n.t('msgcenter.admin.dlq') }}
+    </h2>
+    @if (dlq().length === 0) {
+    <p class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('msgcenter.admin.dlqEmpty') }}</p>
+    } @else {
+    <ul class="flex flex-col gap-1">
+      @for (entry of dlq(); track $index) {
+      <li class="border-t border-[var(--portal-border-default)] py-1 text-xs">
+        <span class="text-[var(--portal-text-primary)]">{{ entry.originalSubject }}</span>
+        <span class="ml-2 text-[var(--portal-text-muted)]">{{ entry.reason }}</span>
+      </li>
+      }
+    </ul>
+    }
+  </div>
+
+  <!-- SMTP settings (email channel Phase 7) -->
+  <div class="ds-card mt-4 p-4">
+    <h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--portal-text-muted)]">
+      {{ i18n.t('msgcenter.admin.smtp.title') }}
+    </h2>
+    @if (smtpInfo(); as note) {
+    <p class="mb-2 text-xs text-[var(--portal-status-success)]">{{ note }}</p>
+    }
+    <div class="flex flex-wrap gap-2">
+      <input class="ds-input !py-1 !text-xs w-44" [placeholder]="i18n.t('msgcenter.admin.smtp.host')"
+        [ngModel]="smtpHost()" (ngModelChange)="smtpHost.set($event)" name="smtpHost" />
+      <input class="ds-input !py-1 !text-xs w-20" type="number" name="smtpPort"
+        [ngModel]="smtpPort()" (ngModelChange)="smtpPort.set($event)"
+        [placeholder]="i18n.t('msgcenter.admin.smtp.port')" />
+      <input class="ds-input !py-1 !text-xs w-56" [placeholder]="i18n.t('msgcenter.admin.smtp.from')"
+        [ngModel]="smtpFrom()" (ngModelChange)="smtpFrom.set($event)" name="smtpFrom" />
+      <select class="ds-select !py-1 !text-xs" [ngModel]="smtpTls()"
+        (ngModelChange)="smtpTls.set($event)" name="smtpTls">
+        <option value="none">plain</option>
+        <option value="starttls">starttls</option>
+      </select>
+      <input class="ds-input !py-1 !text-xs w-40" [placeholder]="i18n.t('msgcenter.admin.smtp.user')"
+        [ngModel]="smtpUser()" (ngModelChange)="smtpUser.set($event)" name="smtpUser" />
+      <input class="ds-input !py-1 !text-xs w-40" type="password" name="smtpPassword"
+        [ngModel]="smtpPassword()" (ngModelChange)="smtpPassword.set($event)"
+        [placeholder]="smtp()?.passwordSet
+          ? i18n.t('msgcenter.admin.smtp.passwordSet')
+          : i18n.t('msgcenter.admin.smtp.password')" />
+      <button type="button" (click)="saveSmtp()" [disabled]="loading()"
+        class="ds-btn ds-btn-primary !py-1 !text-xs">
+        {{ i18n.t('msgcenter.admin.smtp.save') }}
+      </button>
+      <button type="button" (click)="testSmtp()" [disabled]="loading()"
+        class="ds-btn ds-btn-secondary !py-1 !text-xs">
+        {{ i18n.t('msgcenter.admin.smtp.test') }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,74 @@
+<div class="mb-6">
+  <h3 class="ds-heading-4 mb-1 !text-sm">{{ i18n.t('msgcenter.groups.title') }}</h3>
+  <p class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('msgcenter.groups.hint') }}</p>
+
+  @if (error(); as err) {
+  <p class="mt-2 text-xs text-[var(--portal-btn-danger-bg)]">{{ err }}</p>
+  }
+
+  <!-- My mirror prefs (Phase 7): address + per-group flags go live from here only when set -->
+  <div class="mt-3 rounded-md border border-[var(--portal-border-default)] p-3 text-xs">
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="text-[var(--portal-text-muted)]">{{ i18n.t('msgcenter.groups.emailAddress') }}</span>
+      <input class="ds-input !py-0.5 !text-xs w-56" type="email" name="myMirrorEmail"
+        [ngModel]="myEmail()" (ngModelChange)="myEmail.set($event)" />
+      <button type="button" (click)="saveMyEmail()" class="ds-btn ds-btn-secondary !py-0.5 !text-[10px]">
+        {{ i18n.t('msgcenter.groups.emailSave') }}
+      </button>
+      <label class="ml-2 flex items-center gap-1 text-[var(--portal-text-muted)]">
+        <input type="checkbox" class="ds-checkbox" name="emailFallback"
+          [ngModel]="emailFallback()" (ngModelChange)="emailFallback.set($event); saveMyEmail()" />
+        {{ i18n.t('msgcenter.groups.emailFallback') }}
+      </label>
+    </div>
+  </div>
+
+  @if (loading()) {
+  <p class="mt-3 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('common.loading') }}</p>
+  } @else {
+  <ul class="mt-3 flex flex-col gap-2">
+    @for (group of groups(); track group.key) {
+    <li class="ds-card flex items-center gap-3 !p-3">
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-sm font-medium text-[var(--portal-text-primary)]">
+          {{ group.name }} <span class="text-xs text-[var(--portal-text-muted)]">({{ group.key }})</span>
+        </p>
+        <p class="text-xs text-[var(--portal-text-muted)]">
+          {{ group.memberCount }}
+          @if (group.visibility === 'closed') {
+          · {{ i18n.t('msgcenter.groups.closed') }}
+          }
+        </p>
+      </div>
+      @if (group.emailFlag) {
+      <label class="flex items-center gap-1 text-xs text-[var(--portal-text-muted)]">
+        <input type="checkbox" class="ds-checkbox" name="flag-{{group.key}}"
+          [ngModel]="group.emailFlag"
+          (ngModelChange)="toggleGroupEmail(group.key, $event)"
+          [disabled]="emailBusy() === group.key" />
+        {{ i18n.t('msgcenter.groups.emailShort') }}
+      </label>
+      }
+      @if (group.myMembership) {
+      <button type="button" (click)="leave(group.key)" [disabled]="busy() === group.key"
+        class="ds-btn ds-btn-secondary !py-1 !text-xs">
+        {{ i18n.t('msgcenter.groups.leave') }}
+      </button>
+      } @else if (group.visibility === 'open') {
+      <button type="button" (click)="join(group.key)" [disabled]="busy() === group.key"
+        class="ds-btn ds-btn-primary !py-1 !text-xs">
+        {{ i18n.t('msgcenter.groups.join') }}
+      </button>
+      } @else {
+      <span class="text-xs text-[var(--portal-text-muted)]">
+        {{ i18n.t('msgcenter.groups.askOwner') }}
+      </span>
+      }
+    </li>
+    }
+  </ul>
+  @if (groups().length === 0) {
+  <p class="mt-3 text-xs text-[var(--portal-text-muted)]">{{ i18n.t('msgcenter.groups.empty') }}</p>
+  }
+  }
+</div>

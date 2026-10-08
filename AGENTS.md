@@ -8,7 +8,7 @@ from the code alone.
 
 | Layer | Technology |
 |---|---|
-| Backend | **Spring Boot 4.1.1**, Java 21, Maven — Boot 4 artifact names (`spring-boot-starter-webmvc`, `spring-boot-starter-restclient`, `spring-boot-starter-test-classic`) and **Jackson 3** (`tools.jackson.*` packages, NOT `com.fasterxml.jackson`) |
+| Backend | **Spring Boot 4.1.1**, Java 25 LTS, Maven — Boot 4 artifact names (`spring-boot-starter-webmvc`, `spring-boot-starter-restclient`, `spring-boot-starter-test-classic`) and **Jackson 3** (`tools.jackson.*` packages, NOT `com.fasterxml.jackson`) |
 | Frontend | Angular 22, **zoneless** (`provideZonelessChangeDetection`), signals-first, standalone components, Vitest (no Karma) |
 | Database | PostgreSQL 16, multi-tenant via per-tenant schema (`PGSCHEMA`), Flyway owns all DDL |
 | Identity | Keycloak 26, OIDC authorization-code + PKCE |
@@ -192,6 +192,21 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
   not started).
 - `plan/TEST_PLAN.md` — approved (not started): tenant-driven regression testing via a
   temporary deterministic `e2e` tenant; CI explicitly deferred.
+- `plan/MESSAGE_CENTER_PLAN.md` — approved (2026-09-29), **amended 2026-10-06** (claim/draft
+  takeover lifecycle, mc groups with open/closed visibility + owners, versioned task templates
+  with Template Studio, portal agent tools, email channel Phase 7); **Phases 0–6 implemented
+  (2026-10-06/07)** — backend + UIs, 235 server tests / 20 UI files green, live dev stack
+  verified (HMAC publish→ingest, DLQ no-poison-pill, claim takeover, response tree on
+  `portal.taskresponse.*` — see its §16 decision log for deviations: hand-rolled submit
+  validator, subject-tree move, `-js -m 8222` compose). Remaining: schema-equivalence spot
+  checks, e2e pack coverage. sample-sender lives in `modules/sample-sender/`
+  (dev-only, HTTP publish secret = HMAC of SESSION_SECRET over the caller key). **Phase 7
+  implemented 2026-10-07**: email mirror ON (Mailpit in dev compose :28025, SMTP config in
+  module_settings `msgcenter`.`email` AES-GCM, self-supplied recipient address in user_settings
+  `msgcenter.{email,emailFallback}`, arrival-only mirror, send-test in the admin card).
+- `plan/WORKFLOWER_PLAN.md` — draft-to-later: workflow orchestration module (agent + scheduler +
+  NATS + human tasks); owns the msgcenter deferred hooks (agent-wake, timeout events); do not
+  activate before msgcenter Phases 0–2 ship. Phases 0–2 are now LIVE (see msgcenter entry).
 - `plan/UX_PLAN.md` — portal navigation/UX optimization roadmap (journey-based
   Phases 1–3; Phase 1 quick wins implemented 2026-09-22).
 - `plan/archive/TENANT_FORK_PLAN.md` — archived per-tenant fork/forkability plan,

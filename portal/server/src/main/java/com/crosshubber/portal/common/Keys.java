@@ -28,6 +28,13 @@ public final class Keys {
    */
   public static final String AGENT_NAME_RE = "^[a-z][a-z0-9_-]*$";
 
+  /**
+   * Message-center completion event name (envelope {@code task.completionEvent}) — dotCase token,
+   * used to compose response subjects: {@code portal.taskresponse.<moduleKey>.<completionEvent>}.
+   */
+  public static final String COMPLETION_EVENT_RE =
+      "^[a-z][a-z0-9]*(\\.[a-z0-9][a-z0-9-]*[a-z0-9])*$";
+
   /** Client-supplied UUIDs for pinned-tree nodes. */
   public static final Pattern UUID_PATTERN =
       Pattern.compile(
