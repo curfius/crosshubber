@@ -1,7 +1,14 @@
 # TEST_PLAN — tenant-driven regression testing
 
-Status: **implemented** (2026-09-29). Layer 1 = `TenantPolicySmokeTest` (policy fixture,
-`mvn verify` 130 green). Layer 2 = Playwright pack in `test/e2e/` — 28 specs green against the
+> **Archived 2026-10-08 — implemented and stable.** The pack lives on in `test/e2e/`
+> (Playwright config + 18 spec files incl. auth setup; `npx playwright test` boots and
+> tears down the ephemeral `crosshubber-e2e` stack — usage documented in AGENTS.md
+> "Testing expectations"). Live deferred items stay in §6: CI pipeline, visual-regression
+> screenshots, trace/report retention, parallel tenant matrix, API-only external-manifest
+> regression.
+
+Status at closure: **implemented** (2026-09-29). Layer 1 = `TenantPolicySmokeTest` (policy fixture,
+`mvn verify` 130 green). Layer 2 = Playwright pack in `test/e2e/` — specs green against the
 ephemeral `crosshubber-e2e` tenant stack, full lifecycle verified (boot → test → `down -v`, zero
 containers left). CI remains deferred.
 

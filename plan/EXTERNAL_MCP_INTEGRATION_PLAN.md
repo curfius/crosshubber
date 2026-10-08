@@ -5,7 +5,7 @@ MCP server actually needs connecting. Extracted from `plan/AI_PLAN.md` Phase E
 (deferred 2026-09-29 pending manifest tools; unblocked since D shipped; owner
 confirmed the intent to connect external MCP servers eventually). Related:
 `plan/AI_PLAN.md` (phases A–G), `docs/agent-protocol.md` (tool contracts),
-`plan/AI_MODULES_PLAN.md` (module tools precedent).
+`plan/archive/AI_MODULES_PLAN.md` (module tools precedent).
 
 ## Goal
 

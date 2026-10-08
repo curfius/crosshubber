@@ -1,7 +1,7 @@
 # WORKFLOWER_PLAN — Workflow orchestration module (agent + scheduler + events + human tasks)
 
 Status: **draft-to-later** (2026-10-06). Not scoped for build. Prerequisites: message center
-Phases 0–2 shipped (`plan/MESSAGE_CENTER_PLAN.md`) and the AI tool stack live (`plan/AI_PLAN.md`).
+Phases 0–2 shipped (`plan/archive/MESSAGE_CENTER_PLAN.md`) and the AI tool stack live (`plan/AI_PLAN.md`).
 This module is also the intended owner of the two hooks deferred there (agent-wake on response
 events, expiry/timeout events).
 

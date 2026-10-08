@@ -147,7 +147,7 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
   Tenant policy lives in `config-management/tenants-config/e2e/`. Specs that assert
   English copy call `ensureEnglish` first; mutation specs (language/theme/labels)
   must restore their state — user preferences persist in the DB across runs.
-  See `plan/TEST_PLAN.md`.
+  See `plan/archive/TEST_PLAN.md`.
 
 ## Gotchas / historical landmines
 
@@ -193,26 +193,35 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
 
 - `plan/AI_PLAN.md` — roadmap for the portal agent (session context pack, manifest
   `agentContributions` v2, MCP tool execution, A2A-shaped sub-agents, module-owned
-  knowledge retrieval). Dogfood consumers scoped in `plan/AI_MODULES_PLAN.md`
-  (`solutions`, `staffing` — planned, needs go decision). F4 (portal-native
-  sub-agents) dropped 2026-10-02 — module-owned HTTP agents proved the pattern.
-  G2 (retrieval/embeddings) dropped 2026-10-02 — keyword retrieval adequate.
-  Phase E (MCP) extracted to `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md` (approved,
-  not started).
-- `plan/TEST_PLAN.md` — approved (not started): tenant-driven regression testing via a
-  temporary deterministic `e2e` tenant; CI explicitly deferred.
-- `plan/MESSAGE_CENTER_PLAN.md` — approved (2026-09-29), **amended 2026-10-06** (claim/draft
+  knowledge retrieval). Dogfood consumers in `plan/archive/AI_MODULES_PLAN.md`
+  (`solutions`, `staffing` — built, S1–S7 verified; archived 2026-10-08). F4
+  (portal-native sub-agents) dropped 2026-10-02 — module-owned HTTP agents proved
+  the pattern. G2 (retrieval/embeddings) dropped 2026-10-02 — keyword retrieval
+  adequate. Phase E (MCP) extracted to `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md`
+  (approved, not started).
+- `plan/archive/TEST_PLAN.md` — archived tenant-driven regression testing plan,
+  **implemented 2026-09-29** (`TenantPolicySmokeTest` + Playwright pack in
+  `test/e2e/`, ephemeral `crosshubber-e2e` tenant stack). CI, visual regression,
+  trace retention and parallel tenant matrix explicitly deferred (its §6).
+- `plan/archive/MESSAGE_CENTER_PLAN.md` — archived message-center plan (approved 2026-09-29,
+  **amended 2026-10-06**: claim/draft
   takeover lifecycle, mc groups with open/closed visibility + owners, versioned task templates
-  with Template Studio, portal agent tools, email channel Phase 7); **Phases 0–6 implemented
+  with Template Studio, portal agent tools, email channel Phase 7). **Phases 0–7 all implemented
   (2026-10-06/07)** — backend + UIs, 235 server tests / 20 UI files green, live dev stack
   verified (HMAC publish→ingest, DLQ no-poison-pill, claim takeover, response tree on
   `portal.taskresponse.*` — see its §16 decision log for deviations: hand-rolled submit
-  validator, subject-tree move, `-js -m 8222` compose). Remaining: schema-equivalence spot
-  checks, e2e pack coverage. sample-sender lives in `modules/sample-sender/`
+  validator, subject-tree move, `-js -m 8222` compose). Remaining live item: msg-center
+  coverage in the `test/e2e` pack; §15 backlog stays in the file. sample-sender lives in
+  `modules/sample-sender/`
   (dev-only, HTTP publish secret = HMAC of SESSION_SECRET over the caller key). **Phase 7
   implemented 2026-10-07**: email mirror ON (Mailpit in dev compose :28025, SMTP config in
   module_settings `msgcenter`.`email` AES-GCM, self-supplied recipient address in user_settings
   `msgcenter.{email,emailFallback}`, arrival-only mirror, send-test in the admin card).
+- `plan/archive/AI_MODULES_PLAN.md` — archived dogfood-modules plan (`solutions` + `staffing`
+  remote MFEs), **all work shipped 2026-09-29 → 2026-10-02**: portal prerequisites P1–P9,
+  both module backends + Angular MFE workspaces, registry install/uninstall lifecycle, E2E
+  scenarios S1–S7 verified. Open (external-blocked): real Azure OneDrive adapter (dev uses
+  fake adapters), Apache Tika approval.
 - `plan/WORKFLOWER_PLAN.md` — draft-to-later: workflow orchestration module (agent + scheduler +
   NATS + human tasks); owns the msgcenter deferred hooks (agent-wake, timeout events); do not
   activate before msgcenter Phases 0–2 ship. Phases 0–2 are now LIVE (see msgcenter entry).

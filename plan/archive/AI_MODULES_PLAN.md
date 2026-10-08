@@ -7,7 +7,14 @@ the audit/confirmation UX. They are real domain modules, not stubs — the AI pl
 (`plan/AI_PLAN.md`) phases A/B/C/D/F/G become concrete deliverables because these
 modules need them.
 
-Status: **H0a implemented (2026-09-29)** — the portal prerequisites P1–P5 landed
+> **Archived 2026-10-08 — all portal and module work shipped.** H0a/H0b, H2/H3 (backends +
+> Angular MFE workspaces), H4, H5, H6 and E2E scenarios S1–S7 all implemented and verified
+> (decision log below). Only open items are external-blocked: the real Azure OneDrive
+> adapter (dev uses the fake document-source adapters; needs the per-module Azure app
+> registration — open question 1) and Apache Tika approval for PDF/DOCX extraction
+> (open question 2).
+
+Status at closure: **H0a implemented (2026-09-29)** — the portal prerequisites P1–P5 landed
 (context pack, tool registry/dispatcher/audit, manifest v2, remote dispatch +
 agent-call tokens, `docs/agent-protocol.md`). **H2/H3 backend slice implemented
 (2026-09-29)**: `modules/solutions/server` and `modules/staffing/server` are

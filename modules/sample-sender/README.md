@@ -1,7 +1,7 @@
 # Sample Sender — message-center reference app (dev-only)
 
 Reference implementation of the Crosshubber message-center **sender contract**
-(`plan/MESSAGE_CENTER_PLAN.md` §13). Plain Node 20 + `nats` (nats.js), zero framework, no
+(`plan/archive/MESSAGE_CENTER_PLAN.md` §13). Plain Node 20 + `nats` (nats.js), zero framework, no
 database — in-memory state, lost on restart. **Never install this on a real tenant.**
 
 ## What it proves

@@ -1,6 +1,14 @@
 # MESSAGE_CENTER_PLAN — Message Center module (inbox, notifications, tasks)
 
-Status: **approved plan** (2026-09-29; amended 2026-10-06 — claim/draft lifecycle, groups, task
+> **Archived 2026-10-08 — Phases 0–7 all implemented** (NATS foundation, ingest/inbox,
+> tasks/claim/drafts/groups, admin + third-party publish, sample-sender, task templates,
+> portal agent tools, email mirror; 235 server tests / 20 UI spec files green, live
+> dev-stack verified — §16 decision log records the execution deviations). Live deferred
+> items: msg-center coverage in the portal e2e pack (`test/e2e/`), plus the §15 backlog
+> (retention job, markdown/attachments, SSE live inbox, digest emails → Workflower era)
+> and the Workflower hooks owned by `plan/WORKFLOWER_PLAN.md`.
+
+Status at closure: **Phases 0–7 implemented** (approved 2026-09-29; amended 2026-10-06 — claim/draft lifecycle, groups, task
 templates, agent tools, Phase 5–7 resequence). Builtin embedded module `msgcenter` that renders
 notifications, messages and tasks derived from NATS to the right audience, acts as the audit trail,
 and pushes task completion events back onto the broker. No business logic inside the portal — task

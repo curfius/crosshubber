@@ -17,7 +17,7 @@ extracted to `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md` (approved, not started —
 build when an external MCP server is actually needed).
 Phase A go scope remains A1–A3 + A5 (A4
 deferred). Two dogfood modules (`solutions`, `staffing`) drive sequencing — see
-`plan/AI_MODULES_PLAN.md` ("Phase H"); there they are the reference consumer for
+`plan/archive/AI_MODULES_PLAN.md` ("Phase H"); there they are the reference consumer for
 phases A/B/D/F/G. Related: `plan/UX_PLAN.md` (navigation),
 `plan/archive/OPTIMIZATIONS.md` (backend, closed). Note: the AGENTS.md
 backlog item "merge chat/quick-chat duplicated logic" is done — `ChatCoreService`
@@ -169,7 +169,7 @@ Two remote MFE modules planned 2026-09-29 as concrete consumers of A/B/D/F/G —
 datasources, credentials, and LLM access); the only portal↔module coupling is the
 manifest contract plus the portal-issued agent-call token. Full spec, manifest v2
 examples, portal prerequisite deltas (remote tool dispatch, module auth) and E2E
-acceptance scenarios live in **`plan/AI_MODULES_PLAN.md`**.
+acceptance scenarios live in **`plan/archive/AI_MODULES_PLAN.md`**.
 Phase H drives the sequencing below; A/B/D land before the module domain work, F/G
 land as H0b/H5.
 
@@ -204,7 +204,7 @@ first, then module domain builds in parallel (modules own their datasources and 
 access — no portal prerequisites remain), then F (HTTP sub-agents) + G (citations)
 as H0b/H5. E is extracted and parked — `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md`
 (approved, not started). See
-`plan/AI_MODULES_PLAN.md` § Sequencing.
+`plan/archive/AI_MODULES_PLAN.md` § Sequencing.
 
 ## Open questions
 
@@ -230,7 +230,7 @@ as H0b/H5. E is extracted and parked — `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md`
 | 2026-09-22 | Plan authored as backlog; Phases A–G outlined; no implementation started. |
 | 2026-09-29 | Status re-verified against code: no A–G work started; chat/quick-chat merge (C2 prerequisite) confirmed done via `ChatCoreService`. |
 | 2026-09-29 | Phase A go: scope A1–A3 + A5, A4 (pack snapshot persistence) deferred. Identity fields (`user`, `tenant`, `contentVersion`) are server-authoritative; the client supplies only `location`/`openTabs`/`workspace`. |
-| 2026-09-29 | Phase H planned: dogfood modules `solutions` + `staffing` as remote MFEs (see `plan/AI_MODULES_PLAN.md`). Resolves open questions 2 (`modules/agent` package) and 4 (D before E). F3/F4 transport: HTTP-first with forwarded user tokens. Portal-side `modules/docsource` abstraction with OneDrive adapter first. |
+| 2026-09-29 | Phase H planned: dogfood modules `solutions` + `staffing` as remote MFEs (see `plan/archive/AI_MODULES_PLAN.md`). Resolves open questions 2 (`modules/agent` package) and 4 (D before E). F3/F4 transport: HTTP-first with forwarded user tokens. Portal-side `modules/docsource` abstraction with OneDrive adapter first. |
 | 2026-09-29 | Supersedes the docsource part of the previous entry: **module-owned datasources** — each module implements its own connectors, holds its own credentials, and configures its own LLM provider keys; the portal hosts no module-domain infrastructure. Portal-side Phase G scope reduces to citations/transparency. See AI_MODULES_PLAN decision log. |
 | 2026-09-29 | H0a implemented: A1–A3+A5 (context pack, server-authoritative identity), B1–B6 portal core (`modules/agent`: tool registry, builtin tools, RBAC dispatcher, pending confirmations, audit table `agent_tool_calls` V29, SSE tool frames), manifest v2 (tools/skills/agents/knowledge; snake-case names via `Keys.AGENT_NAME_RE`), remote dispatch + portal-signed `X-Portal-Agent` tokens. Protocol doc: `docs/agent-protocol.md`. UI sends `context` and parses typed frames. |
 | 2026-09-30 | H6 implemented: C3 (tool-activity rows in chat/quick-chat via shared `ChatToolFlow`), C4 (confirm dialog for `needsConfirmation` dispatches + admin-gated "Agent tool calls" list under AI Hub settings — latest 200 rows, client-side search/outcome filters), C5 (27 `agent.*` labels × 4 languages, reconciler insert-if-absent — no migration needed for new keys). Fixed en route: `AiHubService.init(config.user)` was never called from Shell (`canManage` permanently false). Live-verified on dev: endpoint 401/200/403 matrix, confirm → audit `outcome=confirmed`, devuser → `outcome=denied` with no mutation. Details: AI_MODULES_PLAN decision log. |
