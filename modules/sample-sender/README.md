@@ -23,6 +23,11 @@ docker compose up -d --build sample-sender portal
 #   (SSRF_ALLOW_PRIVATE=true is already set in the dev compose)
 ```
 
+The manifest URL is fetched **by the portal container**, not by your browser — `http://localhost:28092`
+resolves to the portal itself in there and fails with `code:"unreachable"` (the wizard shows a
+reachability hint). Use `http://sample-sender:8092/.well-known/portal-module.json` or
+`http://host.docker.internal:28092/.well-known/portal-module.json`.
+
 ## Manual smoke checklist
 
 1. Open the composer (iframe module in the portal, or the raw `:28092` UI).

@@ -300,9 +300,6 @@ public class Reconciler implements ApplicationRunner {
     for (int attempt = 1; attempt <= attempts; attempt++) {
       try {
         return manifestFetcher.fetchManifestFromUrl(url);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IllegalStateException("manifest fetch interrupted: " + url, e);
       } catch (Exception e) {
         lastError = e instanceof RuntimeException runtime ? runtime : new IllegalStateException(e);
         if (attempt < attempts) {

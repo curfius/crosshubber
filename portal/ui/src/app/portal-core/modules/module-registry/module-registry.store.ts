@@ -47,16 +47,33 @@ export interface ModuleContentOutput {
   multi: boolean;
 }
 
-/** Envelope every registry endpoint answers with: the resource payload plus an optional `{"error"}`. */
-type Envelope = Record<string, unknown> & { error?: string };
+/** Envelope every registry endpoint answers with: the resource payload plus `{"error"}`/`{"code"}`. */
+type Envelope = Record<string, unknown> & { error?: string; code?: string; issues?: string[] };
+
+/**
+ * Non-2xx registry failure. `message` is the server `{"error"}` text (what callers rendered
+ * before); `code` and `issues` are the machine-readable extras the install wizard localizes on.
+ */
+export class RegistryApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+    readonly code?: string,
+    readonly issues?: string[],
+  ) {
+    super(message);
+    this.name = 'RegistryApiError';
+  }
+}
 
 @Injectable({ providedIn: 'root' })
 export class RegistryService {
   readonly changed = new Subject<void>();
 
   /**
-   * Shared request path: fetch, parse JSON, throw the server `{"error":"..."}` message
-   * (or `fallback`) on non-2xx, and emit `changed` so the shell refreshes registry data.
+   * Shared request path: fetch, parse JSON, throw a {@link RegistryApiError} carrying the server
+   * `{"error":"..."}` message (or `fallback`) plus its `code`/`issues`, and emit `changed` so the
+   * shell refreshes registry data.
    */
   private async request(
     url: string,
@@ -65,7 +82,9 @@ export class RegistryService {
   ): Promise<Envelope> {
     const res = await fetch(url, init);
     const body = (await res.json().catch(() => ({}))) as Envelope;
-    if (!res.ok) throw new Error(body.error ?? fallback);
+    if (!res.ok) {
+      throw new RegistryApiError(res.status, body.error ?? fallback, body.code, body.issues);
+    }
     return body;
   }
 

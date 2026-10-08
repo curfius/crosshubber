@@ -6,6 +6,7 @@ import type { ModuleType, EntryCategory, ModuleContentFormValue, PortalModuleMan
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { RegistryService, type ModuleOutput, type ModuleContentOutput } from './module-registry.store';
 import { buildDiffSections, type PreviewSection } from './manifest-diff';
+import { friendlyFetchError, type InstallError } from './fetch-error';
 import { DsTree, DsTreeNode } from '../../../shared/components/ds-tree/ds-tree.component';
 import { Switch } from '../../../shared/components/switch/switch.component';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -389,7 +390,7 @@ export class ModuleRegistry {
     this.installInputMode.set(inputMode);
     this.installInput.set('');
     this.parsedManifest.set(null);
-    this.installError.set('');
+    this.setInstallError('');
     this.installResult.set(null);
     this.moduleExists.set(false);
     this.previewActiveManifest.set(null);
@@ -1052,7 +1053,22 @@ export class ModuleRegistry {
   protected readonly installInputMode = signal<'url' | 'json'>('url');
   protected readonly installInput = signal('');
   protected readonly parsedManifest = signal<PortalModuleManifest | null>(null);
-  protected readonly installError = signal('');
+  protected readonly installError = signal<InstallError | null>(null);
+
+  /**
+   * Stores a wizard error: field validation passes plain text (rendered as `{ message }`),
+   * fetch/install failures pass the structured result of {@link friendlyFetchError}; blank
+   * clears the alert.
+   */
+  private setInstallError(value: string | InstallError | null): void {
+    if (value == null || value === '') {
+      this.installError.set(null);
+    } else if (typeof value === 'string') {
+      this.installError.set({ message: value });
+    } else {
+      this.installError.set(value);
+    }
+  }
   protected readonly installBusy = signal(false);
   protected readonly installResult = signal<{ ok: boolean; moduleKey?: string; version?: string; error?: string } | null>(null);
 
@@ -1118,7 +1134,7 @@ export class ModuleRegistry {
 
   protected readonly wizardErrors = computed<string[]>(() => {
     return this.activeStepDefs().map((_, i) => {
-      if (i === this.wizardStepIndex() && this.installError()) return this.installError();
+      if (i === this.wizardStepIndex() && this.installError()) return this.installError()!.message;
       return '';
     });
   });
@@ -1193,12 +1209,12 @@ export class ModuleRegistry {
     const key = this.manualKey().trim();
     const name = this.manualName().trim();
     const baseUrl = this.manualBaseUrl().trim();
-    if (!key) { this.installError.set(this.i18n.t('registry.wizard.error.keyRequired')); return false; }
-    if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(key)) { this.installError.set(this.i18n.t('registry.wizard.error.keyFormat')); return false; }
-    if (!name) { this.installError.set(this.i18n.t('registry.wizard.error.nameRequired')); return false; }
-    if (!baseUrl) { this.installError.set(this.i18n.t('registry.wizard.error.baseUrlRequired')); return false; }
-    try { new URL(baseUrl); } catch { this.installError.set(this.i18n.t('registry.wizard.error.baseUrlInvalid')); return false; }
-    this.installError.set('');
+    if (!key) { this.setInstallError(this.i18n.t('registry.wizard.error.keyRequired')); return false; }
+    if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(key)) { this.setInstallError(this.i18n.t('registry.wizard.error.keyFormat')); return false; }
+    if (!name) { this.setInstallError(this.i18n.t('registry.wizard.error.nameRequired')); return false; }
+    if (!baseUrl) { this.setInstallError(this.i18n.t('registry.wizard.error.baseUrlRequired')); return false; }
+    try { new URL(baseUrl); } catch { this.setInstallError(this.i18n.t('registry.wizard.error.baseUrlInvalid')); return false; }
+    this.setInstallError('');
     return true;
   }
 
@@ -1255,15 +1271,15 @@ export class ModuleRegistry {
   setInstallInputMode(mode: 'url' | 'json'): void {
     this.installInputMode.set(mode);
     this.installInput.set('');
-    this.installError.set('');
+    this.setInstallError('');
   }
 
   async fetchManifest(): Promise<void> {
     const input = this.installInput().trim();
-    if (!input) { this.installError.set(this.i18n.t('registry.wizard.error.inputRequired')); return; }
+    if (!input) { this.setInstallError(this.i18n.t('registry.wizard.error.inputRequired')); return; }
 
     this.installBusy.set(true);
-    this.installError.set('');
+    this.setInstallError('');
     try {
       let manifest: PortalModuleManifest;
       if (this.installInputMode() === 'url') {
@@ -1276,7 +1292,11 @@ export class ModuleRegistry {
       await this.buildPreview(manifest);
       this.installStep.set('preview');
     } catch (err) {
-      this.installError.set((err as Error).message);
+      this.setInstallError(
+        this.installInputMode() === 'url'
+          ? friendlyFetchError(err, (key, params) => this.i18n.t(key, params), input)
+          : { message: err instanceof Error ? err.message : String(err) },
+      );
     } finally {
       this.installBusy.set(false);
     }
@@ -1352,7 +1372,7 @@ export class ModuleRegistry {
   /** Shared post-install flow: report, reload, select the fresh module, propose activation. */
   private async installManifestAndShowResult(manifest: PortalModuleManifest): Promise<void> {
     this.installBusy.set(true);
-    this.installError.set('');
+    this.setInstallError('');
     try {
       const result = await this.registry.installManifest(manifest);
       this.installResult.set(result);
@@ -1369,7 +1389,13 @@ export class ModuleRegistry {
         }
       }
     } catch (err) {
-      this.installError.set((err as Error).message);
+      this.setInstallError(
+        friendlyFetchError(
+          err,
+          (key, params) => this.i18n.t(key, params),
+          manifest.baseUrl ?? '',
+        ),
+      );
     } finally {
       this.installBusy.set(false);
     }

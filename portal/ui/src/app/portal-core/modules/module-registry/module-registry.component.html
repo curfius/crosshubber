@@ -937,8 +937,23 @@
                   class="ds-textarea mt-1 font-mono text-xs"></textarea>
               </div>
             }
-            @if (installError()) {
-              <div class="ds-alert ds-alert-danger">{{ installError() }}</div>
+            @if (installError(); as err) {
+              <div class="ds-alert ds-alert-danger">
+                <div>{{ err.message }}</div>
+                @if (err.hint) {
+                  <div class="mt-1 text-xs">{{ err.hint }}</div>
+                }
+                @if (err.detail) {
+                  <div class="mt-1 font-mono text-[10px] opacity-75">{{ i18n.t('registry.wizard.error.serverDetail', { detail: err.detail }) }}</div>
+                }
+                @if (err.issues?.length) {
+                  <ul class="mt-1 list-inside list-disc text-xs">
+                    @for (issue of err.issues ?? []; track issue) {
+                      <li>{{ issue }}</li>
+                    }
+                  </ul>
+                }
+              </div>
             }
           </div>
         }
@@ -967,8 +982,23 @@
               <input [value]="manualHealth()" (input)="manualHealth.set($any($event.target).value)"
                 placeholder="/healthz" class="ds-input mt-1 font-mono" />
             </label>
-            @if (installError()) {
-              <div class="ds-alert ds-alert-danger">{{ installError() }}</div>
+            @if (installError(); as err) {
+              <div class="ds-alert ds-alert-danger">
+                <div>{{ err.message }}</div>
+                @if (err.hint) {
+                  <div class="mt-1 text-xs">{{ err.hint }}</div>
+                }
+                @if (err.detail) {
+                  <div class="mt-1 font-mono text-[10px] opacity-75">{{ i18n.t('registry.wizard.error.serverDetail', { detail: err.detail }) }}</div>
+                }
+                @if (err.issues?.length) {
+                  <ul class="mt-1 list-inside list-disc text-xs">
+                    @for (issue of err.issues ?? []; track issue) {
+                      <li>{{ issue }}</li>
+                    }
+                  </ul>
+                }
+              </div>
             }
           </div>
         }
@@ -1069,8 +1099,23 @@
         <!-- ═══ Preview (shared: quick review + manual review) ═══ -->
         @if (installStep() === 'preview' || installStep() === 'review') {
           <div class="space-y-4">
-            @if (installError()) {
-              <div class="ds-alert ds-alert-danger">{{ installError() }}</div>
+            @if (installError(); as err) {
+              <div class="ds-alert ds-alert-danger">
+                <div>{{ err.message }}</div>
+                @if (err.hint) {
+                  <div class="mt-1 text-xs">{{ err.hint }}</div>
+                }
+                @if (err.detail) {
+                  <div class="mt-1 font-mono text-[10px] opacity-75">{{ i18n.t('registry.wizard.error.serverDetail', { detail: err.detail }) }}</div>
+                }
+                @if (err.issues?.length) {
+                  <ul class="mt-1 list-inside list-disc text-xs">
+                    @for (issue of err.issues ?? []; track issue) {
+                      <li>{{ issue }}</li>
+                    }
+                  </ul>
+                }
+              </div>
             }
 
             @if (moduleExists()) {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { RegistryService } from './module-registry.store';
+import { RegistryApiError, RegistryService } from './module-registry.store';
 
 /**
  * Regression guard for the GET+body fetch bug: every registry write must send an explicit
@@ -74,5 +74,86 @@ describe('RegistryService verbs', () => {
         expect(init.body, `GET/HEAD with body on ${call[0]}`).toBeUndefined();
       }
     }
+  });
+});
+
+/**
+ * The install wizard localizes on `code` and renders `issues[]`, so both must survive the shared
+ * request path; the raw `{"error"}` text stays the message for every other call site.
+ */
+describe('RegistryApiError', () => {
+  let service: RegistryService;
+  let fetchStub: ReturnType<typeof vi.fn>;
+
+  const SERVER_TEXT = 'could not fetch http://localhost:28092/: connect ECONNREFUSED';
+
+  beforeEach(() => {
+    service = new RegistryService();
+    fetchStub = vi.fn();
+    vi.stubGlobal('fetch', fetchStub);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function respond(status: number, body: unknown): void {
+    fetchStub.mockResolvedValue(new Response(JSON.stringify(body), { status }));
+  }
+
+  async function capture(promise: Promise<unknown>): Promise<unknown> {
+    try {
+      await promise;
+      return undefined;
+    } catch (err) {
+      return err;
+    }
+  }
+
+  it('carries status, message and code from a failed manifest fetch', async () => {
+    respond(502, { error: SERVER_TEXT, code: 'unreachable' });
+
+    const caught = await capture(service.fetchManifestFromUrl('http://localhost:28092/'));
+
+    expect(caught).toBeInstanceOf(RegistryApiError);
+    const err = caught as RegistryApiError;
+    expect(err.status).toBe(502);
+    expect(err.message).toBe(SERVER_TEXT);
+    expect(err.code).toBe('unreachable');
+    expect(err.issues).toBeUndefined();
+  });
+
+  it('carries the 422 validation issues for an invalid manifest', async () => {
+    const issues = ['content.applications[0].url must be http(s)'];
+    respond(422, { error: 'the manifest is not valid', code: 'invalid-manifest', issues });
+
+    const caught = await capture(
+      service.installManifest({ manifestVersion: 1, key: 'x', name: 'X', baseUrl: 'http://x:1' } as never),
+    );
+
+    const err = caught as RegistryApiError;
+    expect(err).toBeInstanceOf(RegistryApiError);
+    expect(err.status).toBe(422);
+    expect(err.code).toBe('invalid-manifest');
+    expect(err.issues).toEqual(issues);
+  });
+
+  it('falls back to the endpoint message when the error body is not JSON', async () => {
+    fetchStub.mockResolvedValue(new Response('<html>502</html>', { status: 502 }));
+
+    const caught = await capture(service.fetchManifestFromUrl('http://x:1'));
+
+    const err = caught as RegistryApiError;
+    expect(err).toBeInstanceOf(RegistryApiError);
+    expect(err.message).toBe('fetch failed');
+    expect(err.code).toBeUndefined();
+    expect(err.issues).toBeUndefined();
+  });
+
+  it('resolves the manifest on 200', async () => {
+    const manifest = { manifestVersion: 1, key: 'x', name: 'X', baseUrl: 'http://x:1' };
+    respond(200, { manifest });
+
+    await expect(service.fetchManifestFromUrl('http://x:1')).resolves.toEqual({ manifest });
   });
 });

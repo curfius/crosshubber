@@ -3,7 +3,10 @@ package com.crosshubber.portal.modules.registry.manifest;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,6 +33,8 @@ import tools.jackson.databind.JsonNode;
 @RestController
 @RequestMapping("/api/registry")
 public class ManifestController {
+
+  private static final Logger log = LoggerFactory.getLogger(ManifestController.class);
 
   private final InstallService installService;
   private final ManifestValidator validator;
@@ -70,7 +75,8 @@ public class ManifestController {
     String url = Texts.string(body.get("url"));
     String baseUrl = Texts.string(body.get("baseUrl"));
     if (url == null && baseUrl == null) {
-      return ResponseEntity.badRequest().body(Map.of("error", "url or baseUrl is required"));
+      return ResponseEntity.badRequest()
+          .body(Map.of("error", "url or baseUrl is required", "code", "invalid-request"));
     }
     try {
       JsonNode raw =
@@ -82,9 +88,28 @@ public class ManifestController {
         return unprocessable(result.issues());
       }
       return ResponseEntity.ok(manifestPayload(result.manifest()));
+    } catch (ManifestFetchException e) {
+      log.warn(
+          "[portal] manifest fetch failed url={} code={}: {}",
+          e.url(),
+          e.code().value(),
+          e.getMessage());
+      return ResponseEntity.status(fetchStatus(e.code()))
+          .body(Map.of("error", e.getMessage(), "code", e.code().value()));
     } catch (Exception e) {
-      return ResponseEntity.status(502).body(Map.of("error", "fetch failed: " + e.getMessage()));
+      log.warn("[portal] manifest fetch failed unexpectedly: {}", e.getMessage());
+      return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+          .body(Map.of("error", "fetch failed: " + e.getMessage(), "code", "failed"));
     }
+  }
+
+  /** 400/403 for caller mistakes; 502 whenever the upstream fetch itself failed. */
+  private static HttpStatus fetchStatus(ManifestFetchException.Code code) {
+    return switch (code) {
+      case INVALID_URL -> HttpStatus.BAD_REQUEST;
+      case BLOCKED -> HttpStatus.FORBIDDEN;
+      default -> HttpStatus.BAD_GATEWAY;
+    };
   }
 
   @PostMapping("/install")
@@ -254,6 +279,7 @@ public class ManifestController {
   private ResponseEntity<Map<String, Object>> unprocessable(java.util.List<String> issues) {
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("error", "invalid manifest");
+    out.put("code", "invalid-manifest");
     out.put("issues", issues);
     return ResponseEntity.unprocessableContent().body(out);
   }
