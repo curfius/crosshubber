@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { moduleContentId, type PortalModuleContent, PortalUser, type NavigationGroup } from '../../../core/models';
 import { TreeNode, buildUserSettingsTree } from '../../layout/sidebar/tree.model';
 import { AppOutlet } from '../../workarea/module-outlet.component';
-import { WorkbenchService } from '../../features/workspaces/workspaces.store';
+import { WorkbenchService } from '../../../core/workspaces/workspaces.store';
 import { NavigationCoordinator } from '../../features/navigation-coordinator.service';
 import { DsTree, DsTreeNode } from '../../../shared/components/ds-tree/ds-tree.component';
 import { I18nService } from '../../../core/i18n/i18n.service';

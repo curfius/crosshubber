@@ -27,6 +27,7 @@ public class NavigationSettingsService {
     DEFAULT_SETTINGS.put("homeApp", "navigation:portal");
     DEFAULT_SETTINGS.put("pinnedAppsEnabled", true);
     DEFAULT_SETTINGS.put("workspacesEnabled", true);
+    DEFAULT_SETTINGS.put("pinnedSectionEnabled", true);
   }
 
   private final NavigationSettingsRepository repo;

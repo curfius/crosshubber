@@ -5,6 +5,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import type { EditableTreeNode } from '../../../core/navigation/navigation.models';
 import { moveNode, moveNodeRelative, newTreeId, findParent } from '../../../core/navigation/navigation.models';
 import { I18nService } from '../../../core/i18n/i18n.service';
+import { ToastService } from '../../../core/toast/toast.service';
 import { ConfirmDialog } from '../confirm-dialog/confirm-dialog.component';
 
 /** Focuses (and selects) its host input as soon as it is rendered. */
@@ -70,6 +71,8 @@ export class DndTree {
   readonly rootLabel = input<string | null>(null);
   /** Renders the per-row hidden/visible eye toggle. */
   readonly showVisibility = input(false);
+  /** Renders the per-item avatar-color palette button (emits `colorPick`). */
+  readonly showColorPicker = input(false);
   /** Which rows offer the bin: sections only, or sections and apps. */
   readonly deleteMode = input<'folders-only' | 'folders-and-items'>('folders-and-items');
   /** Node ids rendered greyed-out (e.g. refs to deleted entry points). */
@@ -78,8 +81,11 @@ export class DndTree {
   readonly nodesChange = output<EditableTreeNode[]>();
   /** Fired when the user clicks a leaf item's main row. */
   readonly itemClick = output<EditableTreeNode>();
+  /** Fired when the user hits an item's avatar-color button. */
+  readonly colorPick = output<EditableTreeNode>();
 
   protected readonly i18n = inject(I18nService);
+  protected readonly toast = inject(ToastService);
 
   protected readonly expanded = signal<Set<string>>(new Set());
   protected readonly renamingId = signal<string | null>(null);
@@ -260,8 +266,8 @@ export class DndTree {
       // Root section strip → append at the end of the top level.
       next = moveNode(this.nodes(), dragged.id, null, this.nodes().length, this.maxDepth());
     } else if (data.into) {
-      // Drop strip under a folder → first child of that folder.
-      next = moveNode(this.nodes(), dragged.id, data.parentId, 0, this.maxDepth());
+      // Drop strip under a folder → append at the end of its children (moveNode clamps the index).
+      next = moveNode(this.nodes(), dragged.id, data.parentId, Number.MAX_SAFE_INTEGER, this.maxDepth());
     } else if (data.empty) {
       next = moveNode(this.nodes(), dragged.id, null, 0, this.maxDepth());
     } else if (data.nodeId) {
@@ -272,7 +278,11 @@ export class DndTree {
         : false;
       next = moveNodeRelative(this.nodes(), dragged.id, data.nodeId, after ? 'after' : 'before', this.maxDepth());
     }
-    if (next) this.nodesChange.emit(next);
+    if (next) {
+      this.nodesChange.emit(next);
+    } else {
+      this.toast.show(this.i18n.t('dnd.moveRejected'));
+    }
   }
 
   protected moveUp(node: EditableTreeNode): void {
@@ -340,9 +350,16 @@ export class DndTree {
     return 1 + Math.max(...node.children.map((c) => this.subtreeDepthOf(c)));
   }
 
-  /** Runs a mutation against a clone of the tree; emits when it changed. */
+  /**
+   * Runs a mutation against a clone of the tree; emits when it changed and
+   * shows a toast when the (move) mutation was rejected.
+   */
   private emitMutated(mutate: (tree: EditableTreeNode[]) => EditableTreeNode[] | null): void {
     const next = mutate(structuredClone(this.nodes()));
-    if (next) this.nodesChange.emit(next);
+    if (next) {
+      this.nodesChange.emit(next);
+    } else {
+      this.toast.show(this.i18n.t('dnd.moveRejected'));
+    }
   }
 }

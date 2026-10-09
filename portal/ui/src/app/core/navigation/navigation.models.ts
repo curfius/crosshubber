@@ -25,29 +25,7 @@ export interface NavigationUserSettings {
 export interface NavigationFeatures {
   pinnedAppsEnabled: boolean;
   workspacesEnabled: boolean;
-}
-
-export interface LayoutItemNode {
-  id: string;
-  type: 'item';
-  ref: string;
-  hidden?: boolean;
-}
-
-export interface LayoutSectionNode {
-  id: string;
-  name: string;
-  type?: 'section';
-  hidden?: boolean;
-  children: (LayoutSectionNode | LayoutItemNode)[];
-}
-
-export type LayoutNode = LayoutSectionNode | LayoutItemNode;
-
-export interface NavigationLayout {
   pinnedSectionEnabled: boolean;
-  /** Root level: sections and/or app items (items are children of the synthetic editor root). */
-  sections: LayoutNode[];
 }
 
 export interface ShellGroupPayload {
@@ -63,6 +41,8 @@ export interface ShellItemPayload {
   contentKey: string;
   groupKey: string | null;
   hidden?: boolean;
+  /** Explicit avatar color; null clears the stored value (hash fallback applies). */
+  color?: string | null;
 }
 
 export interface ShellTreePayload {
@@ -117,10 +97,37 @@ export interface EditableTreeNode {
   label: string;
   kind: 'folder' | 'item';
   color?: string;
+  /** Deterministic hash-based avatar color used only when `color` is unset.
+   *  Never persisted — kept out of shellTreeToPayload on purpose. */
+  fallbackColor?: string;
   meta?: unknown;
   /** Row hidden/visible toggle. A hidden folder effectively hides all descendants. */
   hidden?: boolean;
   children: EditableTreeNode[];
+}
+
+/** Shared avatar palette (matches the registry content-form picker). */
+export const AVATAR_COLORS = [
+  '#f59e0b',
+  '#3b82f6',
+  '#10b981',
+  '#a855f7',
+  '#ef4444',
+  '#06b6d4',
+  '#f97316',
+  '#ec4899',
+  '#6366f1',
+  '#14b8a6',
+];
+
+/** Deterministic per-ref avatar color (FNV-1a) — stable across sessions/clients. */
+export function avatarColor(ref: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < ref.length; i++) {
+    hash ^= ref.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return AVATAR_COLORS[(hash >>> 0) % AVATAR_COLORS.length];
 }
 
 /** True when the node or any of its ancestors carries hidden=true. */
@@ -270,27 +277,5 @@ export function collectPinnedRefs(nodes: PinnedNode[]): string[] {
     }
   };
   walk(nodes);
-  return refs;
-}
-
-// ── Layout helpers ────────────────────────────────────────────────────
-
-export function walkLayout(
-  sections: (LayoutSectionNode | LayoutItemNode)[],
-  visit: (node: LayoutSectionNode | LayoutItemNode, depth: number) => void,
-  depth = 0,
-): void {
-  for (const node of sections) {
-    visit(node, depth);
-    if (node.type !== 'item') walkLayout(node.children, visit, depth + 1);
-  }
-}
-
-/** Resolves layout leaf refs; returns pairs of (sectionPath, ref). */
-export function layoutLeafRefs(sections: LayoutNode[]): string[] {
-  const refs: string[] = [];
-  walkLayout(sections, (node) => {
-    if (node.type === 'item' && node.ref) refs.push(node.ref);
-  });
   return refs;
 }

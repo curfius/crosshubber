@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { AppArea } from './tab-area.component';
-import { WorkbenchService } from '../features/workspaces/workspaces.store';
+import { WorkbenchService } from '../../core/workspaces/workspaces.store';
 import type { PortalModuleContent } from '../../core/models';
 
 class ResizeObserverStub {

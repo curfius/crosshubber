@@ -52,7 +52,8 @@
         class="dnd-node-row"
         [class.dnd-node-disabled]="disabledIds().has(node.id)"
         [class.dnd-node-hidden]="parentHidden || !!node.hidden"
-        [class.dnd-node-leaf]="node.kind === 'item'">
+        [class.dnd-node-leaf]="node.kind === 'item'"
+        tabindex="0">
 
         <div class="dnd-node-main" (click)="node.kind === 'item' && itemClick.emit(node)">
           <!-- grip affordance: the whole row is the drag source -->
@@ -72,7 +73,7 @@
           }
 
           <!-- avatar -->
-          <span class="dnd-avatar" [style.background]="node.color || 'var(--portal-accent-primary)'">
+          <span class="dnd-avatar" [style.background]="node.color || node.fallbackColor || 'var(--portal-accent-primary)'">
             @if (node.kind === 'folder') {
             <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
             } @else {
@@ -129,6 +130,11 @@
             <button type="button" class="dnd-icon-btn" (click)="moveDown(node)" [title]="i18n.t('dnd.moveDown')" [attr.aria-label]="i18n.t('dnd.moveDown')">
               <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
             </button>
+            @if (showColorPicker() && node.kind === 'item') {
+            <button type="button" class="dnd-icon-btn" (click)="$event.stopPropagation(); colorPick.emit(node)" [title]="i18n.t('dnd.pickColor')" [attr.aria-label]="i18n.t('dnd.pickColor')">
+              <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="10" r="1" fill="currentColor" stroke="none"/></svg>
+            </button>
+            }
             @if (node.kind === 'folder' && showAddFolder() && depth < maxDepth() - 1) {
             <button type="button" class="dnd-icon-btn" (click)="addFolder(node.id)" [title]="i18n.t('dnd.addSubsection')" [attr.aria-label]="i18n.t('dnd.addSubsection')">
               <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>

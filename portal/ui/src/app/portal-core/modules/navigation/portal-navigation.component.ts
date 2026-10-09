@@ -1,17 +1,27 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgTemplateOutlet } from '@angular/common';
-import { WorkbenchService } from '../../features/workspaces/workspaces.store';
+import { WorkbenchService } from '../../../core/workspaces/workspaces.store';
 import { NavigationStore } from '../../../core/navigation/navigation.store';
-import { NavigationAdminService } from '../../../core/navigation/navigation-admin.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
-import type { PortalModuleContent } from '../../../core/models';
+import type { PortalModuleContent, NavigationGroup } from '../../../core/models';
 import { moduleContentId } from '../../../core/models';
-import type { NavigationLayout, LayoutNode, LayoutSectionNode, LayoutItemNode } from '../../../core/navigation/navigation.models';
+import { buildAppTree, type TreeNode } from '../../layout/sidebar/tree.model';
+import { avatarColor } from '../../../core/navigation/navigation.models';
+
+/** Flattened view node for the section template (mirrors the retired layout shape). */
+interface NavSectionNode {
+  id: string;
+  kind: 'item' | 'group';
+  name: string;
+  ep: PortalModuleContent | null;
+  children: NavSectionNode[];
+}
 
 /**
- * Portal Navigation application: dashboard-style page rendering apps per the
- * admin-managed layout config, plus the user's pinned apps section.
+ * Portal Navigation application: dashboard-style page rendering apps grouped per the
+ * shell-tree model (same /api/config source as the sidebar), plus the user's pinned
+ * apps section.
  */
 @Component({
   selector: 'app-portal-navigation',
@@ -23,14 +33,13 @@ import type { NavigationLayout, LayoutNode, LayoutSectionNode, LayoutItemNode } 
 export class PortalNavigation implements OnInit {
   private readonly wb = inject(WorkbenchService);
   protected readonly nav = inject(NavigationStore);
-  private readonly admin = inject(NavigationAdminService);
   protected readonly i18n = inject(I18nService);
 
-  protected readonly layout = signal<NavigationLayout | null>(null);
   protected readonly search = signal('');
   protected readonly collapsed = signal<Set<string>>(new Set());
 
   protected readonly moduleContents = signal<PortalModuleContent[]>([]);
+  protected readonly groups = signal<NavigationGroup[]>([]);
 
   /** refs visible to the current user (role-filtered /api/config data). */
   private readonly refToEp = computed(() => {
@@ -42,7 +51,7 @@ export class PortalNavigation implements OnInit {
   });
 
   protected readonly pinnedApps = computed<PortalModuleContent[]>(() => {
-    if (!this.layout()?.pinnedSectionEnabled) return [];
+    if (!this.nav.features().pinnedSectionEnabled) return [];
     if (!this.nav.features().pinnedAppsEnabled) return [];
     const q = this.search().toLowerCase();
     return this.nav.pinnedRefs()
@@ -50,34 +59,41 @@ export class PortalNavigation implements OnInit {
       .filter((ep): ep is PortalModuleContent => !!ep && this.matches(ep, q));
   });
 
-  protected readonly sections = computed<LayoutNode[]>(() => {
+  protected readonly sections = computed<NavSectionNode[]>(() => {
     const q = this.search().toLowerCase();
-    const filterNodes = (nodes: LayoutNode[]): LayoutNode[] => {
-      const out: LayoutNode[] = [];
+    const mapNodes = (nodes: TreeNode<PortalModuleContent | NavigationGroup>[]): NavSectionNode[] => {
+      const out: NavSectionNode[] = [];
       for (const node of nodes) {
-        // Hidden section/app rows (eye toggle) are skipped with their subtree.
-        if (node.hidden) continue;
-        if (node.type === 'item') {
-          const ep = this.refToEp().get(node.ref);
-          if (ep && this.matches(ep, q)) out.push(node);
+        if ('contentKey' in node.data) {
+          const ep = node.data;
+          if (this.matches(ep, q)) {
+            out.push({ id: moduleContentId(ep), kind: 'item', name: ep.name, ep, children: [] });
+          }
         } else {
-          const children = filterNodes(node.children);
-          if (children.length > 0) out.push({ ...node, children });
+          const group = node.data;
+          const children = mapNodes(node.children);
+          if (children.length > 0) {
+            out.push({ id: `group:${group.groupKey}`, kind: 'group', name: group.name, ep: null, children });
+          }
         }
       }
       return out;
     };
-    return filterNodes(this.layout()?.sections ?? []);
+    return mapNodes(buildAppTree(this.groups(), this.moduleContents()));
   });
 
   async ngOnInit(): Promise<void> {
     this.moduleContents.set(this.wb.getModuleContents());
+    this.groups.set(this.wb.getNavigationGroups());
     if (!this.nav.loaded()) await this.nav.load();
-    const layout = await this.admin.loadLayout();
-    if (layout) this.layout.set(layout);
   }
 
-  protected isPinned(ep: PortalModuleContent): boolean {
+  /** Avatar background: explicit content color, else the deterministic hash fallback. */
+protected avatarBg(ep: PortalModuleContent): string {
+  return ep.color || avatarColor(moduleContentId(ep));
+}
+
+protected isPinned(ep: PortalModuleContent): boolean {
     return this.nav.isPinned(moduleContentId(ep));
   }
 
@@ -97,10 +113,6 @@ export class PortalNavigation implements OnInit {
       else next.add(id);
       return next;
     });
-  }
-
-  protected epOf(node: LayoutNode): PortalModuleContent | null {
-    return node.type === 'item' ? this.refToEp().get((node as LayoutItemNode).ref) ?? null : null;
   }
 
   protected openApp(ep: PortalModuleContent): void {

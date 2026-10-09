@@ -1,4 +1,4 @@
-package com.crosshubber.portal.workspaces.dto;
+package com.crosshubber.portal.modules.navigation.workspaces.dto;
 
 /** Workspace list item ({@code savedAt} is epoch millis). */
 public record WorkspaceSummaryDto(

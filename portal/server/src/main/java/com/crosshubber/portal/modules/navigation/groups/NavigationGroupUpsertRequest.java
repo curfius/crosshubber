@@ -13,10 +13,10 @@ public record NavigationGroupUpsertRequest(
     @NotBlank(message = "is required")
         @Pattern(regexp = Keys.KEY_RE, message = "must match [a-z0-9][a-z0-9-]{0,63}")
         String groupKey,
-    @NotNull(message = "must be applications|settings|features|user-settings")
+    @NotNull(message = "must be applications|admin-settings|features|user-settings")
         @Pattern(
-            regexp = "applications|settings|features|user-settings",
-            message = "must be applications|settings|features|user-settings")
+            regexp = "applications|admin-settings|features|user-settings",
+            message = "must be applications|admin-settings|features|user-settings")
         String category,
     @NotBlank(message = "is required") String name,
     String parentKey,

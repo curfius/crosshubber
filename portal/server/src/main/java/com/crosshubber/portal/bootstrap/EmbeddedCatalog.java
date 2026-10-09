@@ -52,7 +52,7 @@ public final class EmbeddedCatalog {
               List.of(
                   new Entry(
                       "main",
-                      "settings",
+                      "admin-settings",
                       "Module registry",
                       "module-registry",
                       "#a855f7",
@@ -77,7 +77,7 @@ public final class EmbeddedCatalog {
                       List.of()),
                   new Entry(
                       "general",
-                      "settings",
+                      "admin-settings",
                       "General",
                       "portal-general-settings",
                       "#64748b",
@@ -145,7 +145,7 @@ public final class EmbeddedCatalog {
                       List.of()),
                   new Entry(
                       "portal-nav",
-                      "settings",
+                      "admin-settings",
                       "Portal navigation",
                       "navigation-portal",
                       "#10b981",
@@ -172,7 +172,7 @@ public final class EmbeddedCatalog {
                       List.of()),
                   new Entry(
                       "settings",
-                      "settings",
+                      "admin-settings",
                       "AI Hub",
                       "ai-hub-settings",
                       "#f59e0b",
@@ -181,7 +181,7 @@ public final class EmbeddedCatalog {
                       List.of()),
                   new Entry(
                       "providers",
-                      "settings",
+                      "admin-settings",
                       "AI Providers",
                       "ai-hub-providers",
                       "#f59e0b",
@@ -216,7 +216,7 @@ public final class EmbeddedCatalog {
                       List.of()),
                   new Entry(
                       "admin",
-                      "settings",
+                      "admin-settings",
                       "Message Center Admin",
                       "msg-center-admin",
                       "#06b6d4",
@@ -225,7 +225,7 @@ public final class EmbeddedCatalog {
                       List.of("portal-msgcenter-edit")),
                   new Entry(
                       "templates",
-                      "settings",
+                      "admin-settings",
                       "Task Template Studio",
                       "msg-center-templates",
                       "#06b6d4",
@@ -241,7 +241,7 @@ public final class EmbeddedCatalog {
               List.of(
                   new Entry(
                       "general",
-                      "settings",
+                      "admin-settings",
                       "Language & region",
                       "i18n-general",
                       "#0ea5e9",
@@ -250,7 +250,7 @@ public final class EmbeddedCatalog {
                       List.of()),
                   new Entry(
                       "languages",
-                      "settings",
+                      "admin-settings",
                       "Languages",
                       "i18n-languages",
                       "#0ea5e9",
@@ -259,7 +259,7 @@ public final class EmbeddedCatalog {
                       List.of()),
                   new Entry(
                       "labels",
-                      "settings",
+                      "admin-settings",
                       "Labels",
                       "i18n-labels",
                       "#0ea5e9",

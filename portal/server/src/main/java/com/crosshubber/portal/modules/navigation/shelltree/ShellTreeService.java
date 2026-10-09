@@ -127,6 +127,18 @@ public class ShellTreeService {
       if (!isNullish(item.path("hidden")) && !item.path("hidden").isBoolean()) {
         throw new IllegalArgumentException("items[" + i + "].hidden: must be a boolean");
       }
+      if (!isNullish(item.path("color")) && !item.path("color").isString()) {
+        throw new IllegalArgumentException("items[" + i + "].color: must be a string");
+      }
+      String color = item.path("color").asString(null);
+      boolean validColor =
+          isNullish(item.path("color"))
+              || color.isEmpty()
+              || color.matches("#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})");
+      if (!validColor) {
+        throw new IllegalArgumentException(
+            "items[" + i + "].color: must be a hex color like #3b82f6");
+      }
     }
 
     // Resolve group keys: client keys win; missing keys are slugified (unique
@@ -259,6 +271,9 @@ public class ShellTreeService {
           itemsByRef.get(
               item.path("moduleKey").asString() + ":" + item.path("contentKey").asString());
       if (ep != null) {
+        if (item.has("color")) {
+          ep.setColor(Texts.blankToNull(item.path("color").asString(null)));
+        }
         ep.setGroupKey(groupKey);
         ep.setSortOrder(order);
         ep.setHidden(item.path("hidden").asBoolean(false));

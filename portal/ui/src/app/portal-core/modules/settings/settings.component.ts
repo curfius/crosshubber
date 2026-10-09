@@ -4,7 +4,7 @@ import { SettingsService } from '../../../core/settings/settings.service';
 import { moduleContentId, type PortalModuleContent, PortalUser, type NavigationGroup } from '../../../core/models';
 import { TreeNode, buildSettingsTree } from '../../layout/sidebar/tree.model';
 import { AppOutlet } from '../../workarea/module-outlet.component';
-import { WorkbenchService } from '../../features/workspaces/workspaces.store';
+import { WorkbenchService } from '../../../core/workspaces/workspaces.store';
 import { NavigationCoordinator } from '../../features/navigation-coordinator.service';
 import { DsTree, DsTreeNode } from '../../../shared/components/ds-tree/ds-tree.component';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -30,13 +30,11 @@ export class Settings {
   protected readonly activeEntry = signal<PortalModuleContent | null>(null);
 
   protected readonly settingsContents = computed(() =>
-    this.wb
-      .getModuleContents()
-      .filter((ep) => ep.category === 'settings' || ep.category === 'admin-settings'),
+    this.wb.getModuleContents().filter((ep) => ep.category === 'admin-settings'),
   );
 
   protected readonly settingsGroups = computed(() =>
-    this.wb.getNavigationGroups().filter((g) => g.category === 'settings'),
+    this.wb.getNavigationGroups().filter((g) => g.category === 'admin-settings'),
   );
 
   protected readonly settingsTree = computed<TreeNode<PortalModuleContent | NavigationGroup>[]>(() =>

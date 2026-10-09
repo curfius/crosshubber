@@ -27,7 +27,8 @@ class DomainEnumsTest {
 
     ModuleContentCategory.DbConverter converter = new ModuleContentCategory.DbConverter();
     assertEquals("settings", converter.convertToDatabaseColumn(ModuleContentCategory.SETTINGS));
-    assertEquals(ModuleContentCategory.SETTINGS, converter.convertToEntityAttribute("settings"));
+    assertEquals(
+        ModuleContentCategory.ADMIN_SETTINGS, converter.convertToEntityAttribute("settings"));
     assertNull(converter.convertToDatabaseColumn(null));
     assertNull(converter.convertToEntityAttribute(null));
     assertThrows(IllegalArgumentException.class, () -> ModuleContentCategory.parse("bogus"));

@@ -100,7 +100,8 @@ export interface TabGroup {
   activeId: number | null;
 }
 
-export type SplitDir = 'row' | 'col';
+/** Divider orientation: 'vertical' = side-by-side panes, 'horizontal' = stacked panes. */
+export type SplitDir = 'vertical' | 'horizontal';
 
 export interface LeafNode {
   kind: 'leaf';
@@ -143,6 +144,8 @@ export interface WorkspaceSnapshot {
   groups: Record<string, SavedGroup>;
   focusedGroupId: string | null;
   hideSingleTabToolbar: boolean;
+  /** Whether the unclosable Home tab shows in this workspace; absent = shown (legacy rows). */
+  homeVisible?: boolean;
   locked: boolean;
 }
 

@@ -1,4 +1,4 @@
-package com.crosshubber.portal.workspaces;
+package com.crosshubber.portal.modules.navigation.workspaces;
 
 import java.io.Serializable;
 import java.util.Objects;

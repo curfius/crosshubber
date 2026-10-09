@@ -1,4 +1,4 @@
-package com.crosshubber.portal.workspaces;
+package com.crosshubber.portal.modules.navigation.workspaces;
 
 import java.time.Instant;
 import java.util.List;
@@ -19,9 +19,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.portal.common.JsonUtils;
+import com.crosshubber.portal.modules.navigation.workspaces.dto.WorkspaceDetailDto;
+import com.crosshubber.portal.modules.navigation.workspaces.dto.WorkspaceSummaryDto;
 import com.crosshubber.portal.security.PortalUser;
-import com.crosshubber.portal.workspaces.dto.WorkspaceDetailDto;
-import com.crosshubber.portal.workspaces.dto.WorkspaceSummaryDto;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -75,6 +75,7 @@ public class WorkspacesController {
     String groups = body.get("groups") != null ? writeJson(body.get("groups")) : "{}";
     String focusedGroupId = body.get("focusedGroupId") instanceof String s ? s : null;
     boolean hideSingleTabToolbar = Boolean.TRUE.equals(body.get("hideSingleTabToolbar"));
+    boolean homeVisible = !Boolean.FALSE.equals(body.get("homeVisible"));
     boolean locked = Boolean.TRUE.equals(body.get("locked"));
     String color = body.get("color") instanceof String s ? s : "";
     String status = body.get("status") instanceof String s ? s : "";
@@ -90,6 +91,7 @@ public class WorkspacesController {
         entity.setGroups(groups);
         entity.setFocusedGroupId(focusedGroupId);
         entity.setHideSingleTabToolbar(hideSingleTabToolbar);
+        entity.setHomeVisible(homeVisible);
         entity.setLocked(locked);
         entity.setColor(color);
         entity.setStatus(status);
@@ -134,6 +136,7 @@ public class WorkspacesController {
     updated.setGroups(body.get("groups") != null ? writeJson(body.get("groups")) : "{}");
     updated.setFocusedGroupId(body.get("focusedGroupId") instanceof String s ? s : null);
     updated.setHideSingleTabToolbar(Boolean.TRUE.equals(body.get("hideSingleTabToolbar")));
+    updated.setHomeVisible(!Boolean.FALSE.equals(body.get("homeVisible")));
     updated.setLocked(Boolean.TRUE.equals(body.get("locked")));
     updated.setColor(body.get("color") instanceof String s ? s : "");
     updated.setStatus(body.get("status") instanceof String s ? s : "");
@@ -190,6 +193,7 @@ public class WorkspacesController {
     copy.setGroups(source.getGroups());
     copy.setFocusedGroupId(source.getFocusedGroupId());
     copy.setHideSingleTabToolbar(source.getHideSingleTabToolbar());
+    copy.setHomeVisible(source.getHomeVisible());
     copy.setLocked(source.getLocked());
     copy.setColor(source.getColor());
     copy.setStatus(source.getStatus());
@@ -228,6 +232,7 @@ public class WorkspacesController {
         parseJsonSafe(w.getGroups()),
         w.getFocusedGroupId(),
         Boolean.TRUE.equals(w.getHideSingleTabToolbar()),
+        !Boolean.FALSE.equals(w.getHomeVisible()),
         Boolean.TRUE.equals(w.getLocked()),
         w.getColor() != null ? w.getColor() : "",
         w.getStatus() != null ? w.getStatus() : "",

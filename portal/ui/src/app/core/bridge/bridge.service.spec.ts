@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { Bridge } from './bridge.service';
-import { WorkbenchService } from '../../portal-core/features/workspaces/workspaces.store';
+import { WorkbenchService } from '../workspaces/workspaces.store';
 import type { PortalModuleContent } from '../models';
 
 const ORIGIN = window.location.origin;

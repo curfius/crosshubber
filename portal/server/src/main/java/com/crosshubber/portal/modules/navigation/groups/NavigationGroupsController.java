@@ -35,8 +35,8 @@ public class NavigationGroupsController {
   public ResponseEntity<Map<String, Object>> list(
       @RequestParam(required = false)
           @Pattern(
-              regexp = "applications|settings|features|admin-settings|user-settings",
-              message = "must be applications|settings|features|admin-settings|user-settings")
+              regexp = "applications|admin-settings|features|user-settings",
+              message = "must be applications|admin-settings|features|user-settings")
           String category) {
     List<NavigationGroupDto> groups =
         groupsService.list(category).stream().map(NavigationGroupsService::toOutput).toList();

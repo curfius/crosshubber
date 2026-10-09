@@ -29,6 +29,15 @@
   border-color: var(--portal-accent-primary-glow);
 }
 
+.dnd-node-row:focus {
+  outline: none;
+}
+
+.dnd-node-row:focus-visible {
+  outline: 2px solid var(--portal-border-focus);
+  outline-offset: 2px;
+}
+
 .dnd-node-leaf .dnd-node-main {
   cursor: pointer;
 }
@@ -177,7 +186,8 @@
   gap: 2px;
 }
 
-.dnd-node-main:hover .dnd-node-actions {
+.dnd-node-main:hover .dnd-node-actions,
+.dnd-node-row:focus-within .dnd-node-actions {
   display: inline-flex;
 }
 

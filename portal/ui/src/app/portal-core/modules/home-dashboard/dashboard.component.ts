@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } 
 import { FormsModule } from '@angular/forms';
 import type { PortalModuleContent, WorkspaceMeta } from '../../../core/models';
 import { moduleContentId } from '../../../core/models';
-import { WorkbenchService } from '../../features/workspaces/workspaces.store';
+import { WorkbenchService } from '../../../core/workspaces/workspaces.store';
 import { NavigationStore } from '../../../core/navigation/navigation.store';
 import { I18nService } from '../../../core/i18n/i18n.service';
 

@@ -1,4 +1,4 @@
-package com.crosshubber.portal.workspaces;
+package com.crosshubber.portal.modules.navigation.workspaces;
 
 import java.util.List;
 
@@ -15,10 +15,13 @@ import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Workspace agent tool (AI plan B1 seed, D5 provider split): caller-scoped read owned by the
- * workspaces package — platform-global (not attributed to an embedded module, never gated).
+ * navigation module's workspaces sub-package — attributed to {@code navigation} so deactivating the
+ * module gates the tool and removes it from the synthesized manifest.
  */
 @Service
 public class WorkspacesAgentTools implements BuiltinToolProvider {
+
+  static final String MODULE_KEY = "navigation";
 
   private static final int MAX_WORKSPACES = 50;
 
@@ -34,6 +37,7 @@ public class WorkspacesAgentTools implements BuiltinToolProvider {
   public List<AgentTool> tools() {
     return List.of(
         AgentTool.builtin(
+            MODULE_KEY,
             "listWorkspaces",
             "Lists the caller's saved workspaces (name, description, status).",
             null,

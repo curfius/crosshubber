@@ -29,8 +29,42 @@
     [maxDepth]="3"
     [rootLabel]="treeTitle()"
     [showVisibility]="true"
+    [showColorPicker]="true"
     deleteMode="folders-only"
     [addFolderLabel]="i18n.t('navigation.shell.newSection')"
-    (nodesChange)="onTreeChange($event)" />
+    (nodesChange)="onTreeChange($event)"
+    (colorPick)="colorPicker.set($event)" />
 </div>
+
+@if (colorPicker(); as target) {
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" (click)="colorPicker.set(null)">
+  <div
+    class="ds-card w-72 p-4"
+    role="dialog"
+    [attr.aria-label]="i18n.t('navigation.shell.pickColor', { name: target.label })"
+    (click)="$event.stopPropagation()">
+    <h4 class="ds-heading-3 mb-3 text-sm">
+      {{ i18n.t('navigation.shell.pickColor', { name: target.label }) }}
+    </h4>
+    <div class="flex flex-wrap gap-2">
+      @for (color of avatarColors; track color) {
+      <button
+        type="button"
+        class="size-7 rounded-md border border-[var(--portal-border-default)] transition hover:scale-110"
+        [style.background]="color"
+        [attr.aria-label]="color"
+        (click)="applyAvatarColor(color)"></button>
+      }
+    </div>
+    <div class="mt-3 flex justify-end gap-2">
+      <button type="button" class="ds-btn ds-btn-secondary ds-btn-sm" (click)="applyAvatarColor(null)">
+        {{ i18n.t('navigation.shell.colorAuto') }}
+      </button>
+      <button type="button" class="ds-btn ds-btn-secondary ds-btn-sm" (click)="colorPicker.set(null)">
+        {{ i18n.t('common.cancel') }}
+      </button>
+    </div>
+  </div>
+</div>
+}
 }

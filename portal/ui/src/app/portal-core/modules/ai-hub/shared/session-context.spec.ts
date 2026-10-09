@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WorkbenchService } from '../../../features/workspaces/workspaces.store';
+import { WorkbenchService } from '../../../../core/workspaces/workspaces.store';
 import { moduleContentId, type PortalModuleContent } from '../../../../core/models';
 import { buildClientContext } from './session-context';
 

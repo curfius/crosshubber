@@ -17,8 +17,8 @@ import com.crosshubber.portal.security.PortalUser;
 import tools.jackson.databind.JsonNode;
 
 /**
- * Shell nav tree routes (Settings / User Settings editors) — mirrors the shell-tree endpoints in
- * navigation.routes.ts. Admin-only ({@code portal-navigation-edit}).
+ * Shell nav tree routes (Applications / Admin Settings / User Settings editors) — mirrors the
+ * shell-tree endpoints in navigation.routes.ts. Admin-only ({@code portal-navigation-edit}).
  */
 @RestController
 public class NavigationShellTreeController {
@@ -35,7 +35,7 @@ public class NavigationShellTreeController {
       @AuthenticationPrincipal PortalUser user, @RequestParam(required = false) String category) {
     if (!isShellCategory(category)) {
       return ResponseEntity.badRequest()
-          .body(Map.of("error", "category must be settings|user-settings"));
+          .body(Map.of("error", "category must be applications|admin-settings|user-settings"));
     }
     return ResponseEntity.ok(shellTreeService.shellTreePayload(category));
   }
@@ -48,7 +48,7 @@ public class NavigationShellTreeController {
       @RequestBody JsonNode body) {
     if (!isShellCategory(category)) {
       return ResponseEntity.badRequest()
-          .body(Map.of("error", "category must be settings|user-settings"));
+          .body(Map.of("error", "category must be applications|admin-settings|user-settings"));
     }
     if (body == null || !body.has("groups") || !body.get("groups").isArray()) {
       return ResponseEntity.badRequest()
@@ -66,6 +66,8 @@ public class NavigationShellTreeController {
   }
 
   private static boolean isShellCategory(String category) {
-    return "settings".equals(category) || "user-settings".equals(category);
+    return "applications".equals(category)
+        || "admin-settings".equals(category)
+        || "user-settings".equals(category);
   }
 }

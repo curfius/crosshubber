@@ -7,8 +7,9 @@ import { I18nService } from '../../../core/i18n/i18n.service';
 import { BrandingService } from '../../../core/branding/branding.service';
 import { MsgCenterStore } from '../../../core/msg-center/msg-center.store';
 import type { PinnedNode } from '../../../core/navigation/navigation.models';
+import { avatarColor } from '../../../core/navigation/navigation.models';
 import { NavigationStore } from '../../../core/navigation/navigation.store';
-import { WorkbenchService } from '../../features/workspaces/workspaces.store';
+import { WorkbenchService } from '../../../core/workspaces/workspaces.store';
 
 @Component({
   selector: 'app-sidebar',
@@ -150,7 +151,12 @@ export class Sidebar {
     this.pinned.update((v) => !v);
   }
 
-  epId(ep: PortalModuleContent): string {
+  /** Avatar background: explicit content color, else the deterministic hash fallback. */
+protected avatarBg(ep: PortalModuleContent): string {
+  return ep.color || avatarColor(moduleContentId(ep));
+}
+
+epId(ep: PortalModuleContent): string {
     return moduleContentId(ep);
   }
 

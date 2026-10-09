@@ -22,7 +22,7 @@
       @for (ep of pinnedApps(); track ep.moduleKey + ':' + ep.contentKey) {
       <div (click)="openApp(ep)"
         class="group/ep relative flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-[var(--portal-card-border)] bg-[var(--portal-bg-surface)] p-2.5 transition hover:border-[var(--portal-accent-primary-glow)] hover:bg-[var(--portal-bg-hover)]">
-        <div class="flex size-8 items-center justify-center rounded-md text-xs font-bold text-[var(--portal-text-inverse)]" [style.background]="ep.color || 'var(--portal-accent-primary)'">
+        <div class="flex size-8 items-center justify-center rounded-md text-xs font-bold text-[var(--portal-text-inverse)]" [style.background]="avatarBg(ep)">
           {{ ep.name.charAt(0) }}
         </div>
         <span class="w-full truncate text-center text-xs font-medium text-[var(--portal-text-secondary)]">{{ ep.name }}</span>
@@ -51,11 +51,11 @@
   <!-- Configured sections -->
   <ng-template #sectionTpl let-nodes>
     @for (node of nodes; track node.id) {
-      @if (node.type === 'item') {
-        @if (epOf(node); as ep) {
+      @if (node.kind === 'item') {
+        @if (node.ep; as ep) {
         <div (click)="openApp(ep)"
           class="group/ep relative flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-[var(--portal-card-border)] bg-[var(--portal-bg-surface)] p-2.5 transition hover:border-[var(--portal-accent-primary-glow)] hover:bg-[var(--portal-bg-hover)]">
-          <div class="flex size-8 items-center justify-center rounded-md text-xs font-bold text-[var(--portal-text-inverse)]" [style.background]="ep.color || 'var(--portal-accent-primary)'">
+          <div class="flex size-8 items-center justify-center rounded-md text-xs font-bold text-[var(--portal-text-inverse)]" [style.background]="avatarBg(ep)">
             {{ ep.name.charAt(0) }}
           </div>
           <span class="w-full truncate text-center text-xs font-medium text-[var(--portal-text-secondary)]">{{ ep.name }}</span>

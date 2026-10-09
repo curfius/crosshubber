@@ -1,13 +1,13 @@
 import { Injectable, inject, signal } from '@angular/core';
 import type { PortalUser } from '../models';
-import type { NavigationLayout, ShellTreePayload, ShellTreeResponse, NavigationFeatures } from './navigation.models';
+import type { ShellTreePayload, ShellTreeResponse, NavigationFeatures } from './navigation.models';
 import type { NavigationStore } from './navigation.store';
 
-export type ShellCategory = 'settings' | 'user-settings';
+export type ShellCategory = 'applications' | 'admin-settings' | 'user-settings';
 
 /**
  * Admin CRUD for navigation configuration (role `portal-navigation-edit`):
- * shell nav trees, Portal Navigation layout and the feature switches.
+ * shell nav trees and the feature switches.
  */
 @Injectable({ providedIn: 'root' })
 export class NavigationAdminService {
@@ -53,21 +53,6 @@ export class NavigationAdminService {
     const result = await this.send<ShellTreeResponse>(
       `/api/navigation/shell-tree/${category}`, 'PUT', payload,
     );
-    return { ok: result.ok, error: result.error };
-  }
-
-  async loadLayout(): Promise<NavigationLayout | null> {
-    try {
-      const res = await fetch('/api/navigation/layout');
-      if (!res.ok) return null;
-      return ((await res.json()) as { layout: NavigationLayout }).layout;
-    } catch {
-      return null;
-    }
-  }
-
-  async saveLayout(layout: NavigationLayout): Promise<{ ok: boolean; error?: string }> {
-    const result = await this.send<{ layout: NavigationLayout }>('/api/navigation/layout', 'PUT', layout);
     return { ok: result.ok, error: result.error };
   }
 

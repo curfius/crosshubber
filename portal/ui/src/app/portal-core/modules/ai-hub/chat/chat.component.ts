@@ -21,7 +21,7 @@ import {
   type ChatModelOption,
 } from '../../../../core/ai-hub/chat-models';
 import { I18nService } from '../../../../core/i18n/i18n.service';
-import { WorkbenchService } from '../../../features/workspaces/workspaces.store';
+import { WorkbenchService } from '../../../../core/workspaces/workspaces.store';
 import {
   ChatCoreService,
   sortConversations,

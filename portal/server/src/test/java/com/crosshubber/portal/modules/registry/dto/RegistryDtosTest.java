@@ -88,7 +88,7 @@ class RegistryDtosTest {
   void groupDtoAlwaysEmitsParentKeyEvenWhenNull() {
     NavigationGroupEntity g = new NavigationGroupEntity();
     g.setGroupKey("nav-a");
-    g.setCategory(ModuleContentCategory.SETTINGS);
+    g.setCategory(ModuleContentCategory.ADMIN_SETTINGS);
     g.setName("A");
     g.setParentKey(null);
     g.setSortOrder(0);

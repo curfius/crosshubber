@@ -11,7 +11,11 @@ import { collectPinnedRefs } from './navigation.models';
 export class NavigationStore {
   readonly pinnedTree = signal<PinnedNode[]>([]);
   readonly userSettings = signal<NavigationUserSettings | null>(null);
-  readonly features = signal<NavigationFeatures>({ pinnedAppsEnabled: true, workspacesEnabled: true });
+  readonly features = signal<NavigationFeatures>({
+    pinnedAppsEnabled: true,
+    workspacesEnabled: true,
+    pinnedSectionEnabled: true,
+  });
   readonly loaded = signal(false);
 
   /** Flat set of pinned item refs (root-first document order). */

@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentCategory;
@@ -16,4 +18,8 @@ public interface NavigationGroupRepository extends JpaRepository<NavigationGroup
 
   List<NavigationGroupEntity> findByCategoryOrderBySortOrderAscNameAsc(
       ModuleContentCategory category);
+
+  /** Highest stored sort order for the category — the append target for new groups. */
+  @Query("SELECT max(g.sortOrder) FROM NavigationGroupEntity g WHERE g.category = :category")
+  Optional<Integer> findMaxSortOrder(@Param("category") ModuleContentCategory category);
 }

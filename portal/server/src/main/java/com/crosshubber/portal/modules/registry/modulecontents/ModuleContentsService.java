@@ -119,7 +119,11 @@ public class ModuleContentsService {
   // — Commands
   // —
 
-  /** Full-replace upsert on (moduleKey, contentKey) — mirrors repo.upsert. */
+  /**
+   * Full-replace upsert on (moduleKey, contentKey) — mirrors repo.upsert. A missing sort order
+   * appends a new content after its module peers (max + 10) and leaves a stored row's order
+   * untouched (COALESCE semantics).
+   */
   @Transactional
   public ModuleContentEntity upsert(ModuleContentUpsertRequest input) {
     ModuleContentEntity ep =
@@ -146,7 +150,11 @@ public class ModuleContentsService {
     ep.setElement(input.element());
     ep.setParentContentKey(input.parentContentKey());
     ep.setGroupKey(input.groupKey());
-    ep.setSortOrder(input.sortOrder() != null ? input.sortOrder() : 0);
+    if (input.sortOrder() != null) {
+      ep.setSortOrder(input.sortOrder());
+    } else if (isNew) {
+      ep.setSortOrder(repo.findMaxSortOrder(input.moduleKey()).map(m -> m + 10).orElse(0));
+    }
     ep.setRoles(Texts.orEmpty(Texts.joinComma(input.roles())));
     ep.setActive(input.active() != null ? input.active() : true);
     ep.setIcon(input.icon());

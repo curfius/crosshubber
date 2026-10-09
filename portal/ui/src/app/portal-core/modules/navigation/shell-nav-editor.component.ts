@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, OnInit, signal } from '@angular/core';
 import { DndTree } from '../../../shared/components/dnd-tree/dnd-tree.component';
 import type { EditableTreeNode } from '../../../core/navigation/navigation.models';
+import { AVATAR_COLORS, avatarColor } from '../../../core/navigation/navigation.models';
 import type { ShellTreePayload, ShellTreeResponse, ShellGroupPayload, ShellItemPayload } from '../../../core/navigation/navigation.models';
 import { NavigationAdminService, type ShellCategory } from '../../../core/navigation/navigation-admin.service';
 import { ConfigService } from '../../../core/config/config.service';
@@ -43,6 +44,7 @@ export function shellTreeFromResponse(resp: ShellTreeResponse): EditableTreeNode
       label: item.name,
       kind: 'item',
       color: item.color,
+      fallbackColor: avatarColor(`${item.moduleKey}:${item.contentKey}`),
       hidden: item.hidden === true ? true : undefined,
       meta: { moduleKey: item.moduleKey, contentKey: item.contentKey } satisfies ShellItemMeta,
       children: [],
@@ -79,6 +81,7 @@ export function shellTreeToPayload(nodes: EditableTreeNode[], reservedKeys: Set<
           contentKey: meta.contentKey,
           groupKey: parentKey,
           hidden: !!node.hidden,
+          color: node.color ?? null,
         });
       }
     }
@@ -87,9 +90,20 @@ export function shellTreeToPayload(nodes: EditableTreeNode[], reservedKeys: Set<
   return { groups, items };
 }
 
+/** Sets `color` (undefined = hash fallback) on node `id`; returns a new tree. */
+export function setNodeColor(
+  nodes: EditableTreeNode[],
+  id: string,
+  color: string | undefined,
+): EditableTreeNode[] {
+  return nodes.map((n) =>
+    n.id === id ? { ...n, color } : { ...n, children: setNodeColor(n.children, id, color) },
+  );
+}
+
 /**
- * Settings/User-Settings navigation tree editor (D3) — embedded as a tab of the
- * portal-nav settings screen. Renders groups + entry points of one category under
+ * Applications/Admin Settings/User Settings navigation tree editor (D3) — embedded as a tab of
+ * the portal-nav settings screen. Renders groups + entry points of one category under
  * a locked root section, with per-row hidden/visible toggles, and saves the FULL
  * tree with explicit Save/Discard (D10).
  */
@@ -115,16 +129,25 @@ export class ShellNavEditor implements OnInit {
   protected readonly saveError = signal<string | null>(null);
   protected readonly saveSuccess = signal(false);
 
+  /** Node whose avatar-color palette is open (item rows only). */
+  protected readonly colorPicker = signal<EditableTreeNode | null>(null);
+  protected readonly avatarColors = AVATAR_COLORS;
+
   protected readonly dirty = computed(() => JSON.stringify(this.tree()) !== this.baseline());
 
   protected readonly dndNodes = computed(() => this.tree());
 
-  /** Block title + locked root section label ("Settings/User Settings Navigation Tree"). */
-  protected readonly treeTitle = computed(() =>
-    this.category() === 'settings'
-      ? this.i18n.t('navigation.shell.settingsTreeTitle')
-      : this.i18n.t('navigation.shell.userSettingsTreeTitle'),
-  );
+  /** Block title + locked root section label ("... Navigation Tree") for the category. */
+  protected readonly treeTitle = computed(() => {
+    switch (this.category()) {
+      case 'applications':
+        return this.i18n.t('navigation.portal.rootSection');
+      case 'admin-settings':
+        return this.i18n.t('navigation.shell.settingsTreeTitle');
+      default:
+        return this.i18n.t('navigation.shell.userSettingsTreeTitle');
+    }
+  });
 
   async ngOnInit(): Promise<void> {
     await this.reload();
@@ -147,6 +170,15 @@ export class ShellNavEditor implements OnInit {
 
   protected onTreeChange(nodes: EditableTreeNode[]): void {
     this.tree.set(nodes);
+    this.saveSuccess.set(false);
+  }
+
+  /** Applies an explicit avatar color to the picked item; null reverts to the hash fallback. */
+  protected applyAvatarColor(color: string | null): void {
+    const target = this.colorPicker();
+    if (!target) return;
+    this.tree.set(setNodeColor(this.tree(), target.id, color ?? undefined));
+    this.colorPicker.set(null);
     this.saveSuccess.set(false);
   }
 

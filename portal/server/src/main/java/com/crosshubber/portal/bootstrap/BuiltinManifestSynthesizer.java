@@ -71,7 +71,7 @@ public class BuiltinManifestSynthesizer {
       switch (ep.category()) {
         case "applications" -> applications.add(entry);
         case "features" -> features.add(entry);
-        case "settings", "admin-settings" -> adminSettings.add(entry);
+        case "admin-settings" -> adminSettings.add(entry);
         case "user-settings" -> userSettings.add(entry);
         default ->
             throw new IllegalStateException(

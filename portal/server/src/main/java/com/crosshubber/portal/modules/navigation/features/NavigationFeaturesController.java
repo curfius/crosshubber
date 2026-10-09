@@ -53,12 +53,20 @@ public class NavigationFeaturesController {
       }
       allowed.put("workspacesEnabled", b);
     }
+    if (body.containsKey("pinnedSectionEnabled")) {
+      if (!(body.get("pinnedSectionEnabled") instanceof Boolean b)) {
+        return ResponseEntity.badRequest()
+            .body(Map.of("error", "pinnedSectionEnabled must be a boolean"));
+      }
+      allowed.put("pinnedSectionEnabled", b);
+    }
     return ResponseEntity.ok(featurePayload(settingsService.update(allowed)));
   }
 
   private static FeatureFlagsDto featurePayload(Map<String, Object> settings) {
     return new FeatureFlagsDto(
         Boolean.TRUE.equals(settings.get("pinnedAppsEnabled")),
-        Boolean.TRUE.equals(settings.get("workspacesEnabled")));
+        Boolean.TRUE.equals(settings.get("workspacesEnabled")),
+        Boolean.TRUE.equals(settings.get("pinnedSectionEnabled")));
   }
 }

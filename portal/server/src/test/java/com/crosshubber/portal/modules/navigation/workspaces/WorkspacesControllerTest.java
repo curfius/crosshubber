@@ -1,4 +1,4 @@
-package com.crosshubber.portal.workspaces;
+package com.crosshubber.portal.modules.navigation.workspaces;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import com.crosshubber.portal.common.JsonUtils;
@@ -50,8 +51,8 @@ class WorkspacesControllerTest {
     var body = controller.list(authUser());
 
     // Workspaces list wraps typed WorkspaceSummaryDto records.
-    com.crosshubber.portal.workspaces.dto.WorkspaceSummaryDto dto =
-        (com.crosshubber.portal.workspaces.dto.WorkspaceSummaryDto)
+    com.crosshubber.portal.modules.navigation.workspaces.dto.WorkspaceSummaryDto dto =
+        (com.crosshubber.portal.modules.navigation.workspaces.dto.WorkspaceSummaryDto)
             ((List<?>) body.get("workspaces")).get(0);
     assertEquals(1234567890L, dto.savedAt());
     assertEquals("", dto.description());
@@ -66,8 +67,9 @@ class WorkspacesControllerTest {
 
     var response = controller.get(authUser(), "Main");
 
-    com.crosshubber.portal.workspaces.dto.WorkspaceDetailDto dto =
-        (com.crosshubber.portal.workspaces.dto.WorkspaceDetailDto) response.getBody();
+    com.crosshubber.portal.modules.navigation.workspaces.dto.WorkspaceDetailDto dto =
+        (com.crosshubber.portal.modules.navigation.workspaces.dto.WorkspaceDetailDto)
+            response.getBody();
     assertEquals("Main", dto.name());
     assertNull(dto.layout());
     JsonNode groups = dto.groups();
@@ -75,6 +77,38 @@ class WorkspacesControllerTest {
     assertNull(dto.focusedGroupId());
     assertEquals(false, dto.hideSingleTabToolbar());
     assertEquals(false, dto.locked());
+  }
+
+  @Test
+  void detailReportsHomeVisibleTrueWhenUnsetAndFalseWhenSavedFalse() {
+    WorkspaceEntity visible = row("Main");
+    WorkspaceEntity hidden = row("Side");
+    hidden.setHomeVisible(false);
+    Mockito.when(repo.findByUserIdAndName("u1", "Main")).thenReturn(Optional.of(visible));
+    Mockito.when(repo.findByUserIdAndName("u1", "Side")).thenReturn(Optional.of(hidden));
+
+    com.crosshubber.portal.modules.navigation.workspaces.dto.WorkspaceDetailDto visibleDto =
+        (com.crosshubber.portal.modules.navigation.workspaces.dto.WorkspaceDetailDto)
+            controller.get(authUser(), "Main").getBody();
+    com.crosshubber.portal.modules.navigation.workspaces.dto.WorkspaceDetailDto hiddenDto =
+        (com.crosshubber.portal.modules.navigation.workspaces.dto.WorkspaceDetailDto)
+            controller.get(authUser(), "Side").getBody();
+
+    assertTrue(visibleDto.homeVisible());
+    assertEquals(false, hiddenDto.homeVisible());
+  }
+
+  @Test
+  void createTreatsHomeVisibleAsTrueUnlessExplicitlyFalse() {
+    controller.create(authUser(), Map.of("name", "w1"));
+    var absent = ArgumentCaptor.forClass(WorkspaceEntity.class);
+    Mockito.verify(repo).save(absent.capture());
+    assertTrue(absent.getValue().getHomeVisible());
+
+    controller.create(authUser(), Map.of("name", "w2", "homeVisible", false));
+    var explicit = ArgumentCaptor.forClass(WorkspaceEntity.class);
+    Mockito.verify(repo, Mockito.times(2)).save(explicit.capture());
+    assertEquals(false, explicit.getAllValues().get(1).getHomeVisible());
   }
 
   @Test

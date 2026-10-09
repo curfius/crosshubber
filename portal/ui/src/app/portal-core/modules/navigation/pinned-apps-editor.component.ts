@@ -5,7 +5,7 @@ import type { EditableTreeNode } from '../../../core/navigation/navigation.model
 import { newTreeId, REF_RE } from '../../../core/navigation/navigation.models';
 import type { PinnedNode } from '../../../core/navigation/navigation.models';
 import { NavigationStore } from '../../../core/navigation/navigation.store';
-import { WorkbenchService } from '../../features/workspaces/workspaces.store';
+import { WorkbenchService } from '../../../core/workspaces/workspaces.store';
 import type { PortalModuleContent } from '../../../core/models';
 import { moduleContentId } from '../../../core/models';
 import { I18nService } from '../../../core/i18n/i18n.service';

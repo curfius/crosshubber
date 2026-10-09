@@ -8,8 +8,10 @@ import jakarta.persistence.Converter;
 /**
  * Module content / navigation group categories (DB CHECK on {@code
  * registry_module_contents.category} and {@code navigation_groups.category}). Stored as
- * lowercase-hyphen values; groups accept all values except {@code admin-settings} (4-value subset,
- * V6+), enforced by DB CHECK + request validation.
+ * lowercase-hyphen values; the group-capable subset is applications / admin-settings / features /
+ * user-settings (V34 fold). {@code SETTINGS} survives only as a parse alias: the retired {@code
+ * settings} value folds to {@code admin-settings} so legacy rows and external manifests converge on
+ * the folded category.
  */
 public enum ModuleContentCategory {
   APPLICATIONS,
@@ -23,8 +25,11 @@ public enum ModuleContentCategory {
     return name().toLowerCase(Locale.ROOT).replace('_', '-');
   }
 
-  /** Parses the DB/API value; throws {@link IllegalArgumentException} when unknown. */
+  /** Parses the DB/API value; the retired {@code settings} value folds to admin-settings. */
   public static ModuleContentCategory parse(String raw) {
+    if ("settings".equals(raw)) {
+      return ADMIN_SETTINGS;
+    }
     return valueOf(raw.toUpperCase(Locale.ROOT).replace('-', '_'));
   }
 

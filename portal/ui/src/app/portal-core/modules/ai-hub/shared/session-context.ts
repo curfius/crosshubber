@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { moduleContentId, parseModuleContentId } from '../../../../core/models';
-import { WorkbenchService } from '../../../features/workspaces/workspaces.store';
+import { WorkbenchService } from '../../../../core/workspaces/workspaces.store';
 import type { ClientContext } from './chat-core.service';
 
 /**

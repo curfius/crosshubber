@@ -51,6 +51,14 @@ public class ModuleSettingsService {
     return merged;
   }
 
+  /** Removes the settings row (module uninstall pruning); no-op when absent. */
+  @Transactional
+  public void delete(String moduleKey) {
+    if (repo.existsById(moduleKey)) {
+      repo.deleteById(moduleKey);
+    }
+  }
+
   private Map<String, Object> parseJson(String raw) {
     return jsonUtils.parseMap(raw);
   }

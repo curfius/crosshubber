@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { AppArea } from './tab-area.component';
 import type { PortalModuleContent, PortalUser, LayoutNode, LeafNode, SplitNode } from '../../core/models';
-import { WorkbenchService } from '../features/workspaces/workspaces.store';
+import { WorkbenchService } from '../../core/workspaces/workspaces.store';
 
 @Component({
   selector: 'app-layout',
@@ -23,7 +23,7 @@ export class AppLayout {
   protected readonly isSplit = computed(() => this.node().kind === 'split');
   protected readonly splitNode = computed(() => this.node() as SplitNode);
   protected readonly leafNode = computed(() => this.node() as LeafNode);
-  protected readonly row = computed(() => this.splitNode().dir === 'row');
+  protected readonly row = computed(() => this.splitNode().dir === 'vertical');
   protected readonly ratioA = computed(() => this.splitNode().ratio);
   protected readonly ratioB = computed(() => 1 - this.splitNode().ratio);
 
@@ -43,14 +43,10 @@ export class AppLayout {
     this.wb.resizeSplit(this.splitNode().id, this.splitNode().ratio + delta);
   }
 
-  protected onCloseAllExceptHome(groupId: string): void {
-    this.wb.closeAllExceptHome(groupId);
-  }
-
   private readonly onMove = (e: PointerEvent): void => {
     if (!this.container) return;
     const rect = this.container.getBoundingClientRect();
-    const isRow = this.splitNode().dir === 'row';
+    const isRow = this.splitNode().dir === 'vertical';
     const pos = isRow ? e.clientX - rect.left : e.clientY - rect.top;
     const size = isRow ? rect.width : rect.height;
     if (size <= 0) return;

@@ -12,6 +12,7 @@ import com.crosshubber.portal.common.JsonUtils;
 import com.crosshubber.portal.modules.registry.dto.ModuleDto;
 import com.crosshubber.portal.modules.registry.dto.ModuleUpsertRequest;
 import com.crosshubber.portal.modules.registry.dto.SecurityRoleDto;
+import com.crosshubber.portal.modules.settings.modules.ModuleSettingsService;
 
 /** Module registry CRUD. */
 @Service
@@ -19,10 +20,13 @@ public class ModulesService {
 
   private final ModuleRepository repo;
   private final JsonUtils jsonUtils;
+  private final ModuleSettingsService moduleSettingsService;
 
-  public ModulesService(ModuleRepository repo, JsonUtils jsonUtils) {
+  public ModulesService(
+      ModuleRepository repo, JsonUtils jsonUtils, ModuleSettingsService moduleSettingsService) {
     this.repo = repo;
     this.jsonUtils = jsonUtils;
+    this.moduleSettingsService = moduleSettingsService;
   }
 
   /** All modules (optionally active only), ordered by name. */
@@ -120,6 +124,8 @@ public class ModulesService {
 
   /**
    * Deletes a non-builtin module; builtin modules are protected (409). Returns false if missing.
+   * Prunes the module's settings row: module_settings has no FK cascade (V1), so the registry
+   * uninstall path owns that cleanup (V36 purged the orphans it left behind).
    */
   @Transactional
   public boolean remove(String key) {
@@ -130,6 +136,7 @@ public class ModulesService {
     if (Boolean.TRUE.equals(entity.getBuiltin())) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "built-in modules cannot be deleted");
     }
+    moduleSettingsService.delete(key);
     repo.delete(entity);
     return true;
   }

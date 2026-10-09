@@ -1,4 +1,4 @@
-package com.crosshubber.portal.workspaces;
+package com.crosshubber.portal.modules.navigation.workspaces;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -48,6 +48,9 @@ public class WorkspaceEntity {
   @Column(name = "hide_single_tab_toolbar", nullable = false)
   private Boolean hideSingleTabToolbar;
 
+  @Column(name = "home_visible", nullable = false)
+  private Boolean homeVisible;
+
   @Column(name = "locked", nullable = false)
   private Boolean locked;
 
@@ -85,6 +88,9 @@ public class WorkspaceEntity {
     }
     if (hideSingleTabToolbar == null) {
       hideSingleTabToolbar = false;
+    }
+    if (homeVisible == null) {
+      homeVisible = true;
     }
     if (locked == null) {
       locked = false;
@@ -159,6 +165,14 @@ public class WorkspaceEntity {
 
   public void setHideSingleTabToolbar(Boolean hideSingleTabToolbar) {
     this.hideSingleTabToolbar = hideSingleTabToolbar;
+  }
+
+  public Boolean getHomeVisible() {
+    return homeVisible;
+  }
+
+  public void setHomeVisible(Boolean homeVisible) {
+    this.homeVisible = homeVisible;
   }
 
   public Boolean getLocked() {

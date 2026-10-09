@@ -8,6 +8,13 @@ and cross-area wayfinding.
 Status: **Phase 1 implemented (2026-09-22)**. Phases 2–3 are recommendations
 awaiting a go decision.
 
+Shipped since (2026-10-09): the navigation-tree unification pass — all three
+trees (applications, admin settings, user settings) now run on one shell-tree
+model: the tree *is* the visibility layer (sections, hidden flags, sort order, entry-point colors
+live on the tree rows), registry installs append to the tail end of the saved
+tree, avatars get deterministic color fallbacks plus an explicit picker. See
+`plan/NAV_WORKSPACES_PLAN.md`.
+
 ## Design principles
 
 - One canonical pattern per concern: one home concept, one launcher filter rule

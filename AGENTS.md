@@ -27,12 +27,13 @@ portal/
   server/                     Spring Boot backend
     src/main/java/com/crosshubber/portal/
       modules/<feature>/      Feature packages (aihub, i18n, navigation [incl. groups,
-                              settings], registry [incl. modulecontents], settings.modules,
-                              usersettings) — own entity/repo/service/controller
-      auth/ security/ config/ common/ bootstrap/ shell/ workspaces/ proxy/
+                              settings, shelltree, workspaces], registry [incl.
+                              modulecontents], settings.modules, usersettings) — own
+                              entity/repo/service/controller
+      auth/ security/ config/ common/ bootstrap/ shell/ proxy/
     src/main/resources/
       application.yml         portal.* config; env-driven, dev defaults insecure-by-design
-      db/migration/           Flyway V1..V28 (DDL only here)
+      db/migration/           Flyway V1..V37 (DDL only here)
       i18n-catalog.json       GENERATED seed catalog (~227 KB, 4 languages) — don't hand-edit
   ui/                         Angular 22 workspace shell
     src/app/core/             Platform services (bridge, i18n, theme, auth, config...)

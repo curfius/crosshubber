@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, output, computed, effect, inject, input, signal, viewChild, type ElementRef, type OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, viewChild, type ElementRef, type OnDestroy } from '@angular/core';
 import { AppOutlet } from './module-outlet.component';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import type { PortalUser, PortalModuleContent, SplitDir, Tab } from '../../core/models';
 import { moduleContentId } from '../../core/models';
-import { WorkbenchService } from '../features/workspaces/workspaces.store';
+import { WorkbenchService } from '../../core/workspaces/workspaces.store';
 import { I18nService } from '../../core/i18n/i18n.service';
+import { avatarColor } from '../../core/navigation/navigation.models';
 
 @Component({
   selector: 'app-area',
@@ -39,15 +40,26 @@ export class AppArea implements OnDestroy {
       .filter((ep) => ep.name.toLowerCase().includes(search) || ep.moduleKey.toLowerCase().includes(search));
   });
 
-  closeAllExceptHome = output<string>();
-
   protected readonly isSingleArea = computed(() => {
     const l = this.wb.layout();
     return l !== null && l.kind === 'leaf';
   });
 
-  protected readonly holdsHomeTab = computed(() =>
-    this.tabs().some((t) => this.wb.isHomeTab(t)),
+  /**
+   * Close-area affordance: hidden only when there is nothing the close action could
+   * do (primary area holding nothing but Home). Empty areas close immediately.
+   */
+  protected readonly canCloseArea = computed(() => {
+    if (this.isSingleArea()) return false;
+    const tabs = this.tabs();
+    return tabs.length === 0 || tabs.some((t) => !this.wb.isHomeTab(t));
+  });
+
+  /** Main area keeps its shape on close ("Close all tabs…"), others collapse ("Close this area…"). */
+  protected readonly confirmMessage = computed(() =>
+    this.isPrimary()
+      ? this.i18n.t('tabs.closeTabsInAreaConfirm')
+      : this.i18n.t('tabs.closeAreaConfirm'),
   );
 
   protected readonly group = computed(() => this.wb.groups()[this.groupId()]);
@@ -94,7 +106,7 @@ export class AppArea implements OnDestroy {
     this.resizeObserver?.disconnect();
   }
 
-  protected onDrop(event: CdkDragDrop<Tab[]>): void {
+  protected onDrop(event: CdkDragDrop<Tab[], Tab>): void {
     this.wb.onDrop(event);
   }
 
@@ -115,12 +127,21 @@ export class AppArea implements OnDestroy {
   }
 
   protected onCloseAreaClick(): void {
+    // An empty area has nothing to lose — close it right away.
+    if (this.tabs().length === 0) {
+      this.closeArea();
+      return;
+    }
     this.showConfirm.set(true);
   }
 
   protected confirmCloseArea(): void {
     this.showConfirm.set(false);
     this.closeArea();
+  }
+
+  protected toggleHomeTab(): void {
+    this.wb.toggleHomeVisible();
   }
 
   protected scrollTabs(dx: number): void {
@@ -136,17 +157,18 @@ export class AppArea implements OnDestroy {
     this.appSearch.set('');
   }
 
-  protected addAppToGroup(ep: PortalModuleContent): void {
+  /** Avatar background: explicit content color, else the deterministic hash fallback. */
+protected avatarBg(ep: PortalModuleContent): string {
+  return ep.color || avatarColor(moduleContentId(ep));
+}
+
+protected addAppToGroup(ep: PortalModuleContent): void {
     this.wb.openAppInGroup(ep, this.groupId());
   }
 
   protected searchApps(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.appSearch.set(value);
-  }
-
-  protected closeAllExceptHomeClick(): void {
-    this.closeAllExceptHome.emit(this.groupId());
   }
 
   formatTabId(tab: Tab): string {

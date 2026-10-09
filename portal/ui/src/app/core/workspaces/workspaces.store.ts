@@ -1,10 +1,10 @@
 import { moveItemInArray, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import type { PortalModuleContent, Tab, TabGroup, SplitDir, LeafNode, SplitNode, LayoutNode, WorkspaceMeta, SavedGroup, WorkspaceSnapshot, NavigationGroup } from '../../../core/models';
-import { moduleContentId, parseModuleContentId } from '../../../core/models';
-import { apiFetch } from '../../../core/http/api-fetch';
-import { UrlSyncService } from '../../../core/history/url-sync.service';
-import { tabKeyOf, type NavState } from '../../../core/history/nav-state';
+import type { PortalModuleContent, Tab, TabGroup, SplitDir, LeafNode, SplitNode, LayoutNode, WorkspaceMeta, SavedGroup, WorkspaceSnapshot, NavigationGroup } from '../models';
+import { moduleContentId, parseModuleContentId } from '../models';
+import { apiFetch } from '../http/api-fetch';
+import { UrlSyncService } from '../history/url-sync.service';
+import { tabKeyOf, type NavState } from '../history/nav-state';
 
 const ACTIVE_KEY = 'portal.activeWorkspace';
 const HOME_SNAPSHOT_KEY = 'portal.homeSnapshot';
@@ -33,6 +33,14 @@ function removeLeaf(node: LayoutNode, groupId: string): LayoutNode | null {
 
 function firstLeaf(node: LayoutNode): string {
   return node.kind === 'leaf' ? node.groupId : firstLeaf(node.a);
+}
+
+/** Rewrites pre-2026-10 dir values ('row'/'col' = flex direction) to divider orientation. */
+function normalizeSplitDirs(node: LayoutNode): LayoutNode {
+  if (node.kind === 'leaf') return node;
+  const legacy = node.dir as string;
+  const dir: SplitDir = legacy === 'col' || legacy === 'horizontal' ? 'horizontal' : 'vertical';
+  return { ...node, dir, a: normalizeSplitDirs(node.a), b: normalizeSplitDirs(node.b) };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -124,6 +132,9 @@ export class WorkbenchService {
   private homeAppRef = signal<string>(DEFAULT_HOME_REF);
   private homeTabId: number | null = null;
 
+  /** Whether the unclosable Home tab is shown (view preference; persisted per saved workspace). */
+  readonly homeVisible = signal(true);
+
   setHomeApp(ref: string | null | undefined): void {
     this.homeAppRef.set(ref && ref.trim() ? ref : DEFAULT_HOME_REF);
   }
@@ -148,6 +159,7 @@ export class WorkbenchService {
 
   /** Ensures the unclosable Home tab exists as the first tab of the primary group. */
   ensureHomeTab(): void {
+    if (!this.homeVisible()) return;
     const ep = this.resolveHomeContent();
     if (!ep) {
       this.homeTabId = null;
@@ -187,6 +199,7 @@ export class WorkbenchService {
 
   /** Sidebar home click: leave any workspace, then show + activate the Home tab. */
   goHome(): void {
+    this.homeVisible.set(true);
     if (this.activeWorkspace()) {
       this.openHomeWorkspace();
     }
@@ -197,6 +210,32 @@ export class WorkbenchService {
     } else {
       this.syncUrl('push');
     }
+  }
+
+  /** Shows/hides the Home fixture (primary-area edit tool; persisted on workspace save). */
+  toggleHomeVisible(): void {
+    if (this.homeVisible()) {
+      this.homeVisible.set(false);
+      this.hideHomeTab();
+    } else {
+      this.homeVisible.set(true);
+      this.ensureHomeTab();
+    }
+    this.syncAfterMutation();
+  }
+
+  private hideHomeTab(): void {
+    if (this.homeTabId == null) return;
+    const gid = Object.entries(this.groups()).find(([, g]) => g.tabs.some((t) => t.id === this.homeTabId))?.[0];
+    if (!gid) return;
+    const g = this.groups()[gid];
+    const remaining = g.tabs.filter((t) => t.id !== this.homeTabId);
+    const nextActive = g.activeId === this.homeTabId ? (remaining[0]?.id ?? null) : g.activeId;
+    this.homeTabId = null;
+    this.groups.update((gs) => ({
+      ...gs,
+      [gid]: { ...gs[gid], tabs: withInstances(remaining), activeId: nextActive },
+    }));
   }
 
   openApp(ep: PortalModuleContent, activate = true): void {
@@ -331,9 +370,26 @@ export class WorkbenchService {
   }
 
   closeArea(groupId: string): void {
-    // The area holding the Home tab is unclosable (the tab itself is).
     const g = this.groups()[groupId];
-    if (g?.tabs.some((t) => t.id === this.homeTabId)) return;
+    if (!g) return;
+    if (g.tabs.length === 0) {
+      // An empty area keeps nothing — collapse it (any group, main area included).
+      this.removeGroup(groupId);
+      this.syncAfterMutation();
+      return;
+    }
+    const holdsHome = g.tabs.some((t) => t.id === this.homeTabId);
+    if (holdsHome || groupId === this.primaryGroupId()) {
+      // Main/home area keeps its shape: close every tab except the unclosable Home fixture.
+      const remaining = g.tabs.filter((t) => t.id === this.homeTabId);
+      const nextActive = remaining.some((t) => t.id === g.activeId) ? g.activeId : (remaining[0]?.id ?? null);
+      this.groups.update((gs) => ({
+        ...gs,
+        [groupId]: { ...gs[groupId], tabs: withInstances(remaining), activeId: nextActive },
+      }));
+      this.syncAfterMutation();
+      return;
+    }
     this.removeGroup(groupId);
     this.syncAfterMutation();
   }
@@ -356,27 +412,6 @@ export class WorkbenchService {
     }));
     this.activate(groupId, tab.id, true);
     this.saveSessionSnapshot();
-  }
-
-  /** Closes every tab of the group except the (unclosable) Home tab. */
-  closeAllExceptHome(groupId: string): void {
-    const g = this.groups()[groupId];
-    if (!g) return;
-    const homeTab = g.tabs.find((t) => t.id === this.homeTabId);
-    if (!homeTab) return;
-    if (g.tabs.length === 1) {
-      this.activate(groupId, homeTab.id, true);
-      return;
-    }
-    this.groups.update((gs) => ({
-      ...gs,
-      [groupId]: {
-        ...gs[groupId],
-        tabs: withInstances([homeTab]),
-        activeId: homeTab.id,
-      },
-    }));
-    this.syncAfterMutation();
   }
 
   split(groupId: string, dir: SplitDir): void {
@@ -415,7 +450,7 @@ export class WorkbenchService {
     this.layout.update((l) => (l ? upd(l) : l));
   }
 
-  onDrop(event: CdkDragDrop<Tab[]>): void {
+  onDrop(event: CdkDragDrop<Tab[], Tab>): void {
     const srcEl = event.previousContainer.element.nativeElement as HTMLElement;
     const dstEl = event.container.element.nativeElement as HTMLElement;
     const srcId = srcEl.closest('[data-group]')?.getAttribute('data-group') ?? null;
@@ -424,37 +459,47 @@ export class WorkbenchService {
     const src = srcId ? groups[srcId] : undefined;
     const dst = dstId ? groups[dstId] : undefined;
     if (!src || !dst) return;
-    const srcKey = src.id;
-    const dstKey = dst.id;
-    const draggedTab = src.tabs[event.previousIndex];
+    // Identity beats indices: the Home fixture renders without cdkDrag, so CDK
+    // indices (drag items only) are offset from the data array (Home included).
+    const srcHomeOffset = src.tabs.some((t) => t.id === this.homeTabId) ? 1 : 0;
+    const draggedTab =
+      (event.item.data as Tab | undefined) ??
+      src.tabs[Math.min(event.previousIndex + srcHomeOffset, src.tabs.length - 1)];
     if (!draggedTab || draggedTab.id === this.homeTabId) return; // Home tab is a fixture
+    const fromIdx = src.tabs.indexOf(draggedTab);
+    if (fromIdx < 0) return;
 
-    if (srcKey === dstKey) {
+    if (src.id === dst.id) {
+      const dstHomeOffset = srcHomeOffset;
+      const target = Math.min(
+        Math.max(event.currentIndex + dstHomeOffset, dstHomeOffset),
+        src.tabs.length - 1,
+      );
       const next = [...src.tabs];
-      const homeFirst = next.some((t) => t.id === this.homeTabId);
-      const target = homeFirst ? Math.max(1, event.currentIndex) : event.currentIndex;
-      moveItemInArray(next, event.previousIndex, target);
-      this.groups.update((gs) => ({ ...gs, [srcKey]: { ...gs[srcKey], tabs: withInstances(next) } }));
+      moveItemInArray(next, fromIdx, target);
+      this.groups.update((gs) => ({ ...gs, [src.id]: { ...gs[src.id], tabs: withInstances(next) } }));
+      this.syncAfterMutation();
       return;
     }
 
-    const tab = draggedTab;
-    const nextSrc = src.tabs.filter((_, i) => i !== event.previousIndex);
-    const removedActive = src.activeId === tab.id;
-    const nextActiveSrc = removedActive
-      ? (nextSrc[Math.min(event.previousIndex, nextSrc.length - 1)]?.id ?? null)
-      : src.activeId;
-    // The Home tab always stays first in its group.
-    const homeFirst = dst.tabs.some((t) => t.id === this.homeTabId);
-    const insertAt = homeFirst ? Math.max(1, event.currentIndex) : event.currentIndex;
+    const nextSrc = src.tabs.filter((t) => t !== draggedTab);
+    const nextActiveSrc =
+      src.activeId === draggedTab.id
+        ? (nextSrc[Math.min(fromIdx, nextSrc.length - 1)]?.id ?? null)
+        : src.activeId;
+    const dstHomeOffset = dst.tabs.some((t) => t.id === this.homeTabId) ? 1 : 0;
+    const insertAt = Math.min(
+      Math.max(event.currentIndex + dstHomeOffset, dstHomeOffset),
+      dst.tabs.length,
+    );
     const nextDst = [...dst.tabs];
-    nextDst.splice(Math.min(insertAt, nextDst.length), 0, tab);
+    nextDst.splice(insertAt, 0, draggedTab);
     this.groups.update((gs) => ({
       ...gs,
-      [srcKey]: { ...gs[srcKey], tabs: withInstances(nextSrc), activeId: nextActiveSrc },
-      [dstKey]: { ...gs[dstKey], tabs: withInstances(nextDst), activeId: tab.id },
+      [src.id]: { ...gs[src.id], tabs: withInstances(nextSrc), activeId: nextActiveSrc },
+      [dst.id]: { ...gs[dst.id], tabs: withInstances(nextDst), activeId: draggedTab.id },
     }));
-    this.focusedGroupId.set(dstKey);
+    this.focusedGroupId.set(dst.id);
     this.syncAfterMutation();
   }
 
@@ -483,6 +528,7 @@ export class WorkbenchService {
       color: data.color,
       status,
       hideSingleTabToolbar: this.hideSingleTabToolbar(),
+      homeVisible: this.homeVisible(),
       locked,
     };
     const body = {
@@ -492,6 +538,7 @@ export class WorkbenchService {
       groups: snap.groups,
       focusedGroupId: snap.focusedGroupId,
       hideSingleTabToolbar: snap.hideSingleTabToolbar,
+      homeVisible: snap.homeVisible,
       locked: snap.locked,
       color: snap.color,
       status: snap.status,
@@ -537,6 +584,7 @@ export class WorkbenchService {
           groups: data.groups,
           focusedGroupId: data.focusedGroupId,
           hideSingleTabToolbar: this.hideSingleTabToolbar(),
+          homeVisible: this.homeVisible(),
           locked,
           color: color || data.color,
           status,
@@ -552,6 +600,7 @@ export class WorkbenchService {
         groups: data.groups,
         focusedGroupId: data.focusedGroupId,
         hideSingleTabToolbar: this.hideSingleTabToolbar(),
+        homeVisible: this.homeVisible(),
         locked,
         color: color || data.color,
         status,
@@ -599,6 +648,8 @@ export class WorkbenchService {
       this.locked.set(!!snap.locked);
       this.description.set(snap.description ?? '');
       this.editMode.set(snap.locked ? false : enterEditMode);
+      // Re-seat the Home fixture per the snapshot's homeVisible preference.
+      this.ensureHomeTab();
       if (updateHash) {
         this.syncUrl('replace');
       }
@@ -650,6 +701,7 @@ export class WorkbenchService {
     this.hideSingleTabToolbar.set(false);
     this.locked.set(false);
     this.description.set('');
+    this.homeVisible.set(true);
     this.syncUrl('push');
     this.ensureHomeTab();
   }
@@ -682,6 +734,7 @@ export class WorkbenchService {
     this.hideSingleTabToolbar.set(false);
     this.locked.set(false);
     this.description.set('');
+    this.homeVisible.set(true);
     localStorage.removeItem(ACTIVE_KEY);
     this.ensureHomeTab();
     this.syncUrl(urlMode);
@@ -692,6 +745,7 @@ export class WorkbenchService {
     if (snap) {
       this.applySnapshot(snap);
       this.description.set(snap.description ?? '');
+      this.ensureHomeTab();
     }
     this.dirty.set(false);
     this.editMode.set(false);
@@ -851,12 +905,15 @@ export class WorkbenchService {
         sg.activeIdx != null && resolved[sg.activeIdx] ? resolved[sg.activeIdx].id : (resolved[resolved.length - 1]?.id ?? null);
       groups[gid] = { id: gid, tabs: resolved, activeId };
     }
-    let layout = snap.layout ?? null;
+    const layout = snap.layout ? normalizeSplitDirs(snap.layout) : null;
     this.groups.set(groups);
     this.layout.set(layout);
     this.focusedGroupId.set(layout ? (snap.focusedGroupId && groups[snap.focusedGroupId] ? snap.focusedGroupId : firstLeaf(layout)) : null);
     this.workspaceColor.set(snap.color ?? '');
     this.workspaceStatus.set(snap.status ?? '');
+    this.homeVisible.set(snap.homeVisible ?? true);
+    // Groups were rebuilt without the fixture; ensureHomeTab re-seats it (or stays hidden).
+    this.homeTabId = null;
     this.bumpIds(snap);
   }
 

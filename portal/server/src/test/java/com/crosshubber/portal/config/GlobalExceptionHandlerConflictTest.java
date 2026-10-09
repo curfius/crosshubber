@@ -10,14 +10,13 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import com.crosshubber.portal.modules.navigation.layout.NavigationLayoutEntity;
 import com.crosshubber.portal.modules.navigation.settings.NavigationSettingsEntity;
+import com.crosshubber.portal.modules.navigation.workspaces.WorkspaceEntity;
 import com.crosshubber.portal.modules.settings.modules.ModuleSettingsEntity;
-import com.crosshubber.portal.workspaces.WorkspaceEntity;
 
 import jakarta.persistence.Version;
 
-/** OPTIMIZATIONS #12: optimistic locking maps to 409 and the four entities are versioned. */
+/** OPTIMIZATIONS #12: optimistic locking maps to 409 and the three entities are versioned. */
 class GlobalExceptionHandlerConflictTest {
 
   private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
@@ -37,8 +36,6 @@ class GlobalExceptionHandlerConflictTest {
   void versionedEntitiesCarryVersionField() throws Exception {
     assertNotNull(
         NavigationSettingsEntity.class.getDeclaredField("version").getAnnotation(Version.class));
-    assertNotNull(
-        NavigationLayoutEntity.class.getDeclaredField("version").getAnnotation(Version.class));
     assertNotNull(
         ModuleSettingsEntity.class.getDeclaredField("version").getAnnotation(Version.class));
     assertNotNull(WorkspaceEntity.class.getDeclaredField("version").getAnnotation(Version.class));

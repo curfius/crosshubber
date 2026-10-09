@@ -22,7 +22,7 @@ import { NavigationStore } from '../../core/navigation/navigation.store';
 import { NavigationAdminService } from '../../core/navigation/navigation-admin.service';
 import { Sidebar } from './sidebar/sidebar.component';
 import { AiHubQuickChat } from '../modules/ai-hub/quick-chat/quick-chat.component';
-import { WorkbenchService } from '../features/workspaces/workspaces.store';
+import { WorkbenchService } from '../../core/workspaces/workspaces.store';
 import { SettingsService } from '../../core/settings/settings.service';
 import { AiHubService } from '../../core/ai-hub/ai-hub.service';
 import { MsgCenterStore } from '../../core/msg-center/msg-center.store';

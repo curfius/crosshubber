@@ -43,7 +43,7 @@ public class ShellConfigService {
   private static final Logger log = LoggerFactory.getLogger(ShellConfigService.class);
 
   private static final List<String> CATEGORY_ORDER =
-      List.of("applications", "settings", "features", "user-settings", "admin-settings");
+      List.of("applications", "features", "user-settings", "admin-settings");
 
   private final ModuleRepository moduleRepo;
   private final ModuleContentRepository contentRepo;

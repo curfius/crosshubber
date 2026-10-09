@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { EditableTreeNode, PinnedNode } from './navigation.models';
 import {
+  AVATAR_COLORS,
+  avatarColor,
   collectPinnedRefs,
   flattenTree,
   isEffectivelyHidden,
@@ -157,5 +159,17 @@ describe('isEffectivelyHidden', () => {
     const tree = buildSampleTree();
     expect(isEffectivelyHidden(tree, 'c')).toBe(false);
     expect(isEffectivelyHidden(tree, 'nope')).toBe(false);
+  });
+});
+
+describe('avatarColor', () => {
+  it('maps a ref to a stable palette color', () => {
+    expect(avatarColor('demo-page:reports')).toBe(avatarColor('demo-page:reports'));
+    expect(AVATAR_COLORS).toContain(avatarColor('demo-page:reports'));
+  });
+
+  it('spreads distinct refs across the palette', () => {
+    const refs = ['a:x', 'b:x', 'c:x', 'd:x', 'e:x', 'f:x', 'g:x', 'h:x'];
+    expect(new Set(refs.map(avatarColor)).size).toBeGreaterThan(1);
   });
 });

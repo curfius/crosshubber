@@ -5,7 +5,7 @@ import { tabKeyOf } from '../../core/history/nav-state';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { ToastService } from '../../core/toast/toast.service';
 import { moduleContentId, type Tab } from '../../core/models';
-import { WorkbenchService } from './workspaces/workspaces.store';
+import { WorkbenchService } from '../../core/workspaces/workspaces.store';
 
 interface TabLocation {
   groupId: string;

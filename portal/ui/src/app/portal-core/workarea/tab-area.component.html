@@ -34,6 +34,7 @@
         <button
           cdkDrag
           [cdkDragDisabled]="!editMode()"
+          [cdkDragData]="tab"
           [attr.data-tab-id]="tab.id"
           (click)="onTabClick(tab.id)"
           [class]="
@@ -90,21 +91,10 @@
           <path d="M12 5v14M5 12h14"/>
         </svg>
       </button>
-      <button
-        type="button"
-        (click)="closeAllExceptHomeClick()"
-        [title]="i18n.t('tabs.closeAllExceptHome')"
-        [attr.aria-label]="i18n.t('tabs.closeAllExceptHome')"
-        class="flex w-9 items-center justify-center text-[var(--portal-text-secondary)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-primary)]">
-        <svg class="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <g opacity="0.5"><path d="M6 2L14 10M14 2L6 10"/></g>
-          <path d="M2 6L10 14M10 6L2 14"/>
-        </svg>
-      </button>
       <div class="w-px bg-[var(--portal-border-subtle)]"></div>
       <button
         type="button"
-        (click)="split('col')"
+        (click)="split('vertical')"
         [title]="i18n.t('tabs.splitVertical')"
         [attr.aria-label]="i18n.t('tabs.splitVertical')"
         class="flex w-9 items-center justify-center text-[var(--portal-text-secondary)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-primary)]">
@@ -114,7 +104,7 @@
       </button>
       <button
         type="button"
-        (click)="split('row')"
+        (click)="split('horizontal')"
         [title]="i18n.t('tabs.splitHorizontal')"
         [attr.aria-label]="i18n.t('tabs.splitHorizontal')"
         class="flex w-9 items-center justify-center text-[var(--portal-text-secondary)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-primary)]">
@@ -122,7 +112,7 @@
           <rect x="1" y="1" width="14" height="14" rx="2"/><line x1="1" y1="8" x2="15" y2="8"/>
         </svg>
       </button>
-      @if (!isSingleArea() && !holdsHomeTab()) {
+      @if (canCloseArea()) {
       <button
         type="button"
         (click)="onCloseAreaClick()"
@@ -134,13 +124,35 @@
         </svg>
       </button>
       }
+      @if (isPrimary() && !isSingleArea()) {
+      <button
+        type="button"
+        (click)="toggleHomeTab()"
+        [title]="wb.homeVisible() ? i18n.t('tabs.hideHome') : i18n.t('tabs.showHome')"
+        [attr.aria-label]="wb.homeVisible() ? i18n.t('tabs.hideHome') : i18n.t('tabs.showHome')"
+        [attr.aria-pressed]="wb.homeVisible()"
+        class="flex w-9 items-center justify-center text-[var(--portal-text-secondary)] transition hover:bg-[var(--portal-bg-hover)] hover:text-[var(--portal-text-primary)]">
+        @if (wb.homeVisible()) {
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path>
+          <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        </svg>
+        } @else {
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path>
+          <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <line x1="3" y1="21" x2="21" y2="3"/>
+        </svg>
+        }
+      </button>
+      }
     </div>
     }
   </nav>
   }
   @if (showConfirm()) {
   <div class="flex shrink-0 items-center justify-center gap-3 border-b border-[var(--portal-border-default)] bg-[var(--portal-toolbar-bg)] py-1.5">
-    <span class="text-xs text-[var(--portal-text-tertiary)]">{{ i18n.t('tabs.closeAreaConfirm') }}</span>
+    <span class="text-xs text-[var(--portal-text-tertiary)]">{{ confirmMessage() }}</span>
     <button (click)="confirmCloseArea()" class="ds-btn ds-btn-danger ds-btn-sm">{{ i18n.t('common.yes') }}</button>
     <button (click)="showConfirm.set(false)" class="ds-btn ds-btn-secondary ds-btn-sm">{{ i18n.t('common.no') }}</button>
   </div>
@@ -193,7 +205,7 @@
           (click)="addAppToGroup(ep)"
           class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-[var(--portal-bg-hover)]">
           <span class="flex size-7 shrink-0 items-center justify-center rounded-md text-xs font-bold text-[var(--portal-text-inverse)]"
-            [style.background]="ep.color || 'var(--portal-accent-primary)'">{{ ep.name[0] }}</span>
+            [style.background]="avatarBg(ep)">{{ ep.name[0] }}</span>
           <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-medium text-[var(--portal-text-secondary)]">{{ ep.name }}</p>
             <p class="truncate text-[11px] text-[var(--portal-text-muted)]">{{ ep.type }}</p>

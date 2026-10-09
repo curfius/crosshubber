@@ -5,7 +5,7 @@ import { UrlSyncService } from '../../core/history/url-sync.service';
 import { Bridge } from '../../core/bridge/bridge.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { ToastService } from '../../core/toast/toast.service';
-import { WorkbenchService } from './workspaces/workspaces.store';
+import { WorkbenchService } from '../../core/workspaces/workspaces.store';
 import type { PortalModuleContent } from '../../core/models';
 
 const ORIGIN = window.location.origin;

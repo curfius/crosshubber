@@ -102,9 +102,9 @@ class ShellConfigServiceTest {
   void buildConfigSortsModuleContentsByCategoryOrderThenSortOrderThenName() {
     Mockito.when(moduleRepo.findAll()).thenReturn(List.of(module("m", true, "")));
     Mockito.when(groupRepo.findAll()).thenReturn(List.of());
-    ModuleContentEntity zFirst = ep("m", "z", ModuleContentCategory.SETTINGS);
+    ModuleContentEntity zFirst = ep("m", "z", ModuleContentCategory.ADMIN_SETTINGS);
     zFirst.setSortOrder(10);
-    ModuleContentEntity aSecond = ep("m", "a", ModuleContentCategory.SETTINGS);
+    ModuleContentEntity aSecond = ep("m", "a", ModuleContentCategory.ADMIN_SETTINGS);
     aSecond.setSortOrder(20);
     ModuleContentEntity app = ep("m", "app", ModuleContentCategory.APPLICATIONS);
     Mockito.when(contentRepo.findAll()).thenReturn(List.of(zFirst, aSecond, app));

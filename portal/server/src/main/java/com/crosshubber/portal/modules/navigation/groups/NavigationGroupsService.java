@@ -37,21 +37,27 @@ public class NavigationGroupsService {
     return repo.findByGroupKey(groupKey).orElse(null);
   }
 
-  /** Upsert on groupKey — mirrors repo.upsert (full replace). */
+  /**
+   * Upsert on groupKey — mirrors repo.upsert (full replace). A missing sort order appends a new
+   * group after its category peers (max + 10) and leaves a stored row's order untouched.
+   */
   @Transactional
   public NavigationGroupEntity upsert(NavigationGroupUpsertRequest input) {
-    NavigationGroupEntity group =
-        repo.findByGroupKey(input.groupKey())
-            .orElseGet(
-                () -> {
-                  NavigationGroupEntity created = new NavigationGroupEntity();
-                  created.setGroupKey(input.groupKey());
-                  return created;
-                });
-    group.setCategory(ModuleContentCategory.parse(input.category()));
+    NavigationGroupEntity group = repo.findByGroupKey(input.groupKey()).orElse(null);
+    boolean isNew = group == null;
+    if (isNew) {
+      group = new NavigationGroupEntity();
+      group.setGroupKey(input.groupKey());
+    }
+    ModuleContentCategory category = ModuleContentCategory.parse(input.category());
+    group.setCategory(category);
     group.setName(input.name());
     group.setParentKey(input.parentKey());
-    group.setSortOrder(input.sortOrder() != null ? input.sortOrder() : 0);
+    if (input.sortOrder() != null) {
+      group.setSortOrder(input.sortOrder());
+    } else if (isNew) {
+      group.setSortOrder(repo.findMaxSortOrder(category).map(m -> m + 10).orElse(0));
+    }
     group.setIcon(input.icon());
     String roles = Texts.joinComma(input.roles());
     group.setRoles(roles != null ? roles : "");

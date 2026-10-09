@@ -1,4 +1,4 @@
-package com.crosshubber.portal.workspaces;
+package com.crosshubber.portal.modules.navigation.workspaces;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -17,7 +17,7 @@ import com.crosshubber.portal.security.PortalUser;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-/** AI plan D5: workspace tool declaration (platform-global) and caller-scoped handler. */
+/** AI plan D5: workspace tool declaration (navigation-attributed) and caller-scoped handler. */
 class WorkspacesAgentToolsTest {
 
   private static final PortalUser USER = new PortalUser("u1", "Dev", "d@x", List.of());
@@ -32,7 +32,7 @@ class WorkspacesAgentToolsTest {
   }
 
   @Test
-  void declaresGlobalWorkspacesTool() {
+  void declaresNavigationWorkspacesTool() {
     WorkspacesAgentTools tools =
         new WorkspacesAgentTools(mock(WorkspaceRepository.class), new JacksonConfig().jsonMapper());
 
@@ -40,7 +40,7 @@ class WorkspacesAgentToolsTest {
 
     assertThat(declared).hasSize(1);
     assertThat(declared.get(0).name()).isEqualTo("listWorkspaces");
-    assertThat(declared.get(0).moduleKey()).isNull();
+    assertThat(declared.get(0).moduleKey()).isEqualTo("navigation");
     assertThat(declared.get(0).kind()).isEqualTo(AgentTool.Kind.BUILTIN);
   }
 
