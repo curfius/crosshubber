@@ -5,6 +5,7 @@ import { NavigationCoordinator } from '../../features/navigation-coordinator.ser
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { MsgCenterItem, MsgCenterStore, MsgCenterTab } from '../../../core/msg-center/msg-center.store';
 import { MsgCenterTaskPanel } from './task-panel.component';
+import { DataGrid, GridCellDirective, type GridColumn } from '../../../shared/components/data-grid/data-grid.component';
 
 const MODULE_KEY = 'msg-center';
 
@@ -15,9 +16,11 @@ const SEVERITY_TONES: Record<string, string> = {
   error: 'ds-badge ds-badge-danger',
 };
 
+
+
 @Component({
   selector: 'app-msg-center',
-  imports: [DatePipe, UpperCasePipe, MsgCenterTaskPanel],
+  imports: [DatePipe, UpperCasePipe, MsgCenterTaskPanel, DataGrid, GridCellDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './msg-center.component.html',
   styleUrl: './msg-center.component.css',
@@ -28,6 +31,41 @@ export class MsgCenter implements OnInit {
   protected readonly store = inject(MsgCenterStore);
 
   protected readonly expandedId = signal<number | null>(null);
+
+  protected readonly itemColumns: GridColumn<MsgCenterItem>[] = [
+    {
+      key: 'title',
+      header: 'Title',
+      headerKey: 'msgcenter.column.title',
+      accessor: (item) => this.store.pickI18n(item.title) || item.moduleKey,
+      sortable: true,
+      searchable: true,
+    },
+    {
+      key: 'sender',
+      header: 'Sender',
+      headerKey: 'msgcenter.column.sender',
+      accessor: (item) => item.senderName || item.moduleKey,
+      sortable: true,
+      searchable: true,
+    },
+    {
+      key: 'occurredAt',
+      header: 'Date',
+      headerKey: 'msgcenter.column.date',
+      accessor: (item) => item.occurredAt,
+      sortable: true,
+      searchable: false,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      headerKey: 'msgcenter.column.status',
+      accessor: (item) => item.status,
+      sortable: true,
+      searchable: true,
+    },
+  ];
 
   protected readonly tabs: Array<{ key: MsgCenterTab; labelKey: string }> = [
     { key: 'inbox', labelKey: 'msgcenter.tab.inbox' },
@@ -72,5 +110,9 @@ export class MsgCenter implements OnInit {
 
   protected stateKey(item: MsgCenterItem): string {
     return item.status === 'done' ? 'msgcenter.state.done' : 'msgcenter.state.open';
+  }
+
+  protected trackById(item: MsgCenterItem): number {
+    return item.id;
   }
 }

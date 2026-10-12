@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { apiFetch } from '../../../../core/http/api-fetch';
 import { MsgCenterStore } from '../../../../core/msg-center/msg-center.store';
+import { DataGrid, type GridColumn } from '../../../../shared/components/data-grid/data-grid.component';
 
 interface ModuleStats {
   moduleKey: string;
@@ -44,7 +45,7 @@ interface SmtpConfigView {
  */
 @Component({
   selector: 'app-msg-center-admin',
-  imports: [DatePipe, FormsModule],
+  imports: [DatePipe, FormsModule, DataGrid],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.css',
@@ -73,6 +74,17 @@ export class MsgCenterAdmin implements OnInit {
   protected readonly totalMessages = computed(() =>
     this.perModule().reduce((sum, m) => sum + m.total, 0),
   );
+
+  protected readonly moduleColumns: GridColumn<ModuleStats>[] = [
+    { key: 'moduleKey', header: 'Module', accessor: (r) => r.moduleKey },
+    { key: 'total', header: 'Total', accessor: (r) => r.total, align: 'right' },
+    { key: 'open', header: 'Open', accessor: (r) => r.open, align: 'right' },
+    { key: 'done', header: 'Done', accessor: (r) => r.done, align: 'right' },
+  ];
+
+  protected trackByModuleKey(row: ModuleStats, _index: number): string {
+    return row.moduleKey;
+  }
 
   ngOnInit(): void {
     void this.refresh();

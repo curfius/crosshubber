@@ -1,0 +1,139 @@
+<div class="ds-table-wrapper">
+  @if (searchable() || groupable()) {
+    <div class="grid-toolbar">
+      @if (searchable()) {
+        <div class="grid-search">
+          <label class="visually-hidden" for="grid-search-{{ columns()[0]?.key }}">{{ i18n.t('grid.searchPlaceholder') }}</label>
+          <input
+            id="grid-search-{{ columns()[0]?.key }}"
+            type="search"
+            class="ds-input"
+            [placeholder]="i18n.t('grid.searchPlaceholder')"
+            [value]="globalSearch()"
+            (input)="onGlobalSearch($event)" />
+        </div>
+      }
+      @if (groupable()) {
+        <div class="grid-groupby">
+          <label class="visually-hidden" for="grid-groupby">{{ i18n.t('grid.groupBy') }}</label>
+          <span class="grid-groupby-label">{{ i18n.t('grid.groupBy') }}</span>
+          <select id="grid-groupby" class="ds-input" [value]="groupBy() ?? ''" (change)="onGroupByChange($event)">
+            <option value="">{{ i18n.t('grid.groupByNone') }}</option>
+            @for (col of groupableColumns(); track col.key) {
+              <option [value]="col.key">{{ col.header }}</option>
+            }
+          </select>
+        </div>
+      }
+      @if (searchable()) {
+        <button
+          type="button"
+          class="grid-filter-toggle"
+          [class.active]="showFilters() || hasActiveFilters()"
+          [attr.aria-pressed]="showFilters()"
+          (click)="toggleFilters()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+          </svg>
+        </button>
+      }
+    </div>
+  }
+
+  <div class="grid-table-scroll">
+    <table class="ds-table">
+      <thead>
+        <tr>
+          @for (col of columns(); track col.key) {
+            <th
+              [style.text-align]="col.align ?? 'left'"
+              [style.width]="col.width ?? ''"
+              [class.sortable]="col.sortable !== false"
+              [attr.aria-sort]="ariaSort(col)">
+              @if (col.sortable !== false) {
+                <button type="button" class="grid-sort-btn" (click)="toggleSort(col)">
+                  <span>{{ headerLabel(col) }}</span>
+                  <span class="grid-sort-indicator" aria-hidden="true">{{ sortIndicator(col) }}</span>
+                </button>
+              } @else {
+                <span>{{ headerLabel(col) }}</span>
+              }
+            </th>
+          }
+        </tr>
+        @if (showFilters()) {
+          <tr class="grid-filter-row">
+            @for (col of columns(); track col.key) {
+              <th>
+                @if (col.searchable !== false) {
+                  <label class="visually-hidden" for="grid-filter-{{ col.key }}">{{ col.header }}</label>
+                  <input
+                    id="grid-filter-{{ col.key }}"
+                    type="text"
+                    class="ds-input grid-filter-input"
+                    [placeholder]="i18n.t('grid.filterPlaceholder')"
+                    [value]="columnFilters()[col.key] ?? ''"
+                    (input)="onColumnFilter(col.key, $event)" />
+                }
+              </th>
+            }
+          </tr>
+        }
+      </thead>
+      <tbody>
+        @if (isEmpty()) {
+          <tr>
+            <td [attr.colspan]="columns().length" class="grid-empty">
+              {{ i18n.t('grid.noResults') }}
+            </td>
+          </tr>
+        } @else if (hasGrouping()) {
+          @for (group of groupedRows(); track group.key) {
+            <tr class="grid-group-header">
+              <td [attr.colspan]="columns().length">
+                <button
+                  type="button"
+                  class="grid-group-toggle"
+                  [attr.aria-expanded]="!collapsedGroups().has(group.key)"
+                  (click)="toggleGroup(group.key)">
+                  <span class="grid-group-chevron" [class.open]="!collapsedGroups().has(group.key)" aria-hidden="true">▼</span>
+                  <span class="grid-group-label">{{ group.header }}: {{ group.value }}</span>
+                  <span class="grid-group-count">{{ i18n.t('grid.groupCount', { count: group.rows.length }) }}</span>
+                </button>
+              </td>
+            </tr>
+            @if (!collapsedGroups().has(group.key)) {
+              @for (row of group.rows; track trackRow(row, $index)) {
+                <tr>
+                  @for (col of columns(); track col.key) {
+                    <td [style.text-align]="col.align ?? 'left'">
+                      @if (getCell(col.key); as tpl) {
+                        <ng-container *ngTemplateOutlet="tpl; context: { $implicit: row, value: col.accessor(row) }" />
+                      } @else {
+                        {{ formatCell(col, row) }}
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            }
+          }
+        } @else {
+          @for (row of sortedRows(); track trackRow(row, $index)) {
+            <tr>
+              @for (col of columns(); track col.key) {
+                <td [style.text-align]="col.align ?? 'left'">
+                  @if (getCell(col.key); as tpl) {
+                    <ng-container *ngTemplateOutlet="tpl; context: { $implicit: row, value: col.accessor(row) }" />
+                  } @else {
+                    {{ formatCell(col, row) }}
+                  }
+                </td>
+              }
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

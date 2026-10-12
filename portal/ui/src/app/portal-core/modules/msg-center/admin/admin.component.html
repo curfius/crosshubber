@@ -10,30 +10,11 @@
     <h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--portal-text-muted)]">
       {{ i18n.t('msgcenter.admin.perModule') }}
     </h2>
-    @if (perModule().length === 0) {
-    <p class="text-xs text-[var(--portal-text-muted)]">{{ i18n.t('msgcenter.empty.inbox') }}</p>
-    } @else {
-    <table class="w-full text-xs">
-      <thead>
-        <tr class="text-left text-[var(--portal-text-muted)]">
-          <th class="py-1">{{ i18n.t('msgcenter.admin.module') }}</th>
-          <th class="py-1 text-right">{{ i18n.t('msgcenter.admin.total') }}</th>
-          <th class="py-1 text-right">{{ i18n.t('msgcenter.tab.tasks') }}</th>
-          <th class="py-1 text-right">{{ i18n.t('msgcenter.state.done') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (row of perModule(); track row.moduleKey) {
-        <tr class="border-t border-[var(--portal-border-default)]">
-          <td class="py-1 font-medium text-[var(--portal-text-primary)]">{{ row.moduleKey }}</td>
-          <td class="py-1 text-right">{{ row.total }}</td>
-          <td class="py-1 text-right">{{ row.open }}</td>
-          <td class="py-1 text-right">{{ row.done }}</td>
-        </tr>
-        }
-      </tbody>
-    </table>
-    }
+    <app-data-grid
+      [data]="perModule()"
+      [columns]="moduleColumns"
+      [trackBy]="trackByModuleKey"
+    />
   </div>
 
   <!-- Task activity lookup -->
