@@ -43,11 +43,19 @@
       },
       {
         "name": "staffing-user",
-        "description": "Can use the staffing module (agent tools, RFP/CV matching)"
+        "description": "Read-only visibility in the talent-hub module (kept per D6)"
       },
       {
         "name": "staffing-admin",
-        "description": "Can manage the staffing module settings"
+        "description": "Can manage the talent-hub module settings"
+      },
+      {
+        "name": "staffing-manager",
+        "description": "Can capture/approve/close talent-hub RFPs"
+      },
+      {
+        "name": "staffing-recruiter",
+        "description": "Runs ongoing talent-hub operations"
       }
     ]
   },
@@ -64,6 +72,8 @@
         "solutions-user",
         "solutions-admin",
         "staffing-user",
+        "staffing-manager",
+        "staffing-recruiter",
         "staffing-admin"
       ]
     }

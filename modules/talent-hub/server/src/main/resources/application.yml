@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: crosshubber-talenthub
+  datasource:
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:25432}/${PGDATABASE:crosshubber_dev}
+    username: ${PGUSER:portal}
+    password: ${PGPASSWORD:}
+    hikari:
+      maximum-pool-size: 5
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: ${PGSCHEMA:talenthub}
+  flyway:
+    schemas: ${PGSCHEMA:talenthub}
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+server:
+  port: ${PORT:8093}
+
+talenthub:
+  # Shared secret for validating portal-minted agent-call tokens (X-Portal-Agent).
+  # Resolves to the same SESSION_SECRET the portal gets (env_file); must never differ.
+  agent-shared-secret: ${AGENT_SHARED_SECRET:${SESSION_SECRET:dev-insecure-shared-secret}}
+  # AES key (64 hex chars) for encrypting module-stored credentials (settings).
+  crypto-key: ${TALENTHUB_CRYPTO_KEY:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+  # Portal bridge for module events (msgcenter HTTP ingest, HMAC auth; P1.5).
+  portal:
+    url: ${PORTAL_URL:http://portal:3000}
+    session-secret: ${SESSION_SECRET:dev-insecure-shared-secret}
+  # Module-owned LLM credentials (OpenAI-compatible). Absent = capture analysis fails soft.
+  llm:
+    base-url: ${TALENTHUB_LLM_BASE_URL:}
+    api-key: ${TALENTHUB_LLM_API_KEY:}
+    model: ${TALENTHUB_LLM_MODEL:}
+  # External JEV decision API (P3 engines). Absent = rules engine default stays available.
+  jev:
+    base-url: ${TALENTHUB_JEV_BASE_URL:}
+    api-key: ${TALENTHUB_JEV_API_KEY:}
+    timeout-ms: ${TALENTHUB_JEV_TIMEOUT_MS:5000}
+  # Document source: `fake` (in-repo stub, default) until real adapters land (P1.2).
+  docsource:
+    kind: ${TALENTHUB_DOCSOURCE_KIND:fake}
+  # Module volume dir for uploaded documents (RFP specs, CVs).
+  documents:
+    dir: ${TALENTHUB_DOCUMENTS_DIR:/data/documents}
+
+logging:
+  level:
+    com.crosshubber.talenthub: INFO

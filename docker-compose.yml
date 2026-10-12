@@ -164,9 +164,10 @@ services:
       start_period: 30s
     networks: [tenant]
 
-  staffing:
+  # Talent Hub (STAFFING_MODULE_PLAN v2) — replacement for the retired staffing module.
+  talent-hub:
     build:
-      context: ./modules/staffing/server
+      context: ./modules/talent-hub/server
     env_file:
       - ${TENANT_SECRETS_FILE:-./config-management/tenants-config/dev/secrets.env}
     environment:
@@ -174,19 +175,22 @@ services:
       PGPORT: 5432
       PGDATABASE: ${POSTGRES_DB:-crosshubber_dev}
       PGUSER: ${POSTGRES_USER:-portal}
-      PGSCHEMA: staffing
-      PORT: 8091
+      PGSCHEMA: talenthub
+      PORT: 8093
+      PORTAL_URL: http://portal:3000
     ports:
-      - "${STAFFING_HOST_PORT:-28091}:8091"
+      - "${TALENT_HUB_HOST_PORT:-28093}:8093"
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8091/healthz || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8093/healthz || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 30s
+    volumes:
+      - "talenthub_documents:/data/documents"
     networks: [tenant]
 
 networks:
@@ -195,3 +199,4 @@ networks:
 
 volumes:
   pgdata:
+  talenthub_documents:

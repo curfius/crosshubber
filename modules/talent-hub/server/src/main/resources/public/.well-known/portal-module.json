@@ -1,0 +1,276 @@
+{
+  "manifestVersion": 1,
+  "key": "talent-hub",
+  "name": "Talent Hub",
+  "baseUrl": "http://talent-hub:8093",
+  "health": "/healthz",
+  "shell": {
+    "applications": [
+      {
+        "key": "capture",
+        "name": "RFP Capture",
+        "description": "Capture client RFP/RFQ requests, review the AI draft and approve them.",
+        "type": "mfe",
+        "path": "/mfe/talenthub.js",
+        "element": "th-capture",
+        "requiredRoles": ["staffing-manager", "staffing-admin"]
+      },
+      {
+        "key": "ongoing",
+        "name": "Ongoing RFPs",
+        "description": "Run engagements: phase board, positions, candidate processes, submissions.",
+        "type": "mfe",
+        "path": "/mfe/talenthub.js",
+        "element": "th-ongoing",
+        "requiredRoles": ["staffing-manager", "staffing-recruiter", "staffing-admin"]
+      },
+      {
+        "key": "talent",
+        "name": "Talent Pool",
+        "description": "Candidate directory, assignment/bench view and the sourcing inbox.",
+        "type": "mfe",
+        "path": "/mfe/talenthub.js",
+        "element": "th-talent",
+        "requiredRoles": ["staffing-manager", "staffing-recruiter", "staffing-admin"]
+      },
+      {
+        "key": "analytics",
+        "name": "RFP Analytics",
+        "description": "Engagement funnel, time-in-phase, placements and source effectiveness.",
+        "type": "mfe",
+        "path": "/mfe/talenthub.js",
+        "element": "th-analytics",
+        "requiredRoles": ["staffing-manager", "staffing-admin"]
+      }
+    ],
+    "features": [],
+    "adminSettings": [
+      {
+        "key": "settings",
+        "name": "Talent Hub Settings",
+        "description": "Configure the LLM, tools, matching engine and connectors.",
+        "type": "mfe",
+        "path": "/mfe/talenthub.js",
+        "element": "th-settings",
+        "requiredRoles": ["staffing-admin"]
+      }
+    ],
+    "userSettings": []
+  },
+  "security": {
+    "roles": [
+      { "key": "staffing-manager", "name": "Staffing Manager" },
+      { "key": "staffing-recruiter", "name": "Staffing Recruiter" },
+      { "key": "staffing-admin", "name": "Staffing Admin" },
+      { "key": "staffing-user", "name": "Staffing User" }
+    ]
+  },
+  "events": {
+    "published": [
+      "rfp.captured",
+      "rfp.approved",
+      "rfp.phase-changed",
+      "rfp.closed",
+      "rfp.rejected",
+      "rfp.archived",
+      "process.stage-changed",
+      "process.submitted",
+      "process.offer-extended",
+      "process.accepted",
+      "process.onboarded",
+      "candidate.added",
+      "candidate.enriched"
+    ],
+    "consumed": []
+  },
+  "agentic": {
+    "tools": [
+      {
+        "name": "list_rfps",
+        "description": "List RFPs with optional phase/client/serviceType/kind filters.",
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "phase": { "type": "string", "description": "draft|approved|sourcing|offer_extended|accepted|pending_onboarding|closed|rejected|archived" },
+            "clientId": { "type": "string" },
+            "serviceType": { "type": "string", "description": "tm|direct" },
+            "kind": { "type": "string", "description": "rfp|rfq" }
+          }
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "get_rfp",
+        "description": "Get a full RFP record: client card, positions, processes, submissions, phase history.",
+        "arguments": {
+          "type": "object",
+          "properties": { "rfpId": { "type": "string" } },
+          "required": ["rfpId"]
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "create_rfp",
+        "description": "Capture a client RFP/RFQ from a free-text description as an AI-analyzed draft (mutating).",
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "clientRef": { "type": "string", "description": "existing client UUID" },
+            "newClient": { "type": "object", "description": "{name, industry?, accountOwner?} to create inline" },
+            "kind": { "type": "string", "description": "rfp|rfq (default rfp)" },
+            "serviceType": { "type": "string", "description": "tm|direct (default tm)" },
+            "title": { "type": "string", "description": "optional title hint (AI backfills when omitted)" },
+            "deadline": { "type": "string", "description": "ISO-8601 instant hint" },
+            "description": { "type": "string", "description": "raw free-text request description" },
+            "documentRefs": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["description"]
+        },
+        "mutates": true,
+        "roles": ["staffing-manager"]
+      },
+      {
+        "name": "approve_rfp",
+        "description": "Approve a draft RFP (draft -> approved; manager).",
+        "arguments": {
+          "type": "object",
+          "properties": { "rfpId": { "type": "string" } },
+          "required": ["rfpId"]
+        },
+        "mutates": true,
+        "roles": ["staffing-manager"]
+      },
+      {
+        "name": "list_candidate_processes",
+        "description": "List candidate processes of an RFP.",
+        "arguments": {
+          "type": "object",
+          "properties": { "rfpId": { "type": "string" } },
+          "required": ["rfpId"]
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "search_candidates",
+        "description": "Search the talent pool (query over name/headline/skills; kind and availability filters).",
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string" },
+            "kind": { "type": "string", "description": "internal|external" },
+            "availability": { "type": "string", "description": "any|now" },
+            "staleOnly": { "type": "boolean" }
+          }
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "open_candidate_process",
+        "description": "Open a candidate process (stage pooled) for one candidate on one position (mutating).",
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "positionId": { "type": "string" },
+            "candidateId": { "type": "string" },
+            "note": { "type": "string" }
+          },
+          "required": ["positionId", "candidateId"]
+        },
+        "mutates": true,
+        "roles": ["staffing-recruiter"]
+      },
+      {
+        "name": "advance_process_stage",
+        "description": "Move a candidate process to its next validated stage (assess/submit/interview/offer/accept/reject/withdraw; mutating).",
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "processId": { "type": "string" },
+            "toStage": { "type": "string", "description": "assessed|submitted|interviewing|offer|accepted|onboarding|onboarded|rejected|withdrawn" },
+            "note": { "type": "string" }
+          },
+          "required": ["processId", "toStage"]
+        },
+        "mutates": true,
+        "roles": ["staffing-recruiter"]
+      },
+      {
+        "name": "close_rfp",
+        "description": "Close an RFP — cancels all unfinished candidate processes (mutating, requires confirm)",
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "rfpId": { "type": "string" },
+            "confirm": { "type": "boolean" },
+            "reason": { "type": "string" }
+          },
+          "required": ["rfpId", "confirm"]
+        },
+        "mutates": true,
+        "roles": ["staffing-manager"]
+      },
+      {
+        "name": "assess_fit",
+        "description": "Run the configured J/E/V fit engine on a pooled candidate process (mutates: stores fit + stage→assessed).",
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "processId": { "type": "string" },
+            "engine": { "type": "string", "description": "rules|jev|llm override (default: settings)" }
+          },
+          "required": ["processId"]
+        },
+        "mutates": true,
+        "roles": ["staffing-recruiter"]
+      },
+      {
+        "name": "match_candidates",
+        "description": "Rank the talent pool against an RFP's requirements (deterministic, topN).",
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "rfpId": { "type": "string" },
+            "topN": { "type": "integer" }
+          },
+          "required": ["rfpId"]
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "create_match_run",
+        "description": "Run and persist a deterministic match for an RFP with engine provenance (mutating).",
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "rfpId": { "type": "string" },
+            "topN": { "type": "integer" },
+            "engine": { "type": "string", "description": "must be rules (jev/llm ship as assessments)" }
+          },
+          "required": ["rfpId"]
+        },
+        "mutates": true,
+        "roles": ["staffing-recruiter"]
+      },
+      {
+        "name": "get_rfp_analytics",
+        "description": "Aggregate analytics: phases/outcomes/funnel/time-in-phase/placements/verdict outcomes.",
+        "arguments": {
+          "type": "object",
+          "properties": {
+            "period": { "type": "string", "description": "30d|90d|all (default all)" }
+          }
+        },
+        "mutates": false,
+        "roles": ["staffing-manager"]
+      }
+    ],
+    "skills": [],
+    "agents": [],
+    "knowledge": []
+  }
+}
