@@ -1,6 +1,8 @@
 ---
 name: google-java-style
 description: Use when writing, formatting, or reviewing Java code under Google Java Style Guide. Covers formatting, imports, naming, structure, Javadoc, and tooling (google-java-format, checkstyle, spotless, editorconfig).
+metadata:
+  opencode/autoinvoke: "false"
 ---
 
 # Google Java Style Guide — Enforcement

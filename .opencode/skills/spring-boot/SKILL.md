@@ -1,6 +1,8 @@
 ---
 name: spring-boot
 description: Use when scaffolding or refactoring the Crosshubber Spring Boot backend (Boot 4.x / Java 25 LTS / Maven / JPA / Flyway / Spring Security OIDC / RestClient). Covers feature-based package layout, Boot 4 artifact names, Jackson 3, configuration properties, JPA entities, Flyway migrations, SecurityFilterChain, and Docker packaging.
+metadata:
+  opencode/autoinvoke: "false"
 ---
 
 # Spring Boot 4.x + Java 25 LTS Architecture (Crosshubber)

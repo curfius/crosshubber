@@ -1,3 +1,10 @@
+---
+name: context-filter
+description: Control which plans are loaded into agent context. Plans are organized by status in the filesystem — no global loading by default.
+metadata:
+  opencode/autoinvoke: "false"
+---
+
 # Context Filter Skill
 
 ## Purpose
