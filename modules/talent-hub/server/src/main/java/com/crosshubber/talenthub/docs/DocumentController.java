@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.crosshubber.talenthub.config.TalentHubProperties;
 import com.crosshubber.talenthub.security.ModuleRoles;
 
 /**
@@ -23,11 +22,9 @@ import com.crosshubber.talenthub.security.ModuleRoles;
 public class DocumentController {
 
   private final DocumentService documentService;
-  private final TalentHubProperties props;
 
-  public DocumentController(DocumentService documentService, TalentHubProperties props) {
+  public DocumentController(DocumentService documentService) {
     this.documentService = documentService;
-    this.props = props;
   }
 
   @PostMapping("/api/documents")

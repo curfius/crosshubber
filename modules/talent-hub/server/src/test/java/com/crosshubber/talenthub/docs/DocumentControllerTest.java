@@ -19,7 +19,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import com.crosshubber.talenthub.config.TalentHubProperties;
 import com.crosshubber.talenthub.security.AgentPrincipal;
 import com.crosshubber.talenthub.web.GlobalExceptionHandler;
 
@@ -40,8 +39,7 @@ class DocumentControllerTest {
             documentSource,
             new JsonMapper());
     mockMvc =
-        MockMvcBuilders.standaloneSetup(
-                new DocumentController(documentService, new TalentHubProperties()))
+        MockMvcBuilders.standaloneSetup(new DocumentController(documentService))
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
     asUser("staffing-recruiter");
