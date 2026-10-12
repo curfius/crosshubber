@@ -64,9 +64,11 @@ class MsgCenterIngestionIT {
 
   @Container
   static final GenericContainer<?> NATS =
-      new GenericContainer<>(DockerImageName.parse("nats:2.12-alpine"))
-          .withCommand("-js")
-          .withExposedPorts(4222);
+      new GenericContainer<>(DockerImageName.parse("nats:2.12-alpine"));
+
+  static {
+    NATS.withCommand("-js").withExposedPorts(4222);
+  }
 
   @DynamicPropertySource
   static void containers(DynamicPropertyRegistry registry) {

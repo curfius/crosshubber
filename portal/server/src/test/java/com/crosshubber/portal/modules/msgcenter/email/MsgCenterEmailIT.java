@@ -60,7 +60,11 @@ class MsgCenterEmailIT {
 
   @Container
   static final GenericContainer<?> MAILPIT =
-      new GenericContainer<>(DockerImageName.parse("axllent/mailpit")).withExposedPorts(1025, 8025);
+      new GenericContainer<>(DockerImageName.parse("axllent/mailpit"));
+
+  static {
+    MAILPIT.withExposedPorts(1025, 8025);
+  }
 
   @DynamicPropertySource
   static void containers(DynamicPropertyRegistry registry) {
