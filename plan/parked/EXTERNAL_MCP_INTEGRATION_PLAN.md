@@ -1,10 +1,16 @@
+---
+status: parked
+domain: ai
+summary: "External MCP integration (AI Plan Phase E) — approved, parked until real MCP server exists"
+---
+
 # External MCP Integration Plan (AI_PLAN Phase E)
 
 Status: **approved, not started (2026-10-02)** — parked until a concrete external
 MCP server actually needs connecting. Extracted from `plan/AI_PLAN.md` Phase E
 (deferred 2026-09-29 pending manifest tools; unblocked since D shipped; owner
 confirmed the intent to connect external MCP servers eventually). Related:
-`plan/AI_PLAN.md` (phases A–G), `docs/agent-protocol.md` (tool contracts),
+`plan/archive/AI_PLAN.md` (phases A–G), `docs/agent-protocol.md` (tool contracts),
 `plan/archive/AI_MODULES_PLAN.md` (module tools precedent).
 
 ## Goal

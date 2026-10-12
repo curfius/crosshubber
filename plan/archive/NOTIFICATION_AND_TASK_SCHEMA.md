@@ -1,3 +1,9 @@
+---
+status: archived
+domain: messaging
+summary: "Notification and task schema for staffing workflow automation — superseded by STAFFING_MODULE_PLAN.md §10 (msgcenter reuse)"
+---
+
 # Notification and Task Schema for Staffing Workflow Automation
 
 ## Overview

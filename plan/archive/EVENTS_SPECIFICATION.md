@@ -1,3 +1,9 @@
+---
+status: archived
+domain: staffing
+summary: "Events specification for staffing module — superseded by STAFFING_MODULE_PLAN.md §10"
+---
+
 # Events Specification for Staffing Module Integration
 
 ## Overview

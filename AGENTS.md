@@ -198,13 +198,13 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
 
 ## Backlog pointers
 
-- `plan/AI_PLAN.md` — roadmap for the portal agent (session context pack, manifest
+- `plan/archive/AI_PLAN.md` — roadmap for the portal agent (session context pack, manifest
   `agentic` block, MCP tool execution, A2A-shaped sub-agents, module-owned
   knowledge retrieval). Dogfood consumers in `plan/archive/AI_MODULES_PLAN.md`
   (`solutions`, `staffing` — built, S1–S7 verified; archived 2026-10-08). F4
   (portal-native sub-agents) dropped 2026-10-02 — module-owned HTTP agents proved
   the pattern. G2 (retrieval/embeddings) dropped 2026-10-02 — keyword retrieval
-  adequate. Phase E (MCP) extracted to `plan/EXTERNAL_MCP_INTEGRATION_PLAN.md`
+  adequate. Phase E (MCP) extracted to `plan/parked/EXTERNAL_MCP_INTEGRATION_PLAN.md`
   (approved, not started).
 - `plan/archive/TEST_PLAN.md` — archived tenant-driven regression testing plan,
   **implemented 2026-09-29** (`TenantPolicySmokeTest` + Playwright pack in
@@ -229,10 +229,10 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
   both module backends + Angular MFE workspaces, registry install/uninstall lifecycle, E2E
   scenarios S1–S7 verified. Open (external-blocked): real Azure OneDrive adapter (dev uses
   fake adapters), Apache Tika approval.
-- `plan/WORKFLOWER_PLAN.md` — draft-to-later: workflow orchestration module (agent + scheduler +
+- `plan/parked/WORKFLOWER_PLAN.md` — draft-to-later: workflow orchestration module (agent + scheduler +
   NATS + human tasks); owns the msgcenter deferred hooks (agent-wake, timeout events); do not
   activate before msgcenter Phases 0–2 ship. Phases 0–2 are now LIVE (see msgcenter entry).
-- `plan/UX_PLAN.md` — portal navigation/UX optimization roadmap (journey-based
+- `plan/parked/UX_PLAN.md` — portal navigation/UX optimization roadmap (journey-based
   Phases 1–3; Phase 1 quick wins implemented 2026-09-22).
 - `plan/archive/TENANT_FORK_PLAN.md` — archived per-tenant fork/forkability plan,
   **work stream completed 2026-09-29** (policy ownership, branding, theme/i18n/

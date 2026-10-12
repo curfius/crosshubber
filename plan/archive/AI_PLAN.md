@@ -1,3 +1,9 @@
+---
+status: archived
+domain: ai
+summary: "Agent roadmap — Phases A-H: context pack, tool registry, sub-agents, citations; all phases shipped or dropped"
+---
+
 # Portal AI Plan — Agent Roadmap
 
 Roadmap for evolving the portal from a plain chat UI (AI Hub) into an agent-capable

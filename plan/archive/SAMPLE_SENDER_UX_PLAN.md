@@ -1,3 +1,9 @@
+---
+status: archived
+domain: ux
+summary: "Sample Sender UX overhaul — plain-language Message Composer with guided forms, activity feed; committed e05babc"
+---
+
 # Sample Sender UX Overhaul — plain-language composer
 
 ## Goal

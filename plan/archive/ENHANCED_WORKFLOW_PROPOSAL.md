@@ -1,3 +1,9 @@
+---
+status: archived
+domain: staffing
+summary: "Enhanced workflow proposal — superseded by STAFFING_MODULE_PLAN.md §3"
+---
+
 # Enhanced Staffing RFP/RFQ Workflow Proposal
 
 ## Overview

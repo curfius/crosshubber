@@ -1,3 +1,9 @@
+---
+status: parked
+domain: workflow
+summary: "Workflow orchestration module (agent + scheduler + NATS + human tasks) — draft-to-later, prerequisites met"
+---
+
 # WORKFLOWER_PLAN — Workflow orchestration module (agent + scheduler + events + human tasks)
 
 Status: **draft-to-later** (2026-10-06). Not scoped for build. Prerequisites: message center
@@ -11,7 +17,7 @@ An independent, module-scoped orchestration engine that chains the four capabili
 portal already has into declarative workflows:
 
 - **Portal agent** — AI_PLAN tool loop, builtin + manifest tools, module sub-agents (HTTP
-  envelope), Phase E MCP tools.
+  envelope), Phase E MCP tools (see `plan/archive/AI_PLAN.md`).
 - **Scheduling** — cron and one-shot timers; the first real scheduler runtime in the portal
   landscape (nothing scheduled today by design).
 - **NATS events** — subscribe to filtered subjects (incl. `portal.msg.>` / `portal.task.>` /

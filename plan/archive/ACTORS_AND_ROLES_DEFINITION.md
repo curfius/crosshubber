@@ -1,3 +1,9 @@
+---
+status: archived
+domain: staffing
+summary: "Actors and roles definition for staffing module — superseded by STAFFING_MODULE_PLAN.md §4"
+---
+
 # Staffing Module Actors and Roles Definition
 
 ## Overview

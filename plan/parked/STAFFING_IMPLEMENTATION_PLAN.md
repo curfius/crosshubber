@@ -1,8 +1,13 @@
+---
+status: parked
+domain: staffing
+summary: "Staffing v2 implementation plan — P-S+P0 done, P1+ pending; parked per decision"
+---
+
 # Staffing Module v2 — Implementation Plan (new module, parallel run)
 
 Status: **P-S re-scaffold + P0–P4 implemented, verified (2026-10-12)** — see the status sections
-below. Executes the domain plan `.opencode/plans/STAFFING_MODULE_PLAN.md` (unchanged decisions
-live there).
+below. Executes the domain plan `STAFFING_MODULE_PLAN.md` (unchanged decisions live there).
 
 ## P4-status (P4 done, verified 2026-10-12)
 

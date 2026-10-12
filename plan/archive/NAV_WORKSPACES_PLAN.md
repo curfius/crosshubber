@@ -1,3 +1,9 @@
+---
+status: archived
+domain: navigation
+summary: "Navigation trees unification, workspaces relocation, avatar colors — 7 phases shipped 2026-10-09"
+---
+
 # Navigation Trees, Workspaces Relocation & Avatar Colors
 
 Topic plan for the 2026-10-09 navigation pass: unify all portal navigation onto the

@@ -1,3 +1,9 @@
+---
+status: parked
+domain: staffing
+summary: "Staffing Module v2 domain plan — unified plan superseding 7 exploratory docs; parked per decision"
+---
+
 # Staffing Module Development Plan (v2)
 
 Status: **draft for review — 2026-10-09**. Supersedes the seven exploratory docs in
