@@ -9,7 +9,7 @@
       {
         "key": "composer",
         "name": "Message Composer",
-        "description": "Dev-only reference sender: compose envelopes, send over NATS/HTTP, watch responses.",
+        "description": "Compose announcements, messages and tasks with a guided form — send them and watch responses live.",
         "type": "iframe",
         "url": "http://localhost:28092",
         "requiredRoles": []

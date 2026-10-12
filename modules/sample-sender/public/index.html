@@ -2,382 +2,183 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Sample Sender — Message Center demo</title>
-    <style>
-      :root {
-        color-scheme: dark;
-        font-family: system-ui, sans-serif;
-      }
-      body {
-        margin: 0;
-        padding: 16px;
-        background: #0f172a;
-        color: #e2e8f0;
-        font-size: 13px;
-      }
-      h1 {
-        font-size: 16px;
-        margin: 0 0 12px;
-      }
-      h2 {
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #94a3b8;
-        margin: 18px 0 6px;
-      }
-      .grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-      }
-      .card {
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 8px;
-        padding: 12px;
-      }
-      label {
-        display: block;
-        margin: 6px 0 2px;
-        color: #94a3b8;
-      }
-      input,
-      select,
-      textarea {
-        width: 100%;
-        box-sizing: border-box;
-        background: #0f172a;
-        color: #e2e8f0;
-        border: 1px solid #334155;
-        border-radius: 4px;
-        padding: 4px 6px;
-        font: inherit;
-      }
-      textarea {
-        min-height: 48px;
-      }
-      button {
-        background: #0ea5e9;
-        border: 0;
-        border-radius: 4px;
-        color: #fff;
-        padding: 5px 10px;
-        margin: 4px 4px 0 0;
-        font: inherit;
-        cursor: pointer;
-      }
-      button.secondary {
-        background: #334155;
-      }
-      button.danger {
-        background: #dc2626;
-      }
-      .status {
-        font-size: 11px;
-        color: #94a3b8;
-      }
-      .log {
-        max-height: 260px;
-        overflow-y: auto;
-        font-family: ui-monospace, monospace;
-        font-size: 11px;
-      }
-      .log div {
-        border-top: 1px solid #1e293b;
-        padding: 3px 0;
-        white-space: pre-wrap;
-        word-break: break-all;
-      }
-      .sent {
-        color: #4ade80;
-      }
-      .received {
-        color: #38bdf8;
-      }
-      .rejected,
-      .failed {
-        color: #f87171;
-      }
-      .row {
-        display: flex;
-        gap: 8px;
-      }
-      .row > * {
-        flex: 1;
-      }
-      .pill {
-        display: inline-block;
-        background: #334155;
-        border-radius: 999px;
-        padding: 1px 8px;
-        margin: 0 4px 2px 0;
-        font-size: 11px;
-        cursor: pointer;
-      }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Message Composer — Crosshubber demo</title>
+    <link rel="stylesheet" href="/app.css" />
   </head>
   <body>
-    <h1>Sample Sender <span class="status" id="status">connecting…</span></h1>
-    <div class="grid">
-      <div>
-        <div class="card">
-          <h2>Composer</h2>
-          <div>
-            Presets:
-            <span class="pill" data-preset="1">1 · expense approval</span>
-            <span class="pill" data-preset="2">2 · hours report</span>
-            <span class="pill" data-preset="3">3 · RSVP</span>
-            <span class="pill" data-preset="4">4 · claim pool</span>
-            <span class="pill" data-preset="5">5 · group broadcast</span>
-            <span class="pill" data-preset="6">6 · template ref</span>
-            <span class="pill" data-preset="bad">× · malformed</span>
+    <header class="topbar">
+      <h1>Message Composer <span class="status" id="status">connecting…</span></h1>
+      <label class="adv-switch" title="Show raw JSON controls for developers">
+        <input type="checkbox" id="advancedToggle" />
+        <span>Advanced</span>
+      </label>
+    </header>
+
+    <main class="grid">
+      <section class="card">
+        <h2>Examples</h2>
+        <div class="pills" id="presets">
+          <button class="pill" data-preset="1">Approve an expense</button>
+          <button class="pill" data-preset="2">Daily hours report</button>
+          <button class="pill" data-preset="3">Off-site RSVP</button>
+          <button class="pill" data-preset="4">Laptop request (first come)</button>
+          <button class="pill" data-preset="5">Announcement to a team</button>
+          <button class="pill" data-preset="6">Use a saved form</button>
+          <button class="pill danger" data-preset="bad">Broken message (demo)</button>
+        </div>
+
+        <h2>Message</h2>
+        <div class="seg" id="typeSeg">
+          <button type="button" data-value="notification">Announcement</button>
+          <button type="button" data-value="message">Message</button>
+          <button type="button" data-value="task">Task</button>
+        </div>
+        <p class="hint" id="typeHint"></p>
+
+        <label for="title">Title</label>
+        <input id="title" autocomplete="off" placeholder="e.g. Expense approval" />
+
+        <label for="body">Message</label>
+        <textarea id="body" rows="3" placeholder="What should people read?"></textarea>
+
+        <div id="audienceBlock">
+          <h2>Who should see it?</h2>
+          <div class="seg" id="audienceSeg">
+            <button type="button" data-value="everyone">Everyone</button>
+            <button type="button" data-value="teams">Teams</button>
+            <button type="button" data-value="roles">Roles</button>
+            <button type="button" data-value="people">People</button>
           </div>
-          <label>Type</label>
-          <select id="type">
-            <option value="notification">notification</option>
-            <option value="message">message</option>
-            <option value="task">task</option>
-          </select>
-          <div class="row">
+          <div id="chipsBox" hidden>
+            <div class="chips" id="chips"></div>
+            <input
+              id="chipInput"
+              autocomplete="off"
+              placeholder="Type a name and press Enter"
+            />
+          </div>
+          <p class="hint" id="audienceHint"></p>
+        </div>
+
+        <div id="taskBlock" hidden>
+          <h2>What should people do?</h2>
+          <div class="row2">
             <div>
-              <label>Title (en)</label>
-              <input id="title" />
+              <label>They give</label>
+              <div class="seg" id="kindSeg">
+                <button type="button" data-value="approval">Approval</button>
+                <button type="button" data-value="collect">Information</button>
+              </div>
             </div>
             <div>
-              <label>Module key</label>
-              <input id="moduleKey" value="sample-sender" />
+              <label>Who responds</label>
+              <div class="seg" id="completionSeg">
+                <button type="button" data-value="any">One person is enough</button>
+                <button type="button" data-value="each">Everyone responds</button>
+              </div>
             </div>
           </div>
-          <label>Body (en)</label>
-          <textarea id="body"></textarea>
-          <label>Audience (JSON)</label>
-          <textarea id="audience">{ "allUsers": true }</textarea>
-          <label>Task (JSON — kind/completion/completionEvent/expiresAt/claim/fields)</label>
-          <textarea id="task">{}</textarea>
-          <label>Sections (JSON — optional)</label>
-          <textarea id="sections">{}</textarea>
-          <div class="row" style="margin-top: 8px">
+          <p class="hint" id="kindHint"></p>
+
+          <label class="checkline">
+            <input type="checkbox" id="claim" />
+            Let people claim it
+            <span class="hint-inline">— one person takes it from a shared pool</span>
+          </label>
+
+          <label for="deadline">Deadline <span class="hint-inline">optional</span></label>
+          <input type="datetime-local" id="deadline" />
+
+          <div id="questionsBlock">
+            <div class="subhead">
+              <h3>Questions</h3>
+              <button type="button" class="ghost" id="addQ">+ Add question</button>
+              <label class="checkline">
+                <input type="checkbox" id="useTemplate" />
+                Use a saved form instead
+              </label>
+            </div>
+            <div id="questions"></div>
+            <p class="hint" id="questionsHint">
+              No questions yet — people would have nothing to fill in.
+            </p>
+          </div>
+
+          <div id="templateBlock" hidden>
+            <div class="row2">
+              <div>
+                <label for="tplKey">Form name</label>
+                <input id="tplKey" autocomplete="off" placeholder="e.g. expense-approval" />
+              </div>
+              <div>
+                <label for="tplVersion">Version</label>
+                <input id="tplVersion" type="number" min="1" step="1" value="1" />
+              </div>
+            </div>
+            <p class="hint">
+              Saved forms are made in the portal’s Task Template Studio — this just references
+              one.
+            </p>
+          </div>
+        </div>
+
+        <div id="advancedBlock" hidden>
+          <h2>Advanced — raw message format</h2>
+          <div class="row2">
             <div>
-              <label>Transport</label>
-              <select id="transport">
+              <label for="advModuleKey">Module key</label>
+              <input id="advModuleKey" autocomplete="off" value="sample-sender" />
+            </div>
+            <div>
+              <label for="advTransport">Transport</label>
+              <select id="advTransport">
                 <option value="nats">NATS direct</option>
                 <option value="http">HTTP publish endpoint</option>
               </select>
             </div>
-            <div style="flex: 0">
-              <label>&nbsp;</label>
-              <button id="send">Send envelope</button>
-            </div>
           </div>
+          <label for="advAudience">Audience (JSON)</label>
+          <textarea id="advAudience" rows="2"></textarea>
+          <label for="advTask">Task (JSON)</label>
+          <textarea id="advTask" rows="5"></textarea>
+          <label for="advSections">Sections (JSON, optional)</label>
+          <textarea id="advSections" rows="3"></textarea>
+          <label for="advRaw">Raw envelope (sent verbatim when filled)</label>
+          <textarea id="advRaw" rows="5" placeholder='Leave empty to use the form above'></textarea>
+          <p class="hint">
+            While Advanced is open, these JSON fields replace the form settings when sending.
+          </p>
+        </div>
+
+        <div class="sendbar">
+          <button type="button" class="primary" id="send">Send announcement</button>
           <p class="status" id="lastResult"></p>
         </div>
-      </div>
-      <div>
-        <div class="card">
-          <h2>Send log + responses <button class="secondary" id="clear">clear</button></h2>
-          <div class="log" id="log"></div>
+        <p class="warn" id="rawHint" hidden>
+          Broken-message demo active: the raw envelope is sent as-is (on purpose it is invalid).
+          Edit any form field to go back to the guided mode.
+        </p>
+      </section>
+
+      <section class="card">
+        <div class="cardhead">
+          <h2>Activity</h2>
+          <div class="filters" id="filters">
+            <button type="button" data-filter="all" class="on">All</button>
+            <button type="button" data-filter="sent">Sent</button>
+            <button type="button" data-filter="responses">Responses</button>
+            <button type="button" data-filter="errors">Errors</button>
+          </div>
+          <button type="button" class="ghost" id="clear">Clear</button>
         </div>
-      </div>
-    </div>
-    <script type="module">
-      const $ = (id) => document.getElementById(id);
-      const state = {};
+        <div class="log" id="log"></div>
+        <p class="hint" id="logEmpty">
+          Nothing yet — send an example and watch it flow through the portal.
+        </p>
+      </section>
+    </main>
 
-      const PRESETS = {
-        1: {
-          type: 'task',
-          title: 'Expense approval',
-          body: 'Please approve the attached expense report.',
-          audience: { allUsers: true },
-          task: {
-            kind: 'approval',
-            completion: 'any',
-          },
-          sections: {},
-        },
-        2: {
-          type: 'task',
-          title: 'Daily hours report',
-          body: 'Please report your hours for today.',
-          audience: { allUsers: true },
-          task: {
-            kind: 'collect',
-            completion: 'each',
-            completionEvent: 'hours.submitted',
-            expiresAt: new Date(Date.now() + 86400000).toISOString(),
-            fields: [
-              {
-                name: 'hours',
-                required: true,
-                schema: { type: 'number', minimum: 0, maximum: 24 },
-              },
-              {
-                name: 'comment',
-                schema: { type: 'string', maxLength: 500 },
-                multiline: true,
-              },
-            ],
-          },
-          sections: {},
-        },
-        3: {
-          type: 'task',
-          title: 'Off-site RSVP',
-          body: 'Will you attend the off-site?',
-          audience: { allUsers: true },
-          task: {
-            kind: 'collect',
-            completion: 'each',
-            completionEvent: 'rsvp.submitted',
-            expiresAt: new Date(Date.now() + 3 * 86400000).toISOString(),
-            sections: [
-              {
-                title: { en: 'Attendance' },
-                description: { en: 'Pick one' },
-                fields: ['attending', 'meal'],
-              },
-            ],
-            fields: [
-              { name: 'attending', required: true, schema: { type: 'boolean' } },
-              {
-                name: 'meal',
-                required: true,
-                schema: { type: 'string', enum: ['meat', 'fish', 'veg'] },
-              },
-            ],
-          },
-          sections: {},
-        },
-        4: {
-          type: 'task',
-          title: 'Loaner laptop request',
-          body: 'One person of the pool: please take this and provide details.',
-          audience: { allUsers: true },
-          task: {
-            kind: 'collect',
-            completion: 'any',
-            completionEvent: 'loan.requested',
-            claim: { enabled: true, mode: 'single' },
-            expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
-            fields: [
-              {
-                name: 'justification',
-                required: true,
-                label: { en: 'Justification' },
-                schema: { type: 'string', maxLength: 200 },
-              },
-              {
-                name: 'days',
-                required: true,
-                label: { en: 'Days' },
-                schema: { type: 'integer', minimum: 1, maximum: 30 },
-              },
-            ],
-          },
-          sections: {},
-        },
-        5: {
-          type: 'notification',
-          title: 'Group broadcast test',
-          body: 'Addressed to a portal group — only members see it.',
-          audience: { groups: ['back-office'] },
-          task: {},
-          sections: {},
-        },
-        6: {
-          type: 'task',
-          title: 'Template-referenced task',
-          body: 'The form shape comes from the referenced portal template.',
-          audience: { allUsers: true },
-          task: {
-            kind: 'collect',
-            completion: 'any',
-            completionEvent: 'expense.reported',
-            template: { key: 'expense-approval', version: 1 },
-          },
-          sections: {},
-        },
-        bad: {
-          v: 2,
-          type: 'notification',
-          title: { en: 'Malformed demo' },
-          body: { en: 'v=2 → DLQ demo.' },
-        },
-      };
-
-      function applyPreset(name) {
-        const preset = PRESETS[name];
-        if (!preset) return;
-        $('type').value = preset.type;
-        $('title').value = preset.title;
-        $('body').value = preset.body;
-        $('audience').value = JSON.stringify(preset.audience);
-        $('task').value = JSON.stringify(preset.task, null, 2);
-        $('sections').value = JSON.stringify(preset.sections, null, 2);
-      }
-
-      document.querySelectorAll('.pill').forEach((pill) => {
-        pill.addEventListener('click', () => applyPreset(pill.dataset.preset));
-      });
-
-      $('send').addEventListener('click', async () => {
-        const envelope = { v: 1, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
-        const type = $('type').value;
-        envelope.type = type;
-        envelope.moduleKey = $('moduleKey').value.trim();
-        envelope.title = { en: $('title').value };
-        envelope.body = { en: $('body').value };
-        try {
-          envelope.audience = JSON.parse($('audience').value);
-          const task = JSON.parse($('task').value);
-          if (type === 'task' && Object.keys(task).length > 0) envelope.task = task;
-          const sections = JSON.parse($('sections').value);
-          if (Array.isArray(sections) && sections.length > 0) envelope.body.sections = sections;
-        } catch (err) {
-          $('lastResult').textContent = 'JSON error: ' + err.message;
-          return;
-        }
-        const transport = $('transport').value;
-        const res = await fetch(`/send?transport=${transport}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(envelope),
-        });
-        const payload = await res.json();
-        $('lastResult').textContent = res.ok
-          ? `sent (${transport}) — ${payload.subject ?? ''}`
-          : `error ${res.status}: ${payload.error ?? ''}`;
-      });
-
-      $('clear').addEventListener('click', () => ($('log').innerHTML = ''));
-
-      // event log + SSE
-      function render(entry) {
-        const div = document.createElement('div');
-        div.className = entry.kind;
-        div.textContent =
-          `${entry.at.slice(11, 19)} [${entry.kind}] ${entry.subject ?? ''} ` +
-          JSON.stringify(entry.payload ?? entry.reason ?? entry.message ?? {});
-        $('log').prepend(div);
-      }
-
-      const es = new EventSource('/events');
-      es.onmessage = (e) => {
-        const entry = JSON.parse(e.data);
-        if (entry.kind === 'hello') return;
-        render(entry);
-        if (entry.kind === 'system' && entry.message?.includes('connected')) {
-          $('status').textContent = '· NATS up';
-        }
-      };
-
-      fetch('/api/config')
-        .then((r) => r.json())
-        .then((cfg) => {
-          state.callerKey = cfg.callerKey;
-          $('status').textContent = `· ${cfg.callerKey} — nats ${cfg.nats ? 'up' : 'down'}`;
-        });
-    </script>
+    <script type="module" src="/app.js"></script>
   </body>
 </html>
