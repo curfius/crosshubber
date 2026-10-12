@@ -45,6 +45,18 @@ docs/archive/                       Archived implementation plans
 .opencode/skills/                   Project-local opencode skills (source of truth)
 ```
 
+## Skill Usage
+
+Before starting relevant work, load the appropriate skill using the `skill` tool:
+
+- **Plans work**: `skill({ name: "context-filter" })` — before checking or working with plans
+- **UI/UX work**: `skill({ name: "portal-ui-design" })` — before designing or implementing UI
+- **Java code**: `skill({ name: "google-java-style" })` — before writing or reviewing Java code
+- **Spring Boot backend**: `skill({ name: "spring-boot" })` — before scaffolding or refactoring Spring Boot backend
+
+Skills are loaded on-demand via the `skill` tool. Do not rely on auto-invocation; explicitly load the relevant skill before starting relevant work.
+```
+
 ## Build & verify commands
 
 ```bash
