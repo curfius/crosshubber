@@ -21,7 +21,8 @@ public record NavigationGroupDto(
     Integer sortOrder,
     String icon,
     List<String> roles,
-    Boolean hidden) {
+    Boolean hidden,
+    String color) {
 
   public static NavigationGroupDto fromEntity(NavigationGroupEntity g) {
     List<String> roles = Roles.parse(g.getRoles());
@@ -33,7 +34,8 @@ public record NavigationGroupDto(
         g.getSortOrder(),
         Texts.blankToNull(g.getIcon()),
         roles.isEmpty() ? null : roles,
-        Boolean.TRUE.equals(g.getHidden()) ? Boolean.TRUE : null);
+        Boolean.TRUE.equals(g.getHidden()) ? Boolean.TRUE : null,
+        Texts.blankToNull(g.getColor()));
   }
 
   /** Null-safe comparator key for sort ordering. */

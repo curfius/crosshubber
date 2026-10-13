@@ -29,52 +29,48 @@ class NavigationFeaturesControllerTest {
     controller = new NavigationFeaturesController(settings);
   }
 
-  private static Map<String, Object> all(boolean apps, boolean ws, boolean section) {
+  private static Map<String, Object> all(boolean apps, boolean ws) {
     Map<String, Object> m = new LinkedHashMap<>();
     m.put("pinnedAppsEnabled", apps);
     m.put("workspacesEnabled", ws);
-    m.put("pinnedSectionEnabled", section);
     return m;
   }
 
   @Test
   void getMapsStoredSettingsOntoFlags() {
-    when(settings.get()).thenReturn(all(true, false, false));
+    when(settings.get()).thenReturn(all(true, false));
 
     FeatureFlagsDto dto = controller.get(null);
 
     assertTrue(dto.pinnedAppsEnabled());
     assertFalse(dto.workspacesEnabled());
-    assertFalse(dto.pinnedSectionEnabled());
   }
 
   @Test
-  void getTreatsMissingPinnedSectionAsDisabled() {
-    when(settings.get()).thenReturn(Map.of("pinnedAppsEnabled", true, "workspacesEnabled", true));
+  void getTreatsMissingFlagsAsDisabled() {
+    when(settings.get()).thenReturn(Map.of("pinnedAppsEnabled", true));
 
     FeatureFlagsDto dto = controller.get(null);
 
     assertTrue(dto.pinnedAppsEnabled());
-    assertTrue(dto.workspacesEnabled());
-    assertFalse(dto.pinnedSectionEnabled());
+    assertFalse(dto.workspacesEnabled());
   }
 
   @Test
   void putMergesPartialUpdateAndReturnsFreshFlags() {
-    when(settings.update(Map.of("pinnedSectionEnabled", false))).thenReturn(all(true, true, false));
+    when(settings.update(Map.of("workspacesEnabled", false))).thenReturn(all(true, false));
 
-    ResponseEntity<?> res = controller.put(null, Map.of("pinnedSectionEnabled", false));
+    ResponseEntity<?> res = controller.put(null, Map.of("workspacesEnabled", false));
 
     assertEquals(HttpStatus.OK, res.getStatusCode());
     FeatureFlagsDto dto = (FeatureFlagsDto) res.getBody();
     assertTrue(dto.pinnedAppsEnabled());
-    assertTrue(dto.workspacesEnabled());
-    assertFalse(dto.pinnedSectionEnabled());
+    assertFalse(dto.workspacesEnabled());
   }
 
   @Test
   void putDropsUnknownKeysBeforeUpdating() {
-    when(settings.update(Map.of())).thenReturn(all(true, true, true));
+    when(settings.update(Map.of())).thenReturn(all(true, true));
 
     ResponseEntity<?> res = controller.put(null, Map.of("bogusKey", true));
 
@@ -83,11 +79,11 @@ class NavigationFeaturesControllerTest {
   }
 
   @Test
-  void putRejectsNonBooleanPinnedSection() {
-    ResponseEntity<?> res = controller.put(null, Map.of("pinnedSectionEnabled", "yes"));
+  void putRejectsNonBooleanWorkspaces() {
+    ResponseEntity<?> res = controller.put(null, Map.of("workspacesEnabled", "yes"));
 
     assertEquals(HttpStatus.BAD_REQUEST, res.getStatusCode());
-    assertEquals(Map.of("error", "pinnedSectionEnabled must be a boolean"), res.getBody());
+    assertEquals(Map.of("error", "workspacesEnabled must be a boolean"), res.getBody());
   }
 
   @Test

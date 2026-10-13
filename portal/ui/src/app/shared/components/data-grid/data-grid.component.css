@@ -1,10 +1,22 @@
+:host {
+  display: block;
+}
+
+/*
+ * Grid-private styles (toolbar, sort, filters, groups, empty state) — all
+ * token-based. The table itself uses the shared `.ds-table-wrapper` /
+ * `.ds-table` primitives from styles/components.css; the design system must
+ * be loaded globally by every host (portal-document MFEs included).
+ */
+
+/* Toolbar */
 .grid-toolbar {
   display: flex;
   align-items: center;
-  gap: var(--portal-space-3);
-  padding: var(--portal-space-3) var(--portal-space-4);
-  border-bottom: 1px solid var(--portal-card-border);
-  background: var(--portal-bg-surface);
+  gap: var(--portal-space-3, 8px);
+  padding: var(--portal-space-3, 8px) var(--portal-space-4, 12px);
+  border-bottom: 1px solid var(--portal-card-border, #1e293b);
+  background: var(--portal-bg-surface, #0f172a);
 }
 
 .grid-search {
@@ -15,12 +27,12 @@
 .grid-groupby {
   display: flex;
   align-items: center;
-  gap: var(--portal-space-2);
+  gap: var(--portal-space-2, 6px);
 }
 
 .grid-groupby-label {
-  font-size: var(--portal-font-size-sm);
-  color: var(--portal-text-muted);
+  font-size: var(--portal-font-size-sm, 14px);
+  color: var(--portal-text-muted, #64748b);
   white-space: nowrap;
 }
 
@@ -30,23 +42,134 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: 1px solid var(--portal-border-input);
+  border: 1px solid var(--portal-border-input, #334155);
   border-radius: var(--portal-radius-md, 6px);
-  background: var(--portal-input-bg);
-  color: var(--portal-text-muted);
+  background: var(--portal-input-bg, #1e293b);
+  color: var(--portal-text-muted, #64748b);
   cursor: pointer;
-  transition: all var(--portal-transition-fast);
+  transition: all var(--portal-transition-fast, 100ms);
 }
 
 .grid-filter-toggle:hover {
-  background: var(--portal-bg-hover);
-  color: var(--portal-text-secondary);
+  background: var(--portal-bg-hover, #1e293b);
+  color: var(--portal-text-secondary, #cbd5e1);
 }
 
 .grid-filter-toggle.active {
-  background: var(--portal-accent-primary-subtle);
-  border-color: var(--portal-accent-primary);
-  color: var(--portal-accent-primary);
+  background: var(--portal-accent-primary-subtle, rgba(99, 102, 241, 0.16));
+  border-color: var(--portal-accent-primary, #6366f1);
+  color: var(--portal-accent-primary, #6366f1);
+}
+
+/* Caller-owned actions, rendered after the filter toggle. */
+.grid-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-2, 6px);
+}
+
+/* Bulk-actions split button + dropdown menu (only rendered for selectable grids). */
+.grid-bulk {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.grid-bulk-split {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.grid-bulk-split .grid-bulk-btn {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.grid-bulk-split .grid-bulk-caret {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left-color: var(--portal-border-strong, #475569);
+  padding-left: var(--portal-space-2, 6px);
+  padding-right: var(--portal-space-2, 6px);
+}
+
+.grid-bulk-split .grid-bulk-btn:focus-visible,
+.grid-bulk-split .grid-bulk-caret:focus-visible {
+  outline: 2px solid var(--portal-border-focus, #6366f1);
+  outline-offset: 1px;
+}
+
+.grid-bulk-count {
+  color: var(--portal-text-muted, #64748b);
+  font-size: var(--portal-font-size-xs, 11px);
+}
+
+.grid-bulk-chevron {
+  font-size: 10px;
+  transition: transform var(--portal-transition-fast, 100ms);
+  display: inline-block;
+}
+
+.grid-bulk-chevron.open {
+  transform: rotate(180deg);
+}
+
+.grid-bulk-menu {
+  position: absolute;
+  top: calc(100% + var(--portal-space-1, 4px));
+  left: 0;
+  z-index: var(--portal-z-dropdown, 40);
+  min-width: 200px;
+  background: var(--portal-bg-surface, #0f172a);
+  border: 1px solid var(--portal-border-default, #1e293b);
+  border-radius: var(--portal-radius-lg, 8px);
+  box-shadow: var(--portal-shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.5));
+  padding: var(--portal-space-1, 4px);
+}
+
+.grid-bulk-item {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-2, 6px);
+  width: 100%;
+  padding: var(--portal-space-2, 6px) var(--portal-space-3, 8px);
+  font-size: var(--portal-font-size-sm, 14px);
+  color: var(--portal-text-secondary, #cbd5e1);
+  background: none;
+  border: none;
+  border-radius: var(--portal-radius-md, 6px);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--portal-transition-fast, 100ms);
+}
+
+.grid-bulk-item:hover {
+  background: var(--portal-bg-hover, #1e293b);
+  color: var(--portal-text-primary, #f1f5f9);
+}
+
+.grid-bulk-item.danger {
+  color: var(--portal-status-danger, #f87171);
+}
+
+.grid-bulk-item.danger:hover {
+  background: var(--portal-status-danger-bg, rgba(248, 113, 113, 0.12));
+  color: var(--portal-status-danger, #f87171);
+}
+
+/* Selection gutter + clickable rows. */
+.grid-select-col {
+  width: 36px;
+  text-align: center;
+}
+
+.grid-row-clickable {
+  cursor: pointer;
+}
+
+.grid-row-clickable:hover td {
+  background: var(--portal-bg-hover, #1e293b);
 }
 
 .grid-table-scroll {
@@ -56,7 +179,7 @@
 .grid-sort-btn {
   display: inline-flex;
   align-items: center;
-  gap: var(--portal-space-1);
+  gap: var(--portal-space-1, 4px);
   width: 100%;
   padding: 0;
   border: none;
@@ -70,55 +193,55 @@
 }
 
 .grid-sort-btn:hover {
-  color: var(--portal-text-secondary);
+  color: var(--portal-text-secondary, #cbd5e1);
 }
 
 .grid-sort-indicator {
   font-size: 9px;
-  color: var(--portal-accent-primary);
+  color: var(--portal-accent-primary, #6366f1);
 }
 
 .grid-filter-row th {
-  padding: var(--portal-space-2) var(--portal-space-3);
-  background: var(--portal-bg-subtle);
+  padding: var(--portal-space-2, 6px) var(--portal-space-3, 8px);
+  background: var(--portal-bg-subtle, #1e293b);
 }
 
 .grid-filter-input {
   width: 100%;
   font-size: 11px;
-  padding: var(--portal-space-1) var(--portal-space-2);
+  padding: var(--portal-space-1, 4px) var(--portal-space-2, 6px);
 }
 
 .grid-group-header td {
   padding: 0;
-  background: var(--portal-bg-surface);
-  border-top: 1px solid var(--portal-card-border);
-  border-bottom: 1px solid var(--portal-card-border);
+  background: var(--portal-bg-surface, #0f172a);
+  border-top: 1px solid var(--portal-card-border, #1e293b);
+  border-bottom: 1px solid var(--portal-card-border, #1e293b);
 }
 
 .grid-group-toggle {
   display: flex;
   align-items: center;
-  gap: var(--portal-space-2);
+  gap: var(--portal-space-2, 6px);
   width: 100%;
-  padding: var(--portal-space-2) var(--portal-space-4);
+  padding: var(--portal-space-2, 6px) var(--portal-space-4, 12px);
   border: none;
   background: none;
-  color: var(--portal-text-secondary);
-  font-size: var(--portal-font-size-sm);
-  font-weight: var(--portal-font-weight-medium);
+  color: var(--portal-text-secondary, #cbd5e1);
+  font-size: var(--portal-font-size-sm, 14px);
+  font-weight: var(--portal-font-weight-medium, 500);
   cursor: pointer;
   text-align: left;
-  transition: background var(--portal-transition-fast);
+  transition: background var(--portal-transition-fast, 100ms);
 }
 
 .grid-group-toggle:hover {
-  background: var(--portal-bg-hover);
+  background: var(--portal-bg-hover, #1e293b);
 }
 
 .grid-group-chevron {
   font-size: 9px;
-  transition: transform var(--portal-transition-fast);
+  transition: transform var(--portal-transition-fast, 100ms);
   display: inline-block;
 }
 
@@ -131,19 +254,19 @@
 }
 
 .grid-group-label {
-  font-weight: var(--portal-font-weight-semibold);
+  font-weight: var(--portal-font-weight-semibold, 600);
 }
 
 .grid-group-count {
-  color: var(--portal-text-muted);
-  font-weight: var(--portal-font-weight-normal);
+  color: var(--portal-text-muted, #64748b);
+  font-weight: var(--portal-font-weight-normal, 400);
 }
 
 .grid-empty {
-  padding: var(--portal-space-8) var(--portal-space-4);
+  padding: var(--portal-space-8, 32px) var(--portal-space-4, 12px);
   text-align: center;
-  color: var(--portal-text-muted);
-  font-size: var(--portal-font-size-sm);
+  color: var(--portal-text-muted, #64748b);
+  font-size: var(--portal-font-size-sm, 14px);
 }
 
 .visually-hidden {

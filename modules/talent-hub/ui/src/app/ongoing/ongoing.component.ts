@@ -1,8 +1,8 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  OnDestroy,
   OnInit,
-  ViewEncapsulation,
   computed,
   inject,
   signal,
@@ -16,7 +16,10 @@ import {
   canManage,
   canRecruit,
 } from '../shared/module-client';
-import { SHARED_STYLES } from '../shared/styles';
+import { DataGrid } from '../shared/grid/data-grid.component';
+import { GridColumn } from '../shared/grid/grid-column';
+import { UI_I18N } from '../shared/i18n';
+import { MfeI18n } from '../shared/mfe-i18n';
 import { mfeReadyDispatcher } from '../shared/ready';
 
 type Rfp = {
@@ -56,182 +59,211 @@ type Detail = {
 
 type ProcessRow = { id: string; positionId: string; candidateName: string; stage: string };
 
-/** Ongoing RFPs (P2.7): phase board + detail with processes, submissions, close/reject. */
+/** Ongoing RFPs (P2.7): flat grid + detail modal with processes, submissions, close/reject. */
 @Component({
   selector: 'th-ongoing',
-  encapsulation: ViewEncapsulation.ShadowDom,
+  imports: [DataGrid],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="wrap">
       <div class="head">
-        <h2>Ongoing RFPs</h2>
-        @if (detailId() !== null) {
-          <button (click)="openList()">Back</button>
-        } @else {
-          <select [value]="filter()" (change)="onFilter($event)">
-            @for (phase of phases; track phase) {
-              <option [value]="phase">{{ phase }}</option>
-            }
-            <option value="">all phases</option>
-          </select>
-          <input placeholder="search title" [value]="term()" (input)="onTerm($event)" />
-        }
+        <h2>{{ t('talenthub.ongoing.title') }}</h2>
+        <select class="ds-select" [value]="filter()" (change)="onFilter($event)">
+          @for (phase of phases; track phase) {
+            <option [value]="phase">{{ phase }}</option>
+          }
+          <option value="">{{ t('talenthub.ongoing.allPhases') }}</option>
+        </select>
+        <input
+          class="ds-input"
+          [placeholder]="t('talenthub.ongoing.searchTitle')"
+          [value]="term()"
+          (input)="onTerm($event)" />
       </div>
 
       @if (error(); as err) {
-        <div class="card error">{{ err }}</div>
-      } @else if (loading()) {
-        <div class="muted">Loading…</div>
-      } @else if (detailId() !== null) {
-        @if (detail(); as d) {
-          <div class="card">
-            <div class="row">
-              <strong>{{ d.rfp.title }}</strong>
-              <span class="badge">{{ d.rfp.phase }}</span>
-              <span class="badge">{{ d.rfp.kind }}</span>
-              <span class="badge">{{ d.rfp.serviceType }}</span>
+        <div class="ds-alert ds-alert-danger">{{ err }}</div>
+      } @else if (loading() && rfps().length === 0) {
+        <p class="muted">{{ t('common.loading') }}</p>
+      } @else {
+        <app-data-grid
+          [data]="visibleRfps()"
+          [columns]="rfpColumns"
+          [trackBy]="trackRfp"
+          [searchable]="false"
+          [groupable]="false"
+          [clickable]="true"
+          (rowClick)="openDetail($event.id)" />
+      }
+
+      @if (detail(); as d) {
+        <div class="ds-modal-backdrop" (click)="closeDetail()">
+          <div class="ds-modal ds-modal-lg" (click)="$event.stopPropagation()">
+            <div class="ds-modal-header">
+              <span class="ds-modal-title">
+                <span class="detail-title-text">{{ d.rfp.title }}</span>
+                <span class="ds-badge ds-badge-outline">{{ d.rfp.phase }}</span>
+              </span>
+              <button type="button" class="ds-modal-close" [attr.aria-label]="t('common.close')" (click)="closeDetail()">×</button>
             </div>
-            <div class="muted">
-              client: {{ d.client.name }} @if (d.client.industry) {({{ d.client.industry }})}
-            </div>
-          </div>
-
-          <div class="card">
-            <h3>Positions</h3>
-            @for (position of d.positions; track position.id) {
-              <div class="row">
-                <strong>{{ position.title }}</strong>
-                <span class="badge">×{{ position.headcount }}</span>
-                <span class="badge">{{ position.status }}</span>
-                @for (proc of processesFor(position.id); track proc.id) {
-                  <span class="proc">
-                    {{ proc.candidateName }}
-                    <span class="badge">{{ proc.stage }}</span>
-                    @if (canRecruit()) {
-                      @for (target of nextStages(proc.stage); track target) {
-                        <button (click)="transition(proc, target)">{{ target }}</button>
-                      }
-                    }
-                  </span>
-                }
-              </div>
-            }
-            @if (canRecruit() && d.rfp.phase !== 'draft') {
-              <div class="row">
-                <select (change)="onPickCandidate($event)">
-                  <option value="">open process for candidate…</option>
-                  @for (c of candidates(); track c.id) {
-                    <option [value]="c.id">{{ c.name }}</option>
-                  }
-                </select>
-              </div>
-            }
-            @if (canRecruit()) {
-              <div class="row">
-                <input placeholder="new position title" [value]="positionTitle()" (input)="onPositionTitle($event)" />
-                <button
-                  [disabled]="positionTitle().trim().length === 0"
-                  (click)="createPosition()"
-                >
-                  add position
-                </button>
-              </div>
-            }
-          </div>
-
-          <div class="card">
-            <h3>Phase history</h3>
-            @for (h of d.phaseHistory; track h.at) {
-              <div class="row">
-                <span>{{ h.from ?? 'created' }} → {{ h.to }}</span>
-                <span class="badge">{{ h.trigger }}</span>
-                <span class="muted">{{ h.actor }}</span>
-              </div>
-            }
-          </div>
-
-          <div class="card">
-            <h3>Submissions</h3>
-            @for (s of d.submissions; track s.id) {
-              <div class="row">
-                <strong>{{ s.sentBy }}</strong>
-                <span class="badge" [class.ok]="s.response?.outcome === 'accepted'">
-                  {{ s.response?.outcome ?? 'waiting' }}
+            <div class="ds-modal-body">
+              <div class="detail-meta">
+                <span class="muted">
+                  {{ t('talenthub.ongoing.client') }}: {{ d.client.name }}
+                  @if (d.client.industry) { ({{ d.client.industry }}) }
                 </span>
-                <span class="muted">{{ s.note }}</span>
+                <span class="ds-badge ds-badge-outline">{{ d.rfp.kind }}</span>
+                <span class="ds-badge ds-badge-outline">{{ d.rfp.serviceType }}</span>
               </div>
-            }
-            @if (d.submissions.length === 0) {
-              <div class="muted">No submissions yet.</div>
-            }
-          </div>
 
-          @if (canManage()) {
-            <div class="row">
-              @if (!TERMINAL_PHASES.includes(d.rfp.phase)) {
-                <button class="primary" (click)="dialog.set('close')">Close…</button>
-                <button (click)="dialog.set('reject')">Reject…</button>
-              } @else if (d.rfp.phase !== 'archived') {
-                <button (click)="archive()">Archive</button>
+              <h3 class="ds-heading-4">{{ t('talenthub.ongoing.positions') }}</h3>
+              @for (position of d.positions; track position.id) {
+                <div class="row">
+                  <strong>{{ position.title }}</strong>
+                  <span class="ds-badge ds-badge-outline">×{{ position.headcount }}</span>
+                  <span class="ds-badge ds-badge-outline">{{ position.status }}</span>
+                  @for (proc of processesFor(position.id); track proc.id) {
+                    <span class="proc">
+                      {{ proc.candidateName }}
+                      <span class="ds-badge ds-badge-outline">{{ proc.stage }}</span>
+                      @if (canRecruit()) {
+                        @for (target of nextStages(proc.stage); track target) {
+                          <button
+                            type="button"
+                            class="ds-btn ds-btn-secondary ds-btn-sm"
+                            (click)="transition(proc, target)">
+                            {{ target }}
+                          </button>
+                        }
+                      }
+                    </span>
+                  }
+                </div>
               }
-            </div>
-          }
-        }
-        @if (dialog(); as which) {
-          @if (detail(); as d) {
-            <div class="overlay" (click)="dialog.set(null)">
-              <div class="card dialog" (click)="$event.stopPropagation()">
-                <h3>Confirm {{ which }}</h3>
-                <p class="muted">{{ activeCount() }} active process(es) will be cancelled.</p>
+              @if (canRecruit() && d.rfp.phase !== 'draft') {
+                <div class="ds-form-group">
+                  <select class="ds-select" (change)="onPickCandidate($event)">
+                    <option value="">{{ t('talenthub.ongoing.openProcess') }}</option>
+                    @for (c of candidates(); track c.id) {
+                      <option [value]="c.id">{{ c.name }}</option>
+                    }
+                  </select>
+                </div>
+              }
+              @if (canRecruit()) {
+                <div class="row">
+                  <input
+                    class="ds-input"
+                    [placeholder]="t('talenthub.ongoing.newPosition')"
+                    [value]="positionTitle()"
+                    (input)="onPositionTitle($event)" />
+                  <button
+                    type="button"
+                    class="ds-btn ds-btn-primary ds-btn-sm"
+                    [disabled]="positionTitle().trim().length === 0"
+                    (click)="createPosition()">
+                    {{ t('talenthub.ongoing.addPosition') }}
+                  </button>
+                </div>
+              }
+
+              <h3 class="ds-heading-4">{{ t('talenthub.ongoing.phaseHistory') }}</h3>
+              @for (h of d.phaseHistory; track h.at) {
+                <div class="row">
+                  <span>{{ h.from ?? 'created' }} → {{ h.to }}</span>
+                  <span class="ds-badge ds-badge-outline">{{ h.trigger }}</span>
+                  <span class="muted">{{ h.actor }}</span>
+                </div>
+              }
+
+              <h3 class="ds-heading-4">{{ t('talenthub.ongoing.submissions') }}</h3>
+              @for (s of d.submissions; track s.id) {
+                <div class="row">
+                  <strong>{{ s.sentBy }}</strong>
+                  <span
+                    class="ds-badge"
+                    [class.ds-badge-success]="s.response?.outcome === 'accepted'"
+                    [class.ds-badge-outline]="s.response?.outcome !== 'accepted'">
+                    {{ s.response?.outcome ?? t('talenthub.ongoing.waiting') }}
+                  </span>
+                  <span class="muted">{{ s.note }}</span>
+                </div>
+              }
+              @if (d.submissions.length === 0) {
+                <div class="muted">{{ t('talenthub.ongoing.noSubmissions') }}</div>
+              }
+
+              @if (canManage()) {
+                <div class="row">
+                  @if (!TERMINAL_PHASES.includes(d.rfp.phase)) {
+                    <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" (click)="dialog.set('close')">
+                      {{ t('talenthub.ongoing.close') }}
+                    </button>
+                    <button type="button" class="ds-btn ds-btn-secondary ds-btn-sm" (click)="dialog.set('reject')">
+                      {{ t('talenthub.ongoing.reject') }}
+                    </button>
+                  } @else if (d.rfp.phase !== 'archived') {
+                    <button type="button" class="ds-btn ds-btn-secondary ds-btn-sm" (click)="archive()">
+                      {{ t('talenthub.ongoing.archive') }}
+                    </button>
+                  }
+                </div>
+              }
+              @if (dialog(); as which) {
+                <h3 class="ds-heading-4">{{ t('talenthub.ongoing.confirmTitle', { action: which }) }}</h3>
+                <p class="muted">
+                  {{ t('talenthub.ongoing.activeProcesses', { count: activeCount() }) }}
+                </p>
                 @for (proc of activeRows(); track proc.id) {
                   <div class="row">
-                    <span class="badge danger">cancel</span>
+                    <span class="ds-badge ds-badge-danger">cancel</span>
                     <span>{{ proc.candidateName }} · {{ proc.stage }}</span>
                   </div>
                 }
-                <input
-                  placeholder="reason {{ which === 'reject' ? '(required)' : '(optional)' }}"
-                  [value]="reason()"
-                  (input)="onReason($event)"
-                />
+                <div class="ds-form-group">
+                  <input
+                    class="ds-input"
+                    [placeholder]="
+                      which === 'reject'
+                        ? t('talenthub.ongoing.reasonRequired')
+                        : t('talenthub.ongoing.reasonOptional')
+                    "
+                    [value]="reason()"
+                    (input)="onReason($event)" />
+                </div>
                 <div class="row">
                   <button
-                    class="primary"
+                    type="button"
+                    class="ds-btn ds-btn-primary ds-btn-sm"
                     [disabled]="which === 'reject' && reason().trim().length === 0"
-                    (click)="confirmTerminal(which)"
-                  >
-                    confirm {{ which }}
+                    (click)="confirmTerminal(which)">
+                    {{ t('talenthub.ongoing.confirmAction', { action: which }) }}
                   </button>
-                  <button (click)="dialog.set(null)">keep open</button>
-                </div>
-              </div>
-            </div>
-          }
-        }
-      } @else {
-        @for (group of groups(); track group.phase) {
-          @if (group.rfps.length > 0) {
-            <div class="card">
-              <h3>{{ group.phase }} ({{ group.rfps.length }})</h3>
-              @for (r of group.rfps; track r.id) {
-                <div class="row clickable" (click)="openDetail(r.id)">
-                  <strong>{{ r.title }}</strong>
-                  <span class="badge">{{ r.kind }}</span>
-                  <span class="badge">{{ r.serviceType }}</span>
-                  @if (r.deadline; as dl) {
-                  <span class="muted">due {{ dateOf(dl) }}</span>
-                  }
+                  <button type="button" class="ds-btn ds-btn-ghost ds-btn-sm" (click)="dialog.set(null)">
+                    {{ t('talenthub.ongoing.keepOpen') }}
+                  </button>
                 </div>
               }
+              @if (error(); as err) {
+                <div class="ds-alert ds-alert-danger">{{ err }}</div>
+              }
             </div>
-          }
-        }
+            <div class="ds-modal-footer">
+              <button type="button" class="ds-btn ds-btn-ghost" (click)="closeDetail()">
+                {{ t('common.close') }}
+              </button>
+            </div>
+          </div>
+        </div>
       }
     </div>
   `,
   styles: [
-    SHARED_STYLES +
-      /* css */ `
+    /* css */ `
+      :host {
+        display: block;
+        height: 100%;
+      }
       .wrap {
         padding: 16px;
         height: 100%;
@@ -240,67 +272,60 @@ type ProcessRow = { id: string; positionId: string; candidateName: string; stage
       }
       .head {
         display: flex;
-        gap: 10px;
         align-items: center;
+        gap: 10px;
         margin-bottom: 12px;
       }
       .head h2 {
         margin: 0;
+        color: var(--portal-text-primary);
+        font-size: var(--portal-font-size-xl);
+        font-weight: var(--portal-font-weight-semibold);
       }
-      .row,
-      .actions {
+      .muted {
+        color: var(--portal-text-muted);
+        font-size: var(--portal-font-size-sm);
+      }
+      .row {
         display: flex;
         gap: 8px;
         align-items: center;
         flex-wrap: wrap;
       }
-      input,
-      select,
-      button {
-        border: 1px solid var(--portal-badge-border, #d1d5db);
-        border-radius: 8px;
-        padding: 5px 10px;
-        font: inherit;
-        color: inherit;
-        background: transparent;
+      .detail-title-text {
+        color: var(--portal-text-primary);
+        font-weight: var(--portal-font-weight-medium);
       }
-      button.primary {
-        background: var(--portal-accent-primary, #2563eb);
-        color: #fff;
-        border: none;
-      }
-      button {
-        border: 1px solid var(--portal-badge-border, #d1d5db);
-        background: transparent;
-        cursor: pointer;
+      .detail-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
       }
       .proc span {
         margin-right: 4px;
       }
-      .clickable {
-        cursor: pointer;
-        padding: 4px 0;
-      }
-      .overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.4);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .dialog {
-        max-width: 460px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
     `,
   ],
 })
-export class OngoingComponent implements OnInit {
+export class OngoingComponent implements OnInit, OnDestroy {
   private readonly client = inject(ModuleClient);
   private readonly signalReady = mfeReadyDispatcher();
+  private readonly kit = inject(UI_I18N);
+  private readonly mfeI18n = inject(MfeI18n);
+
+  /** Escape closes the confirm step first, then the detail modal. */
+  private readonly onEscape = (event: KeyboardEvent): void => {
+    if (event.key !== 'Escape') return;
+    if (this.dialog() !== null) this.dialog.set(null);
+    else if (this.detail() !== null) this.closeDetail();
+  };
+
+  /** Template convenience; kit labels fall back to English defaults. */
+  protected t(key: string, params?: Record<string, string | number>): string {
+    return this.kit.t(key, params);
+  }
 
   readonly terminalPhases = TERMINAL_STAGES;
   readonly STAGE_TRANSITIONS = STAGE_TRANSITIONS;
@@ -321,22 +346,61 @@ export class OngoingComponent implements OnInit {
   readonly positionTitle = signal('');
   readonly pickedCandidate = signal('');
 
-  private user: { sub: string; name?: string | null; roles: string[] } | null = null;
+  readonly rfpColumns: GridColumn<Rfp>[] = [
+    {
+      key: 'title',
+      header: 'Title',
+      headerKey: 'talenthub.capture.col.title',
+      accessor: (r) => r.title,
+    },
+    {
+      key: 'kind',
+      header: 'Kind',
+      headerKey: 'talenthub.capture.col.kind',
+      accessor: (r) => r.kind,
+    },
+    {
+      key: 'serviceType',
+      header: 'Service',
+      headerKey: 'talenthub.capture.col.service',
+      accessor: (r) => r.serviceType,
+    },
+    {
+      key: 'phase',
+      header: 'Phase',
+      headerKey: 'talenthub.ongoing.col.phase',
+      accessor: (r) => r.phase,
+    },
+    {
+      key: 'deadline',
+      header: 'Deadline',
+      headerKey: 'talenthub.capture.col.deadline',
+      accessor: (r) => r.deadline ?? '',
+      format: (v) =>
+        v ? this.kit.formatDate(String(v), { dateStyle: 'medium' }) : '',
+      width: '130px',
+    },
+  ];
 
-  readonly canManage = computed(() => canManage(this.user));
-  readonly canRecruit = computed(() => canRecruit(this.user));
+  readonly trackRfp = (r: Rfp, _index: number): string => r.id;
 
-  readonly groups = computed(() => {
+  private readonly userSig = signal<{
+    sub: string;
+    name?: string | null;
+    roles: string[];
+  } | null>(null);
+
+  readonly canManage = computed(() => canManage(this.userSig()));
+  readonly canRecruit = computed(() => canRecruit(this.userSig()));
+
+  readonly visibleRfps = computed(() => {
     const term = this.term().toLowerCase();
     const phaseFilter = this.filter();
-    return this.phases.map((phase) => ({
-      phase,
-      rfps: this.rfps().filter(
-        (r) =>
-          (phaseFilter === '' || r.phase === phaseFilter) &&
-          (term.length === 0 || r.title.toLowerCase().includes(term)),
-      ),
-    }));
+    return this.rfps().filter(
+      (r) =>
+        (phaseFilter === '' || r.phase === phaseFilter) &&
+        (term.length === 0 || r.title.toLowerCase().includes(term)),
+    );
   });
 
   readonly activeCount = computed(() => this.activeRows().length);
@@ -346,17 +410,54 @@ export class OngoingComponent implements OnInit {
   );
 
   ngOnInit(): void {
+    document.addEventListener('keydown', this.onEscape);
     void this.refreshList();
+    void this.loadPortalContext();
+  }
+
+  ngOnDestroy(): void {
+    document.removeEventListener('keydown', this.onEscape);
   }
 
   mount(context: {
     user: { sub: string; name?: string | null; roles: string[] } | null;
     language: string;
   }): void {
-    this.user = context.user;
+    this.userSig.set(context.user);
+    if (context.language) {
+      this.mfeI18n.setContextLanguage(context.language);
+    }
   }
 
   unmount(): void {}
+
+  /**
+   * Identity/language arrive via the portal document (same-origin session):
+   * Angular Elements exposes no component methods, so the mount() contract
+   * cannot be relied on — the element loads its own /api/config context instead.
+   */
+  private async loadPortalContext(): Promise<void> {
+    try {
+      const res = await fetch('/api/config');
+      if (res.ok) {
+        const config = (await res.json()) as {
+          user?: { sub: string; name?: string | null; roles: string[] } | null;
+          preferences?: { language?: string };
+        };
+        if (config.user) {
+          this.userSig.set(config.user);
+        }
+        const preferred = config.preferences?.language;
+        const language =
+          typeof preferred === 'string' && preferred
+            ? preferred
+            : new Intl.Locale(navigator.language || 'en-GB').toString();
+        this.mfeI18n.setContextLanguage(language);
+      }
+    } catch {
+      // No portal context — kit labels fall back to English defaults.
+    }
+  }
 
   private async refreshList(): Promise<void> {
     this.loading.set(true);
@@ -377,14 +478,14 @@ export class OngoingComponent implements OnInit {
     return res.rfps ?? [];
   }
 
-  openList(): void {
+  protected closeDetail(): void {
     this.detailId.set(null);
     this.detail.set(null);
     this.dialog.set(null);
-    void this.refreshList();
+    this.reason.set('');
   }
 
-  private async openDetail(id: string): Promise<void> {
+  protected async openDetail(id: string): Promise<void> {
     this.detailId.set(id);
     this.loading.set(true);
     try {
@@ -412,19 +513,15 @@ export class OngoingComponent implements OnInit {
     }
   }
 
-  dateOf(iso: string): string {
-    return new Date(iso).toLocaleDateString();
-  }
-
-  onFilter(event: Event): void {
+  protected onFilter(event: Event): void {
     this.filter.set((event.target as HTMLSelectElement).value);
   }
 
-  onTerm(event: Event): void {
+  protected onTerm(event: Event): void {
     this.term.set((event.target as HTMLInputElement).value);
   }
 
-  private async transition(row: ProcessRow, target: string): Promise<void> {
+  protected async transition(row: ProcessRow, target: string): Promise<void> {
     try {
       await this.client.patch('/api/processes/' + row.id + '/stage', { toStage: target });
       void this.openDetail(this.detailId()!);
@@ -433,7 +530,7 @@ export class OngoingComponent implements OnInit {
     }
   }
 
-  onPickCandidate(event: Event): void {
+  protected onPickCandidate(event: Event): void {
     this.pickedCandidate.set((event.target as HTMLSelectElement).value);
     const candidateId = this.pickedCandidate();
     if (candidateId) {
@@ -444,7 +541,7 @@ export class OngoingComponent implements OnInit {
   private async openProcess(candidateId: string): Promise<void> {
     const positions = (this.detail()?.positions ?? []);
     if (positions.length === 0) {
-      this.error.set('create a position first.');
+      this.error.set(this.t('talenthub.ongoing.createPositionFirst'));
       return;
     }
     try {
@@ -457,11 +554,11 @@ export class OngoingComponent implements OnInit {
     }
   }
 
-  onPositionTitle(event: Event): void {
+  protected onPositionTitle(event: Event): void {
     this.positionTitle.set((event.target as HTMLInputElement).value);
   }
 
-  private async createPosition(): Promise<void> {
+  protected async createPosition(): Promise<void> {
     try {
       await this.client.post('/api/rfps/' + this.detailId() + '/positions', {
         title: this.positionTitle().trim(),
@@ -474,11 +571,11 @@ export class OngoingComponent implements OnInit {
     }
   }
 
-  onReason(event: Event): void {
+  protected onReason(event: Event): void {
     this.reason.set((event.target as HTMLInputElement).value);
   }
 
-  private async confirmTerminal(which: 'close' | 'reject'): Promise<void> {
+  protected async confirmTerminal(which: 'close' | 'reject'): Promise<void> {
     const id = this.detailId();
     if (!id) {
       return;
@@ -502,15 +599,15 @@ export class OngoingComponent implements OnInit {
     }
   }
 
-  nextStages(stage: string): string[] {
+  protected nextStages(stage: string): string[] {
     return STAGE_TRANSITIONS[stage as keyof typeof STAGE_TRANSITIONS] ?? [];
   }
 
-  processesFor(positionId: string): ProcessRow[] {
+  protected processesFor(positionId: string): ProcessRow[] {
     return this.rows().filter((row) => row.positionId === positionId);
   }
 
-  private async archive(): Promise<void> {
+  protected async archive(): Promise<void> {
     const id = this.detailId();
     if (!id) {
       return;
@@ -523,4 +620,3 @@ export class OngoingComponent implements OnInit {
     }
   }
 }
-

@@ -28,22 +28,6 @@ public final class EmbeddedCatalog {
   public static final List<Module> CATALOG =
       List.of(
           new Module(
-              "portal-dashboard",
-              "Dashboard",
-              "layout",
-              "1.0",
-              List.of(),
-              List.of(
-                  new Entry(
-                      "main",
-                      "applications",
-                      "Dashboard",
-                      "portal-dashboard",
-                      "#6366f1",
-                      -1,
-                      false,
-                      List.of()))),
-          new Module(
               "module-registry",
               "Module registry",
               "grid",
@@ -73,15 +57,6 @@ public final class EmbeddedCatalog {
                       "settings",
                       "#64748b",
                       -1,
-                      false,
-                      List.of()),
-                  new Entry(
-                      "general",
-                      "admin-settings",
-                      "General",
-                      "portal-general-settings",
-                      "#64748b",
-                      0,
                       false,
                       List.of()))),
           new Module(
@@ -144,12 +119,39 @@ public final class EmbeddedCatalog {
                       false,
                       List.of()),
                   new Entry(
-                      "portal-nav",
+                      "general",
                       "admin-settings",
-                      "Portal navigation",
-                      "navigation-portal",
+                      "General",
+                      "navigation-general",
                       "#10b981",
                       7,
+                      false,
+                      List.of("portal-navigation-edit")),
+                  new Entry(
+                      "apps",
+                      "admin-settings",
+                      "App navigation",
+                      "navigation-apps-nav",
+                      "#10b981",
+                      8,
+                      false,
+                      List.of("portal-navigation-edit")),
+                  new Entry(
+                      "settings-tree",
+                      "admin-settings",
+                      "Settings navigation",
+                      "navigation-settings-nav",
+                      "#10b981",
+                      9,
+                      false,
+                      List.of("portal-navigation-edit")),
+                  new Entry(
+                      "user-tree",
+                      "admin-settings",
+                      "User settings navigation",
+                      "navigation-user-nav-tree",
+                      "#10b981",
+                      10,
                       false,
                       List.of("portal-navigation-edit")))),
           new Module(

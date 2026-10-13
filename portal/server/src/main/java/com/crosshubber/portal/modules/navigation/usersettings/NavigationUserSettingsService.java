@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.crosshubber.portal.common.JsonUtils;
-import com.crosshubber.portal.modules.navigation.NavigationValidationService;
+import com.crosshubber.portal.common.Keys;
 import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
 import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
 
@@ -53,7 +53,7 @@ public class NavigationUserSettingsService {
 
   public Map<String, Object> mergeUserSettings(
       List<ModuleContentEntity> moduleContents, Map<String, Object> stored) {
-    Map<String, Object> defaults = defaultUserSettings(moduleContents);
+    Map<String, Object> defaults = defaultUserSettings();
     if (stored == null) {
       return defaults;
     }
@@ -62,10 +62,17 @@ public class NavigationUserSettingsService {
         stored.get("sidebar") instanceof Map<?, ?> m ? castMap(m) : new LinkedHashMap<>();
 
     Map<String, Object> sidebar = new LinkedHashMap<>(defaultsSidebar);
+    // Explicit nulls in the stored doc fall back to the default instead of persisting.
+    storedSidebar.entrySet().removeIf(e -> e.getValue() == null);
     sidebar.putAll(storedSidebar);
-    Object apps = storedSidebar.get("apps");
-    if (!(apps instanceof List<?>)) {
-      sidebar.put("apps", defaultsSidebar.get("apps"));
+    if (!(sidebar.get("showRecent") instanceof Boolean)) {
+      sidebar.put("showRecent", defaultsSidebar.get("showRecent"));
+    }
+    if (!(sidebar.get("recentLimit") instanceof Integer i) || i < 1 || i > 50) {
+      sidebar.put("recentLimit", defaultsSidebar.get("recentLimit"));
+    }
+    if (!(sidebar.get("recentApps") instanceof List<?>)) {
+      sidebar.put("recentApps", defaultsSidebar.get("recentApps"));
     }
     Object expanded = stored.get("sidebarExpanded");
     Map<String, Object> out = new LinkedHashMap<>();
@@ -118,17 +125,34 @@ public class NavigationUserSettingsService {
       if (showWorkspaces != null && !showWorkspaces.isBoolean()) {
         return "sidebar.showWorkspaces: must be a boolean";
       }
-      JsonNode apps = sidebar.get("apps");
-      if (apps != null && apps.isNull()) {
-        return "sidebar.apps: Invalid input: expected array, received null";
+      JsonNode showRecent = sidebar.get("showRecent");
+      if (showRecent != null && showRecent.isNull()) {
+        return "sidebar.showRecent: Invalid input: expected boolean, received null";
       }
-      if (apps != null) {
-        if (!apps.isArray() || apps.size() > 500) {
-          return "sidebar.apps: must be an array of at most 500 strings";
+      if (showRecent != null && !showRecent.isBoolean()) {
+        return "sidebar.showRecent: must be a boolean";
+      }
+      JsonNode recentLimit = sidebar.get("recentLimit");
+      if (recentLimit != null && recentLimit.isNull()) {
+        return "sidebar.recentLimit: Invalid input: expected integer, received null";
+      }
+      if (recentLimit != null
+          && (!recentLimit.isNumber() || recentLimit.asInt(0) < 1 || recentLimit.asInt(0) > 50)) {
+        return "sidebar.recentLimit: must be an integer between 1 and 50";
+      }
+      JsonNode recentApps = sidebar.get("recentApps");
+      if (recentApps != null && recentApps.isNull()) {
+        return "sidebar.recentApps: Invalid input: expected array, received null";
+      }
+      if (recentApps != null) {
+        if (!recentApps.isArray() || recentApps.size() > 100) {
+          return "sidebar.recentApps: must be an array of at most 100 refs";
         }
-        for (JsonNode app : apps) {
-          if (!app.isString() || app.asString().length() > 255) {
-            return "sidebar.apps: must be an array of at most 500 strings";
+        for (JsonNode ref : recentApps) {
+          if (!ref.isString()
+              || ref.asString().length() > 255
+              || !ref.asString().matches(Keys.REF_RE)) {
+            return "sidebar.recentApps: must be an array of \"moduleKey:contentKey\" strings";
           }
         }
       }
@@ -167,10 +191,16 @@ public class NavigationUserSettingsService {
       if (sidebar.hasNonNull("showWorkspaces")) {
         nextSidebar.put("showWorkspaces", sidebar.get("showWorkspaces").asBoolean());
       }
-      if (sidebar.hasNonNull("apps")) {
-        List<String> apps = new ArrayList<>();
-        sidebar.get("apps").forEach(a -> apps.add(a.asString()));
-        nextSidebar.put("apps", apps);
+      if (sidebar.hasNonNull("showRecent")) {
+        nextSidebar.put("showRecent", sidebar.get("showRecent").asBoolean());
+      }
+      if (sidebar.hasNonNull("recentLimit")) {
+        nextSidebar.put("recentLimit", sidebar.get("recentLimit").asInt(10));
+      }
+      if (sidebar.hasNonNull("recentApps")) {
+        List<String> recentApps = new ArrayList<>();
+        sidebar.get("recentApps").forEach(a -> recentApps.add(a.asString()));
+        nextSidebar.put("recentApps", recentApps);
       }
     }
     next.put("sidebar", nextSidebar);
@@ -184,12 +214,14 @@ public class NavigationUserSettingsService {
     return next;
   }
 
-  /** Default sidebar settings — every visible app ref ordered by sortOrder. */
-  public Map<String, Object> defaultUserSettings(List<ModuleContentEntity> moduleContents) {
+  /** Default sidebar settings: all blocks on, last-10 recently-used tracking. */
+  public Map<String, Object> defaultUserSettings() {
     Map<String, Object> sidebar = new LinkedHashMap<>();
     sidebar.put("showPinned", true);
     sidebar.put("showWorkspaces", true);
-    sidebar.put("apps", NavigationValidationService.buildDefaultSidebarApps(moduleContents));
+    sidebar.put("showRecent", true);
+    sidebar.put("recentLimit", 10);
+    sidebar.put("recentApps", new ArrayList<String>());
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("sidebar", sidebar);
     out.put("sidebarExpanded", new ArrayList<String>());

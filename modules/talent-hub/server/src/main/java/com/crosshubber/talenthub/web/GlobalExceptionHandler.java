@@ -2,6 +2,8 @@ package com.crosshubber.talenthub.web;
 
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +15,8 @@ import org.springframework.web.server.ResponseStatusException;
 /** JSON error envelope — mirrors the portal contract ({@code {"error": "..."}}). */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
   @ExceptionHandler(ResponseStatusException.class)
   public ResponseEntity<Map<String, String>> responseStatus(ResponseStatusException e) {
@@ -43,6 +47,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, String>> unexpected(Exception e) {
+    log.error("[web] unhandled exception", e);
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(Map.of("error", "internal error"));
   }

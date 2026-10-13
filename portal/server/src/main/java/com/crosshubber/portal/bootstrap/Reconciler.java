@@ -26,6 +26,7 @@ import com.crosshubber.portal.modules.i18n.settings.I18nSettingsEntity;
 import com.crosshubber.portal.modules.i18n.settings.I18nSettingsRepository;
 import com.crosshubber.portal.modules.navigation.settings.NavigationSettingsEntity;
 import com.crosshubber.portal.modules.navigation.settings.NavigationSettingsRepository;
+import com.crosshubber.portal.modules.navigation.shelltree.ShellSections;
 import com.crosshubber.portal.modules.registry.dto.SecurityRoleDto;
 import com.crosshubber.portal.modules.registry.manifest.InstallService;
 import com.crosshubber.portal.modules.registry.manifest.LegacyManifests;
@@ -89,6 +90,7 @@ public class Reconciler implements ApplicationRunner {
   private final ObjectMapper objectMapper;
   private final TransactionTemplate transactionTemplate;
   private final KcAdminClient kcAdminClient;
+  private final ShellSections shellSections;
 
   public Reconciler(
       TenantConfigLoader tenantLoader,
@@ -107,7 +109,8 @@ public class Reconciler implements ApplicationRunner {
       ManifestFetcher manifestFetcher,
       ObjectMapper objectMapper,
       TransactionTemplate transactionTemplate,
-      KcAdminClient kcAdminClient) {
+      KcAdminClient kcAdminClient,
+      ShellSections shellSections) {
     this.tenantLoader = tenantLoader;
     this.moduleRepo = moduleRepo;
     this.contentRepo = contentRepo;
@@ -125,6 +128,7 @@ public class Reconciler implements ApplicationRunner {
     this.objectMapper = objectMapper;
     this.transactionTemplate = transactionTemplate;
     this.kcAdminClient = kcAdminClient;
+    this.shellSections = shellSections;
   }
 
   @Override
@@ -142,6 +146,7 @@ public class Reconciler implements ApplicationRunner {
           reconcileBuiltins(tenant);
           reconcileBuiltinManifests();
           persistExternalModules(tenant, externalManifests);
+          reconcileShellSections();
           reconcileProviders(tenant);
           reconcileNavigationSettings(tenant);
           reconcileI18n(tenant);
@@ -211,6 +216,17 @@ public class Reconciler implements ApplicationRunner {
     for (JsonNode manifest : externalManifests.values()) {
       installService.syncRealmRoles(manifest);
     }
+  }
+
+  /**
+   * Shell-tree section seeding (see {@link ShellSections}): after builtins are upserted, every
+   * ungrouped content lands in its module section (Core for the shell module). Insert-if-absent and
+   * idempotent — admin-made trees are untouched.
+   */
+  private void reconcileShellSections() {
+    shellSections.reconcileSections(ModuleContentCategory.APPLICATIONS);
+    shellSections.reconcileSections(ModuleContentCategory.ADMIN_SETTINGS);
+    shellSections.reconcileSections(ModuleContentCategory.USER_SETTINGS);
   }
 
   /**
@@ -322,7 +338,7 @@ public class Reconciler implements ApplicationRunner {
     }
     log.info("[reconcile] upserted {} builtin modules", upserted);
     // Remove retired builtins (guard: builtin=true only removeBuiltin)
-    for (String retired : new String[] {"llm-providers", "ai-assistant"}) {
+    for (String retired : new String[] {"llm-providers", "ai-assistant", "portal-dashboard"}) {
       moduleRepo
           .findById(retired)
           .ifPresent(
@@ -334,13 +350,17 @@ public class Reconciler implements ApplicationRunner {
               });
     }
     // Retired builtin module content: settings-nav / user-nav were absorbed into the
-    // portal-nav screen tabs; the ai-hub chat channels settings page was removed.
+    // portal-nav screen tabs; portal-nav was then re-split into four navigation admin
+    // pages and settings:general merged into navigation:general (2026-10 evolution).
     // Delete leftover rows on existing installs.
     for (String[] retiredEp :
         new String[][] {
           {"navigation", "settings-nav"},
           {"navigation", "user-nav"},
-          {"ai-hub", "channels"}
+          {"navigation", "portal-nav"},
+          {"settings", "general"},
+          {"ai-hub", "channels"},
+          {"portal-dashboard", "main"}
         }) {
       contentRepo
           .findByModuleKeyAndContentKey(retiredEp[0], retiredEp[1])

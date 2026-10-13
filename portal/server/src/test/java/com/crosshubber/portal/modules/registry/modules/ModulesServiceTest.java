@@ -53,10 +53,10 @@ class ModulesServiceTest {
 
   @Test
   void removeRejectsBuiltinModules() {
-    when(repo.findById("portal-dashboard")).thenReturn(Optional.of(module(true)));
+    when(repo.findById("navigation")).thenReturn(Optional.of(module(true)));
 
     ResponseStatusException ex =
-        assertThrows(ResponseStatusException.class, () -> service.remove("portal-dashboard"));
+        assertThrows(ResponseStatusException.class, () -> service.remove("navigation"));
 
     assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
     verify(settings, never()).delete("demo");

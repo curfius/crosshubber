@@ -186,6 +186,30 @@ All components in `portal/ui/src/design-system/styles/components.css`.
 - Step states: active, completed, error, disabled
 - Indicators with state colors, titles, summaries, actions
 
+## Shared UI Kit (`design-system/components/`)
+
+Workspace-agnostic Angular sources shared by the portal shell and module MFEs
+(source of truth; vendored copies are synced into consumers by
+`scripts/sync-design-system.mjs` and committed to git). Edit the kit source,
+then run the sync; never edit vendored copies directly.
+
+- **`i18n.ts`** — `UI_I18N` InjectionToken + `UiI18n` contract
+  (`t` / `formatDate` / `formatNumber` / `locale`). Portal binds
+  `PortalUiI18n` (adapter over `I18nService`) in `app.config.ts`; MFEs bind
+  `MfeI18n` (public `/api/i18n/*` bundles + `portal:language` events).
+- **`mfe-i18n.ts`** — MFE-side label implementation (portal public bundles,
+  `contentVersion`-keyed localStorage cache).
+- **`grid/`** — shared data grid (`app-data-grid`): sortable columns, search,
+  group-by, per-column filter row, empty state (`emptyKey` input), custom cell
+  templates via `gridCell`, and an actions zone — `<button gridActions>…`
+  renders in the toolbar after the filter toggle.
+
+Kit contract: every host loads the design system globally (tokens +
+`components.css`); portal-hosted MFE elements use emulated encapsulation so
+portal globals (`.ds-*` classes, tokens, themes) style module-authored markup.
+Component css only covers component-private layout (toolbar, sort, filters),
+never table/card/button primitives.
+
 ## Angular Implementation Patterns
 
 ### Zoneless & Signals
@@ -209,6 +233,9 @@ All components in `portal/ui/src/design-system/styles/components.css`.
 - Runtime i18n is DB-backed (`I18nService`, localStorage cache keyed by `contentVersion`)
 - Templates call `i18n.t('key')`
 - Hardcoded English strings in templates are bugs
+- For MFE elements: bind `UI_I18N` to `MfeI18n` at bootstrap and call labels
+  through it (same DB-backed catalog — module keys live there too, e.g.
+  `talenthub.*`)
 
 ### CSS Usage
 - Use design tokens (`var(--portal-*)`) — never raw hex colors

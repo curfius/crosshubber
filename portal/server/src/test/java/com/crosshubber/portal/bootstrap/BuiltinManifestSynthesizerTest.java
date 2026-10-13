@@ -132,8 +132,8 @@ class BuiltinManifestSynthesizerTest {
     assertThat(tools.get(1).path("roles").toString()).isEqualTo("[\"portal-msgcenter-edit\"]");
     assertThat(msgcenter.path("skills")).isEmpty();
 
-    JsonNode dashboard = synthesizer.synthesize(catalogModule("portal-dashboard"));
-    assertThat(dashboard.path("agentic").path("tools")).isEmpty();
+    JsonNode userSettings = synthesizer.synthesize(catalogModule("user-settings"));
+    assertThat(userSettings.path("agentic").path("tools")).isEmpty();
   }
 
   @Test

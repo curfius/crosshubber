@@ -53,6 +53,8 @@ export interface NavigationGroup {
   sortOrder: number;
   icon?: string;
   roles?: string[];
+  /** Section display color; unset = neutral header styling. */
+  color?: string;
 }
 
 // ── Services & User ───────────────────────────────────────────────────

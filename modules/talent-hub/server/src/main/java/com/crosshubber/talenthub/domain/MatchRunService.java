@@ -40,6 +40,24 @@ public class MatchRunService {
     return MatchingService.rank(candidateRepository.findAll(), requirements, effectiveTopN(topN));
   }
 
+  /** Persisted runs of an RFP, newest first (read surface for agent tools). */
+  @Transactional(readOnly = true)
+  public List<MatchRunEntity> runsFor(UUID rfpId) {
+    return matchRunRepository.findByRfpIdOrderByCreatedAtDesc(rfpId);
+  }
+
+  /** Single persisted run by id (read surface for agent tools). */
+  @Transactional(readOnly = true)
+  public MatchRunEntity get(UUID runId) {
+    if (runId == null) {
+      throw new IllegalArgumentException("runId is required");
+    }
+    return matchRunRepository
+        .findById(runId)
+        .orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "match run not found"));
+  }
+
   @Transactional
   public MatchRunEntity createMatchRun(UUID rfpId, Integer topN, String engine, String actor) {
     if (engine != null && !"rules".equals(engine)) {

@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component,
+import {
+  ChangeDetectionStrategy,
+  Component,
   computed,
   effect,
   ElementRef,
@@ -9,7 +11,8 @@ import { ChangeDetectionStrategy, Component,
   viewChild,
   ViewContainerRef,
   type AfterViewInit,
-  type OnDestroy, } from '@angular/core';
+  type OnDestroy,
+} from '@angular/core';
 import { Bridge } from '../../core/bridge/bridge.service';
 import { buildIframeAgentScript } from '../../core/bridge/iframe-agent';
 import { I18nService } from '../../core/i18n/i18n.service';
@@ -76,6 +79,7 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   private mounted = false;
   private element: (HTMLElement & { mount?: unknown; unmount?: () => void }) | null = null;
   private previousEpId = '';
+  private previousContent: PortalModuleContent | null = null;
   private viewReady = false;
   private destroyed = false;
 
@@ -84,8 +88,10 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
       const ep = this.content();
       const epId = moduleContentId(ep);
       if (this.viewReady && epId !== this.previousEpId) {
+        const old = this.previousContent;
         this.previousEpId = epId;
-        this.cleanup();
+        this.previousContent = ep;
+        this.cleanup(old);
         this.loading.set(true);
         this.render();
       }
@@ -94,24 +100,29 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.previousEpId = moduleContentId(this.content());
+    this.previousContent = this.content();
     this.viewReady = true;
     this.render();
   }
 
   ngOnDestroy(): void {
     this.destroyed = true;
-    this.cleanup();
+    this.cleanup(this.previousContent ?? this.content());
     this.hostVcr()?.clear();
   }
 
-  private cleanup(): void {
-    const ep = this.content();
-    if (ep.type === 'mfe') {
+  private cleanup(oldEp: PortalModuleContent | null): void {
+    const ep = oldEp ?? this.previousContent;
+    if (ep?.type === 'mfe') {
       this.bridge.unregisterMfe(ep.moduleKey);
     }
-    if (ep.type === 'iframe') {
+    if (ep?.type === 'iframe') {
       this.bridge.unregisterIframe(ep.moduleKey);
     }
+    // Embedded views share the #host container with MFE elements — always
+    // clear the outlet so a previous embedded screen never stacks below the
+    // next entry.
+    this.hostVcr()?.clear();
     // Remove dynamically created iframe
     const iframeHost = this.iframeHost()?.nativeElement;
     if (iframeHost) {
@@ -140,7 +151,9 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   private renderIframe(): void {
     const ep = this.content();
     if (!ep.url || isSelfFraming(ep.url)) {
-      console.error(`[portal] blocked iframe "${ep.moduleKey}/${ep.contentKey}" — url frames the portal app: ${ep.url}`);
+      console.error(
+        `[portal] blocked iframe "${ep.moduleKey}/${ep.contentKey}" — url frames the portal app: ${ep.url}`,
+      );
       this.loading.set(false);
       return;
     }
@@ -175,6 +188,9 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   }
 
   private renderEmbedded(loadPath: string): void {
+    const ep = this.content();
+    const expected = moduleContentId(ep);
+    const stale = () => this.destroyed || moduleContentId(this.content()) !== expected;
     const loader = embeddedModules[loadPath];
     if (!loader) {
       console.error(`[portal] no embedded module registered for loadPath "${loadPath}"`);
@@ -183,11 +199,15 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
     }
     loader()
       .then((type) => {
+        // A slow import resolving after the entry changed must never mount —
+        // it would stack below (or clear) the current screen.
+        if (stale()) return;
         this.hostVcr()?.clear();
         this.hostVcr()?.createComponent(type);
         this.loading.set(false);
       })
       .catch((err) => {
+        if (stale()) return;
         console.error(`[portal] failed to load embedded module "${loadPath}":`, err);
         this.loading.set(false);
       });
@@ -219,7 +239,13 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
       // Deliver a restore that arrived while the MFE was still loading (D11).
       const pending = this.coordinator.consumePendingPath(ep.moduleKey);
       if (pending) {
-        el.dispatchEvent(new CustomEvent('portal:restore', { detail: { path: pending }, bubbles: true, composed: true }));
+        el.dispatchEvent(
+          new CustomEvent('portal:restore', {
+            detail: { path: pending },
+            bubbles: true,
+            composed: true,
+          }),
+        );
       }
       setTimeout(() => this.loading.set(false), 4000);
       this.mounted = true;
@@ -248,7 +274,8 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
     }
   }
 
-  private ensureScript(url: string): Promise<void> {    const existing = loadedScripts.get(url);
+  private ensureScript(url: string): Promise<void> {
+    const existing = loadedScripts.get(url);
     if (existing) return existing;
     const promise = new Promise<void>((resolve, reject) => {
       const script = document.createElement('script');
@@ -273,7 +300,9 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
   private injectIframeMonitor(): void {
     const ep = this.content();
     if (ep.type !== 'iframe' || !ep.url || isSelfFraming(ep.url)) return;
-    const iframe = this.iframeHost()?.nativeElement?.querySelector('iframe') as HTMLIFrameElement | null;
+    const iframe = this.iframeHost()?.nativeElement?.querySelector(
+      'iframe',
+    ) as HTMLIFrameElement | null;
     if (!iframe) return;
 
     this.bridge.registerIframe(ep.moduleKey, iframe, ep.url);
@@ -296,7 +325,10 @@ export class AppOutlet implements AfterViewInit, OnDestroy {
       script.textContent = buildIframeAgentScript(ep.moduleKey, window.location.origin);
       doc.body.appendChild(script);
     } catch (err) {
-      console.warn(`[portal] iframe agent injection failed for "${ep.moduleKey}" (contract-only mode):`, err);
+      console.warn(
+        `[portal] iframe agent injection failed for "${ep.moduleKey}" (contract-only mode):`,
+        err,
+      );
     }
   }
 }

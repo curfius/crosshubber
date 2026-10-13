@@ -5,19 +5,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.crosshubber.talenthub.domain.RfpCaptureService;
+import com.crosshubber.talenthub.domain.RfpDeleteService;
 import com.crosshubber.talenthub.domain.RfpDtos;
 import com.crosshubber.talenthub.domain.RfpPhase;
 import com.crosshubber.talenthub.domain.RfpQueryService;
-import com.crosshubber.talenthub.domain.RfpRepository;
 import com.crosshubber.talenthub.domain.RfpWorkflowService;
 import com.crosshubber.talenthub.security.AgentPrincipals;
 import com.crosshubber.talenthub.security.ModuleRoles;
@@ -32,17 +35,17 @@ public class RfpController {
   private final RfpCaptureService captureService;
   private final RfpWorkflowService workflowService;
   private final RfpQueryService queryService;
-  private final RfpRepository rfpRepository;
+  private final RfpDeleteService deleteService;
 
   public RfpController(
       RfpCaptureService captureService,
       RfpWorkflowService workflowService,
       RfpQueryService queryService,
-      RfpRepository rfpRepository) {
+      RfpDeleteService deleteService) {
     this.captureService = captureService;
     this.workflowService = workflowService;
     this.queryService = queryService;
-    this.rfpRepository = rfpRepository;
+    this.deleteService = deleteService;
   }
 
   @GetMapping("/api/rfps")
@@ -84,11 +87,7 @@ public class RfpController {
     ModuleRoles.requireRole(
         List.of(ModuleRoles.MANAGER, ModuleRoles.ADMIN),
         "staffing-manager or staffing-admin role required");
-    return Map.of(
-        "rfps",
-        rfpRepository.findByPhaseOrderByCreatedAtDesc(RfpPhase.DRAFT).stream()
-            .map(RfpDtos::toDto)
-            .toList());
+    return Map.of("rfps", queryService.draftRows());
   }
 
   /** Close body: {confirm: true, reason?} — server rejects without explicit confirmation (D3). */
@@ -117,5 +116,15 @@ public class RfpController {
   public RfpDtos.RfpDto archive(@PathVariable UUID id) {
     ModuleRoles.requireManager();
     return RfpDtos.toDto(workflowService.archive(id, AgentPrincipals.currentName()).rfp());
+  }
+
+  /** Draft-only delete (manager/admin); approved and later RFPs use close/reject/archive. */
+  @DeleteMapping("/api/rfps/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void deleteDraft(@PathVariable UUID id) {
+    ModuleRoles.requireRole(
+        List.of(ModuleRoles.MANAGER, ModuleRoles.ADMIN),
+        "staffing-manager or staffing-admin role required");
+    deleteService.deleteDraft(id);
   }
 }

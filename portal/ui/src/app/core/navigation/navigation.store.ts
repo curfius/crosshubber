@@ -1,6 +1,20 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import type { PinnedNode, NavigationUserSettings, NavigationFeatures } from './navigation.models';
+import type {
+  PinnedNode,
+  NavigationUserSettings,
+  NavigationSidebarSettings,
+  NavigationFeatures,
+} from './navigation.models';
 import { collectPinnedRefs } from './navigation.models';
+
+/** Defaults matching the backend user-settings document (D12). */
+const DEFAULT_SIDEBAR: NavigationSidebarSettings = {
+  showPinned: true,
+  showWorkspaces: true,
+  showRecent: true,
+  recentLimit: 10,
+  recentApps: [],
+};
 
 /**
  * Navigation state for the shell: pinned apps tree, per-user sidebar config
@@ -14,15 +28,14 @@ export class NavigationStore {
   readonly features = signal<NavigationFeatures>({
     pinnedAppsEnabled: true,
     workspacesEnabled: true,
-    pinnedSectionEnabled: true,
   });
   readonly loaded = signal(false);
 
   /** Flat set of pinned item refs (root-first document order). */
   readonly pinnedRefs = computed(() => collectPinnedRefs(this.pinnedTree()));
 
-  readonly sidebar = computed<NavigationUserSettings['sidebar']>(() =>
-    this.userSettings()?.sidebar ?? { showPinned: true, showWorkspaces: true, apps: [] },
+  readonly sidebar = computed<NavigationUserSettings['sidebar']>(
+    () => this.userSettings()?.sidebar ?? DEFAULT_SIDEBAR,
   );
 
   isPinned(ref: string): boolean {
@@ -86,11 +99,11 @@ export class NavigationStore {
   }
 
   async unpin(ref: string): Promise<void> {
-    this.pinnedTree.update((tree) =>
-      tree.filter((n) => !(n.nodeType === 'item' && n.ref === ref)),
-    );
+    this.pinnedTree.update((tree) => tree.filter((n) => !(n.nodeType === 'item' && n.ref === ref)));
     try {
-      await fetch(`/api/navigation/pinned-apps/items/${encodeURIComponent(ref)}`, { method: 'DELETE' });
+      await fetch(`/api/navigation/pinned-apps/items/${encodeURIComponent(ref)}`, {
+        method: 'DELETE',
+      });
       await this.loadPinned();
     } catch {
       // ignore
@@ -144,7 +157,7 @@ export class NavigationStore {
 
   async saveExpanded(ids: string[]): Promise<void> {
     this.userSettings.update((s) => ({
-      sidebar: s?.sidebar ?? { showPinned: true, showWorkspaces: true, apps: [] },
+      sidebar: s?.sidebar ?? DEFAULT_SIDEBAR,
       sidebarExpanded: ids,
     }));
     try {
@@ -156,6 +169,28 @@ export class NavigationStore {
     } catch {
       // ignore
     }
+  }
+
+  /** Debounce timer for recently-used persistence (one PUT per burst of opens). */
+  private recentSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Records an app usage: move-to-front dedupe, capped at recentLimit, debounced PUT. */
+  recordRecent(ref: string): void {
+    if (!ref) return;
+    const limit = Math.max(1, this.sidebar().recentLimit || 10);
+    const next = [ref, ...(this.sidebar().recentApps ?? []).filter((r) => r !== ref)].slice(
+      0,
+      limit,
+    );
+    this.userSettings.update((s) => ({
+      sidebar: { ...(s?.sidebar ?? DEFAULT_SIDEBAR), recentApps: next },
+      sidebarExpanded: s?.sidebarExpanded ?? [],
+    }));
+    if (this.recentSaveTimer !== null) clearTimeout(this.recentSaveTimer);
+    this.recentSaveTimer = setTimeout(() => {
+      this.recentSaveTimer = null;
+      void this.saveSidebar({ recentApps: [...(this.sidebar().recentApps ?? [])] });
+    }, 800);
   }
 
   /** Admin feature-switch write (portal-nav-settings editor). */

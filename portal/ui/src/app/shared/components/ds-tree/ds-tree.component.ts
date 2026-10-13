@@ -41,6 +41,13 @@ export interface DsTreeNode {
               class="ds-tree-node"
               [class.ds-tree-node-selected]="n.id === selectedId()"
               (click)="onNodeClick(n)">
+              @if (n.dotColor) {
+                <span class="ds-tree-dot" [style.background]="n.dotColor"></span>
+              }
+              <span class="ds-tree-label">{{ n.label }}</span>
+              @if (n.meta) {
+                <span class="ds-tree-meta">{{ n.meta }}</span>
+              }
               @if (hasChildren(n)) {
                 <span
                   class="ds-tree-chevron"
@@ -49,13 +56,6 @@ export interface DsTreeNode {
                   aria-hidden="true">
                   <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg>
                 </span>
-              }
-              @if (n.dotColor) {
-                <span class="ds-tree-dot" [style.background]="n.dotColor"></span>
-              }
-              <span class="ds-tree-label">{{ n.label }}</span>
-              @if (n.meta) {
-                <span class="ds-tree-meta">{{ n.meta }}</span>
               }
               @if (n.actionable) {
                 <span

@@ -4,6 +4,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,9 +18,9 @@ import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntit
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * MFE proxy routes — mirrors GET/POST /api/mfe/:key/* in proxy.routes.ts. GET serves module assets;
- * POST/PATCH forward element data calls (body + {@code X-Portal-Agent} passthrough). Upstream
- * bodies pass through on every status so module error envelopes reach the element.
+ * MFE proxy routes — mirrors /api/mfe/:key/* in proxy.routes.ts. GET serves module assets;
+ * POST/PUT/PATCH/DELETE forward element data calls (body + {@code X-Portal-Agent} passthrough).
+ * Upstream bodies pass through on every status so module error envelopes reach the element.
  */
 @RestController
 public class ProxyController {
@@ -57,6 +58,11 @@ public class ProxyController {
       HttpServletRequest request,
       @RequestBody(required = false) byte[] body) {
     return proxy(key, request, "PUT", body);
+  }
+
+  @DeleteMapping("/api/mfe/{key}/**")
+  public ResponseEntity<?> proxyDelete(@PathVariable String key, HttpServletRequest request) {
+    return proxy(key, request, "DELETE", null);
   }
 
   private ResponseEntity<?> proxy(

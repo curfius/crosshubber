@@ -6,8 +6,12 @@
 //
 // `app`  = moduleContentId[:instance] of the focused group's active tab
 //          (moduleContentId = `moduleKey:contentKey`, instance >= 2 for duplicates).
-// `path` = module-internal path of that same tab. Both params are omitted
-// when not applicable, producing clean URLs like `/w/orders`.
+// `path` = module-internal path of that same tab. The settings/user-settings
+//          shells scope their inner section by module
+//          (`/<moduleKey>/<contentKey>`) so entry points with the same key in
+//          different modules cannot collide; legacy single-segment paths still
+//          restore (key-only match). Both params are omitted when not
+//          applicable, producing clean URLs like `/w/orders`.
 
 export interface NavState {
   ws: string | null;

@@ -86,7 +86,7 @@ export class Sidebar {
 
   /** Fresh-user hint: nothing personalized in the rail yet → point at Home. */
   protected readonly showEmptyHint = computed(
-    () => !this.pinnedVisible() && this.pickedApps().length === 0,
+    () => !this.pinnedVisible() && this.recentApps().length === 0,
   );
 
   protected readonly renamingWs = signal<string | null>(null);
@@ -112,23 +112,29 @@ export class Sidebar {
     this.renamingWs.set(null);
   }
 
-  /** Picked quick-access apps, refs resolved to visible entry points. */
-  protected readonly pickedApps = computed<PortalModuleContent[]>(() => {
+  /** Recently used apps (server-tracked, newest first), resolved and trimmed. */
+  protected readonly recentApps = computed<PortalModuleContent[]>(() => {
+    if (!this.sidebarSettings().showRecent) return [];
     const byRef = new Map<string, PortalModuleContent>();
     for (const ep of this.moduleContents()) {
       if (ep.category === 'applications') byRef.set(moduleContentId(ep), ep);
     }
-    return this.sidebarSettings()
-      .apps.map((ref) => byRef.get(ref))
-      .filter((ep): ep is PortalModuleContent => !!ep);
+    const homeRef = this.wb.getHomeAppRef();
+    return (this.sidebarSettings().recentApps ?? [])
+      .slice(0, Math.max(1, this.sidebarSettings().recentLimit || 10))
+      .map((ref) => byRef.get(ref))
+      .filter((ep): ep is PortalModuleContent => !!ep && moduleContentId(ep) !== homeRef);
   });
 
-  /** Resolves a pinned-tree item ref to a visible entry point. */
+  /** Resolves a pinned-tree item ref to a visible entry point. The defined
+   *  home app is excluded — the rail has a dedicated Home button. */
   protected resolveRef(ref: string): PortalModuleContent | null {
     const idx = ref.indexOf(':');
     if (idx <= 0) return null;
     const ep = this.wb.findModuleContent(ref.slice(0, idx), ref.slice(idx + 1));
-    return ep && ep.category === 'applications' ? ep : null;
+    if (!ep || ep.category !== 'applications') return null;
+    if (moduleContentId(ep) === this.wb.getHomeAppRef()) return null;
+    return ep;
   }
 
   protected isFolderExpanded(id: string): boolean {

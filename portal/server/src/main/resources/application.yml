@@ -56,6 +56,11 @@ spring:
     schemas: ${PGSCHEMA:${TENANT_SLUG:dev}}
     locations: classpath:db/migration
     baseline-on-migrate: true
+  servlet:
+    multipart:
+      # MFE proxy passthrough: multipart requests must reach the module byte-for-byte —
+      # Spring's resolver would consume the stream, leaving the proxied body empty.
+      enabled: false
   # Jackson config: see JacksonConfig.java (custom JsonMapper per-DTO null/empty control)
 
 # Keycloak Admin (optional — all 4 must be present; the secret comes from secrets.env,

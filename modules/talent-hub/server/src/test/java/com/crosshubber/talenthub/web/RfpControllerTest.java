@@ -3,7 +3,9 @@ package com.crosshubber.talenthub.web;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -23,9 +25,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.crosshubber.talenthub.domain.RfpCaptureService;
+import com.crosshubber.talenthub.domain.RfpDeleteService;
 import com.crosshubber.talenthub.domain.RfpDtos;
 import com.crosshubber.talenthub.domain.RfpEntity;
-import com.crosshubber.talenthub.domain.RfpRepository;
+import com.crosshubber.talenthub.domain.RfpQueryService;
 import com.crosshubber.talenthub.domain.RfpWorkflowService;
 import com.crosshubber.talenthub.security.AgentPrincipal;
 
@@ -34,21 +37,19 @@ class RfpControllerTest {
 
   private RfpCaptureService captureService;
   private RfpWorkflowService workflowService;
-  private RfpRepository rfpRepository;
+  private RfpQueryService queryService;
+  private RfpDeleteService deleteService;
   private MockMvc mockMvc;
 
   @BeforeEach
   void setUp() {
     captureService = mock(RfpCaptureService.class);
     workflowService = mock(RfpWorkflowService.class);
-    rfpRepository = mock(RfpRepository.class);
+    queryService = mock(RfpQueryService.class);
+    deleteService = mock(RfpDeleteService.class);
     mockMvc =
         MockMvcBuilders.standaloneSetup(
-                new RfpController(
-                    captureService,
-                    workflowService,
-                    mock(com.crosshubber.talenthub.domain.RfpQueryService.class),
-                    rfpRepository))
+                new RfpController(captureService, workflowService, queryService, deleteService))
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
     asUser("staffing-manager");
@@ -136,26 +137,52 @@ class RfpControllerTest {
 
   @Test
   void draftsAreListedWithPhaseShape() throws Exception {
-    when(rfpRepository.findByPhaseOrderByCreatedAtDesc(
-            com.crosshubber.talenthub.domain.RfpPhase.DRAFT))
-        .thenReturn(List.of(draftEntity()));
+    when(queryService.draftRows())
+        .thenReturn(List.of(new RfpDtos.RfpDraftRow(draftDto(), "Acme Steel")));
 
     mockMvc
         .perform(get("/api/rfps/drafts"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.rfps[0].title").value("Java squad"))
-        .andExpect(jsonPath("$.rfps[0].phase").value("draft"));
+        .andExpect(jsonPath("$.rfps[0].rfp.title").value("Java squad"))
+        .andExpect(jsonPath("$.rfps[0].rfp.phase").value("draft"))
+        .andExpect(jsonPath("$.rfps[0].rfp.source").value("manual"))
+        .andExpect(jsonPath("$.rfps[0].clientName").value("Acme Steel"));
   }
 
   @Test
   void draftsDenyRecruiter() throws Exception {
     asUser("staffing-recruiter");
-    when(rfpRepository.findByPhaseOrderByCreatedAtDesc(
-            com.crosshubber.talenthub.domain.RfpPhase.DRAFT))
-        .thenReturn(List.of());
     mockMvc
         .perform(get("/api/rfps/drafts"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.error").value("staffing-manager or staffing-admin role required"));
+  }
+
+  @Test
+  void deleteDraftReturns204() throws Exception {
+    UUID id = UUID.randomUUID();
+    when(deleteService.deleteDraft(id)).thenReturn(id);
+
+    mockMvc.perform(delete("/api/rfps/" + id)).andExpect(status().isNoContent());
+
+    verify(deleteService).deleteDraft(id);
+  }
+
+  @Test
+  void deleteDraftDeniesRecruiter() throws Exception {
+    asUser("staffing-recruiter");
+    mockMvc
+        .perform(delete("/api/rfps/" + UUID.randomUUID()))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error").value("staffing-manager or staffing-admin role required"));
+  }
+
+  @Test
+  void deleteDraftAllowsAdmin() throws Exception {
+    asUser("staffing-admin");
+    UUID id = UUID.randomUUID();
+    when(deleteService.deleteDraft(id)).thenReturn(id);
+
+    mockMvc.perform(delete("/api/rfps/" + id)).andExpect(status().isNoContent());
   }
 }

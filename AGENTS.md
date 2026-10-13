@@ -38,7 +38,10 @@ portal/
   ui/                         Angular 22 workspace shell
     src/app/core/             Platform services (bridge, i18n, theme, auth, config...)
     src/app/portal-core/      Shell layout, workarea, 18 lazy module UIs, feature stores
-    src/design-system/        CSS-only design system (tokens + components + 18 themes)
+    src/design-system/        Vendored design system (tokens + components + 18 themes)
+design-system/
+  components/                 Shared Angular UI kit (grid, UI_I18N/MfeI18n) — synced to
+                              portal/ui and module MFEs by scripts/sync-design-system.mjs
 config-management/tenants-config/   Tenant config overlays (consumed at boot)
 scripts/                          Standalone tooling (e.g. sync-design-system.mjs)
 docs/archive/                       Archived implementation plans
@@ -175,6 +178,20 @@ Login for the dev tenant: `dev/dev` (admin, all `portal-*` roles) or `devuser/de
   `â€"` instead of `—`, `Â§` instead of `§`. Repair by decoding UTF-8 → re-encoding
   CP1252 → decoding UTF-8 (only if all chars > U+00FF are CP1252 specials). Never save
   files through PS 5.1 `Set-Content`/`Out-File` (they emit BOMs and mojibake on write).
+  PS 5.1 text round-trips are equally deadly: `Get-Content -Raw` without `-Encoding`
+  decodes UTF-8 as ANSI, so re-encoding via `[IO.File]::WriteAllText` corrupts the whole
+  file (hit the i18n-catalog 2026-10-12). Re-text/JSON edit catalogs through the Edit
+  tool or node scripts only; after a repair, purge mojibake-valued DB rows so the
+  next boot re-seeds clean values (seed is insert-if-absent).
+- **MFE elements don't get a mount() call** — Angular Elements does not expose
+  component methods, so the `el.mount?.({user, language})` side of the
+  module-outlet contract never fires (it ran pre-append and was silently
+  skipped, 2026-10-12 finding). Modules load their own context instead:
+  same-origin `/api/config` for user/language; language *changes* arrive via
+  the composed `portal:language` bridge event. `app-data-grid` and friends
+  come from `design-system/components/` (vendored by
+  `scripts/sync-design-system.mjs`, consumer-owned files like specs are never
+  overwritten).
 - **The reconciler is fail-fast and runs at every boot** — it re-seeds i18n labels,
   providers, settings idempotently. Keep its upserts idempotent and cheap.
 - **Design notes (intentional quirks)**: `registry_module_contents.roles` is stored comma-joined

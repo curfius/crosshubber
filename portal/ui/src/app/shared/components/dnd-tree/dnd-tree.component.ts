@@ -1,9 +1,25 @@
-import { ChangeDetectionStrategy, Component, computed, Directive, ElementRef, inject, input, output, signal, AfterViewInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  Directive,
+  ElementRef,
+  inject,
+  input,
+  output,
+  signal,
+  AfterViewInit,
+} from '@angular/core';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
 import { NgTemplateOutlet } from '@angular/common';
 import type { EditableTreeNode } from '../../../core/navigation/navigation.models';
-import { moveNode, moveNodeRelative, newTreeId, findParent } from '../../../core/navigation/navigation.models';
+import {
+  moveNode,
+  moveNodeRelative,
+  newTreeId,
+  findParent,
+} from '../../../core/navigation/navigation.models';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import { ConfirmDialog } from '../confirm-dialog/confirm-dialog.component';
@@ -24,6 +40,8 @@ export class Autofocus implements AfterViewInit {
 export interface DropListData {
   parentId: string | null;
   nodeId?: string;
+  /** Kind of the row that owns the drop list (drives folder default-drop semantics). */
+  targetKind?: 'folder' | 'item';
   into?: boolean;
   empty?: boolean;
   /** Root strip: drop appends at the end of the top level. */
@@ -37,22 +55,35 @@ export interface DropListData {
  * Rendering is FLAT: every row is wrapped in its own single-item cdkDropList
  * and each folder row is followed by a thin "drop into folder" strip. All
  * drop-list rects are disjoint, which avoids CDK's first-match sibling
- * resolution that makes nested lists unreachable. Placement is derived from
- * `event.dropPoint` vs the hovered row's midpoint (before/after).
+ * resolution that makes nested lists unreachable.
+ *
+ * Drop semantics: dropping on a section row moves the dragged node INSIDE the
+ * section (appended as its last child); holding Shift while dropping places it
+ * BELOW the section instead (after its whole subtree). Item rows keep the
+ * dropPoint midpoint (before/after). The thin strip under a section row is an
+ * explicit inside-target.
  *
  * - The WHOLE row is the drag source; the grip icon is a visual affordance.
  * - Mutations are emitted as a full new tree via `nodesChange`.
- * - New sections start in rename mode with the input focused and selected.
+ * - New sections start in rename mode with the input focused and selected;
+ *   clicking a section label starts a rename too; clicking anywhere else on a
+ *   section row expands/collapses it.
  * - Keyboard a11y: per-node move up / down / out / into-previous-section buttons.
  * - Optional locked root section (`rootLabel`): rendered above the tree, never
  *   movable/deletable; its drop strip appends to the top level.
  * - Optional per-row visibility toggle (`showVisibility`): sets `hidden` on the
  *   node; hiding a section effectively hides everything below it (rows render
  *   dimmed). Effective visibility = own `hidden` OR any ancestor's.
+ * - Optional avatar color affordance (`showColorPicker`): hovering the avatar
+ *   reveals a pencil that emits `colorPick` (items AND sections).
+ * - Root policy (`itemsRequireFolder`): shell-tree editors set it so ITEMS can
+ *   never live at the root level; the pinned-apps editor allows root items.
+ *   Deleting a non-empty section surfaces its children to the parent level;
+ *   item children are re-parented into the nearest sibling folder instead
+ *   when that level is the root (deletion is rejected when none exists).
  * - Delete policy (`deleteMode`): `folders-only` restricts the bin to section
  *   rows; `folders-and-items` allows items too (pinned = unpin). Deleting a
- *   non-empty section asks for confirmation and moves its children to the
- *   root level.
+ *   non-empty section asks for confirmation.
  */
 @Component({
   selector: 'app-dnd-tree',
@@ -73,6 +104,8 @@ export class DndTree {
   readonly showVisibility = input(false);
   /** Renders the per-item avatar-color palette button (emits `colorPick`). */
   readonly showColorPicker = input(false);
+  /** When set, ITEMS can never live at the root level (shell-tree editors). */
+  readonly itemsRequireFolder = input(false);
   /** Which rows offer the bin: sections only, or sections and apps. */
   readonly deleteMode = input<'folders-only' | 'folders-and-items'>('folders-and-items');
   /** Node ids rendered greyed-out (e.g. refs to deleted entry points). */
@@ -98,6 +131,21 @@ export class DndTree {
 
   protected isExpanded(id: string): boolean {
     return this.expanded().has(id);
+  }
+
+  /**
+   * Row click: leaf items emit `itemClick`; section rows expand/collapse —
+   * except clicks from the label (rename), action buttons, or the rename
+   * input, which keep their own behaviour.
+   */
+  protected onRowClick(node: EditableTreeNode, event: Event): void {
+    if (node.kind !== 'folder') {
+      this.itemClick.emit(node);
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target?.closest?.('.dnd-label, button, input')) return;
+    this.toggleExpanded(node.id, event);
   }
 
   protected toggleExpanded(id: string, event: Event): void {
@@ -166,30 +214,33 @@ export class DndTree {
     this.confirmNode.set(null);
   }
 
-  /** Removes the node; a folder's children are moved to the root level. */
+  /** Removes the node; a folder's children surface to its parent level. Items
+   *  never surface to the root level — they are re-parented into the nearest
+   *  sibling folder (mutation rejected when none exists). */
   private performDelete(node: EditableTreeNode): void {
     this.emitMutated((tree) => {
-      const idx = tree.findIndex((n) => n.id === node.id);
-      if (idx >= 0) {
-        const removed = tree.splice(idx, 1)[0];
-        if (removed.kind === 'folder' && removed.children.length > 0) {
-          tree.splice(idx, 0, ...removed.children);
-        }
+      const parent = findParent(tree, node.id);
+      const list = parent ? parent.children : tree;
+      const idx = list.findIndex((n) => n.id === node.id);
+      if (idx < 0) return null;
+      const removed = list[idx];
+      if (removed.kind !== 'folder' || removed.children.length === 0) {
+        list.splice(idx, 1);
         return tree;
       }
-      const remove = (nodes: EditableTreeNode[]): boolean => {
-        const i = nodes.findIndex((n) => n.id === node.id);
-        if (i >= 0) {
-          const removed = nodes.splice(i, 1)[0];
-          if (removed.kind === 'folder' && removed.children.length > 0) {
-            tree.push(...removed.children);
-          }
-          return true;
-        }
-        for (const child of nodes) if (remove(child.children)) return true;
-        return false;
-      };
-      remove(tree);
+      const items = removed.children.filter((c) => c.kind === 'item');
+      const folders = removed.children.filter((c) => c.kind === 'folder');
+      // Host lookup must happen BEFORE the removed node is replaced in the list.
+      const before = [...list.slice(0, idx).reverse()].find((n) => n.kind === 'folder');
+      const after = list.slice(idx + 1).find((n) => n.kind === 'folder');
+      list.splice(idx, 1, ...folders);
+      if (parent === null && items.length > 0) {
+        const host = before ?? after;
+        if (!host) return null;
+        host.children.push(...items);
+      } else if (parent !== null && items.length > 0) {
+        list.push(...items);
+      }
       return tree;
     });
   }
@@ -260,23 +311,66 @@ export class DndTree {
     this.draggingNodeId.set(null);
     const dragged = event.item.data as EditableTreeNode;
     const data = event.container.data;
+    const native = event.event as (Event & { shiftKey?: boolean }) | null;
+    const shift = native?.shiftKey === true;
+    const rootForbidden = this.itemsRequireFolder() && dragged.kind === 'item';
     let next: EditableTreeNode[] | null = null;
 
     if (data.into && data.append) {
       // Root section strip → append at the end of the top level.
+      if (rootForbidden) {
+        this.toast.show(this.i18n.t('dnd.rootNotAllowed'));
+        return;
+      }
       next = moveNode(this.nodes(), dragged.id, null, this.nodes().length, this.maxDepth());
     } else if (data.into) {
       // Drop strip under a folder → append at the end of its children (moveNode clamps the index).
-      next = moveNode(this.nodes(), dragged.id, data.parentId, Number.MAX_SAFE_INTEGER, this.maxDepth());
+      next = moveNode(
+        this.nodes(),
+        dragged.id,
+        data.parentId,
+        Number.MAX_SAFE_INTEGER,
+        this.maxDepth(),
+      );
     } else if (data.empty) {
+      if (rootForbidden) {
+        this.toast.show(this.i18n.t('dnd.rootNotAllowed'));
+        return;
+      }
       next = moveNode(this.nodes(), dragged.id, null, 0, this.maxDepth());
     } else if (data.nodeId) {
-      // Row list → before/after the hovered node, derived from dropPoint.
-      const rowEl = event.container.element.nativeElement.querySelector<HTMLElement>('[data-node-id]');
-      const after = rowEl
-        ? event.dropPoint.y > rowEl.getBoundingClientRect().top + rowEl.getBoundingClientRect().height / 2
-        : false;
-      next = moveNodeRelative(this.nodes(), dragged.id, data.nodeId, after ? 'after' : 'before', this.maxDepth());
+      if (data.targetKind === 'folder' && !shift) {
+        // Drop on a section moves the dragged node INSIDE it, appended as its last child.
+        next = moveNode(
+          this.nodes(),
+          dragged.id,
+          data.nodeId,
+          Number.MAX_SAFE_INTEGER,
+          this.maxDepth(),
+        );
+      } else if (data.parentId === null && rootForbidden) {
+        // A sibling position next to a root-level row is still the root level.
+        this.toast.show(this.i18n.t('dnd.rootNotAllowed'));
+        return;
+      } else if (data.targetKind === 'folder') {
+        // Shift + drop on a section places the dragged node BELOW it (after its subtree).
+        next = moveNodeRelative(this.nodes(), dragged.id, data.nodeId, 'after', this.maxDepth());
+      } else {
+        // Item rows: before/after the hovered node, derived from dropPoint.
+        const rowEl =
+          event.container.element?.nativeElement?.querySelector<HTMLElement>('[data-node-id]');
+        const after = rowEl
+          ? event.dropPoint.y >
+            rowEl.getBoundingClientRect().top + rowEl.getBoundingClientRect().height / 2
+          : false;
+        next = moveNodeRelative(
+          this.nodes(),
+          dragged.id,
+          data.nodeId,
+          after ? 'after' : 'before',
+          this.maxDepth(),
+        );
+      }
     }
     if (next) {
       this.nodesChange.emit(next);
@@ -294,15 +388,32 @@ export class DndTree {
   }
 
   protected moveOut(node: EditableTreeNode): void {
-    this.emitMutated((tree) => {
-      const parent = findParent(tree, node.id);
-      if (!parent) return null;
-      const grandparent = findParent(tree, parent.id);
+    const tree = this.nodes();
+    const parent = findParent(tree, node.id);
+    if (!parent) {
+      this.toast.show(this.i18n.t('dnd.moveRejected'));
+      return;
+    }
+    if (this.itemsRequireFolder() && node.kind === 'item' && !findParent(tree, parent.id)) {
+      // Moving the item out would leave it at the root level.
+      this.toast.show(this.i18n.t('dnd.rootNotAllowed'));
+      return;
+    }
+    this.emitMutated((nextTree) => {
+      const nextParent = findParent(nextTree, node.id);
+      if (!nextParent) return null;
+      const grandparent = findParent(nextTree, nextParent.id);
       const parentIndex = grandparent
-        ? grandparent.children.findIndex((c) => c.id === parent.id)
-        : tree.findIndex((n) => n.id === parent.id);
+        ? grandparent.children.findIndex((c) => c.id === nextParent.id)
+        : nextTree.findIndex((n) => n.id === nextParent.id);
       const targetIndex = parentIndex + 1;
-      return moveNode(tree, node.id, grandparent ? grandparent.id : null, targetIndex, this.maxDepth());
+      return moveNode(
+        nextTree,
+        node.id,
+        grandparent ? grandparent.id : null,
+        targetIndex,
+        this.maxDepth(),
+      );
     });
   }
 
@@ -314,14 +425,28 @@ export class DndTree {
       for (let i = index - 1; i >= 0; i--) {
         const sibling = list[i];
         if (sibling.kind === 'folder') {
-          const targetDepth = this.depthOfNode(tree, sibling.id) + 1;
-          const nodeDepth = this.subtreeDepthOf(node);
-          if (nodeDepth + targetDepth > this.maxDepth()) return null;
+          // moveNode itself enforces the depth cap (no double-counted levels).
           return moveNode(tree, node.id, sibling.id, sibling.children.length, this.maxDepth());
         }
       }
       return null;
     });
+  }
+
+  /** Move-in is offered only when a previous sibling folder exists and the
+   *  move fits the depth cap (same math as moveNode). */
+  protected canMoveIn(node: EditableTreeNode): boolean {
+    const tree = this.nodes();
+    const parent = findParent(tree, node.id);
+    const list = parent ? parent.children : tree;
+    const index = list.findIndex((n) => n.id === node.id);
+    for (let i = index - 1; i >= 0; i--) {
+      const sibling = list[i];
+      if (sibling.kind === 'folder') {
+        return this.subtreeDepthOf(node) + this.depthOfNode(tree, sibling.id) <= this.maxDepth();
+      }
+    }
+    return false;
   }
 
   private emitSiblingShift(node: EditableTreeNode, delta: number): void {

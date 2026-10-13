@@ -10,24 +10,43 @@ describe('NavigationStore', () => {
     store = new NavigationStore();
     fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
   it('load() fetches pinned tree, user settings and features', async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/navigation/pinned-apps') {
-        return Promise.resolve({ ok: true, json: async () => ({ tree: [{ id: '1', nodeType: 'item', ref: 'mod:a', children: [] }] }) });
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ tree: [{ id: '1', nodeType: 'item', ref: 'mod:a', children: [] }] }),
+        });
       }
       if (url === '/api/navigation/user-settings') {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ settings: { sidebar: { showPinned: true, showWorkspaces: false, apps: ['mod:a'] }, sidebarExpanded: [] } }),
+          json: async () => ({
+            settings: {
+              sidebar: {
+                showPinned: true,
+                showWorkspaces: false,
+                recentApps: ['mod:a'],
+                recentLimit: 10,
+                showRecent: true,
+              },
+              sidebarExpanded: [],
+            },
+          }),
         });
       }
-      return Promise.resolve({ ok: true, json: async () => ({ pinnedAppsEnabled: false, workspacesEnabled: true, pinnedSectionEnabled: false }) });
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ pinnedAppsEnabled: false, workspacesEnabled: true }),
+      });
     });
 
     await store.load();
@@ -35,7 +54,7 @@ describe('NavigationStore', () => {
     expect(store.loaded()).toBe(true);
     expect(store.pinnedRefs()).toEqual(['mod:a']);
     expect(store.sidebar().showWorkspaces).toBe(false);
-    expect(store.features()).toEqual({ pinnedAppsEnabled: false, workspacesEnabled: true, pinnedSectionEnabled: false });
+    expect(store.features()).toEqual({ pinnedAppsEnabled: false, workspacesEnabled: true });
   });
 
   it('pin() posts the ref and refreshes the tree', async () => {
@@ -46,7 +65,9 @@ describe('NavigationStore', () => {
       if (url === '/api/navigation/pinned-apps') {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ tree: [{ id: 'u1', nodeType: 'item', ref: 'mod:x', children: [] }] }),
+          json: async () => ({
+            tree: [{ id: 'u1', nodeType: 'item', ref: 'mod:x', children: [] }],
+          }),
         });
       }
       return Promise.resolve({ ok: true, json: async () => ({}) });
@@ -68,16 +89,28 @@ describe('NavigationStore', () => {
 
     await store.unpin('mod:x');
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/navigation/pinned-apps/items/mod%3Ax', { method: 'DELETE' });
+    expect(fetchMock).toHaveBeenCalledWith('/api/navigation/pinned-apps/items/mod%3Ax', {
+      method: 'DELETE',
+    });
     expect(store.isPinned('mod:x')).toBe(false);
   });
 
   it('saveTree() PUTs the full tree and adopts server ids', async () => {
     const tree: PinnedNode[] = [
-      { id: 'local-1', nodeType: 'folder', name: 'F', children: [{ id: 'local-2', nodeType: 'item', ref: 'mod:a', children: [] }] },
+      {
+        id: 'local-1',
+        nodeType: 'folder',
+        name: 'F',
+        children: [{ id: 'local-2', nodeType: 'item', ref: 'mod:a', children: [] }],
+      },
     ];
     const serverTree: PinnedNode[] = [
-      { id: 'uuid-1', nodeType: 'folder', name: 'F', children: [{ id: 'uuid-2', nodeType: 'item', ref: 'mod:a', children: [] }] },
+      {
+        id: 'uuid-1',
+        nodeType: 'folder',
+        name: 'F',
+        children: [{ id: 'uuid-2', nodeType: 'item', ref: 'mod:a', children: [] }],
+      },
     ];
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ tree: serverTree }) });
 
@@ -94,13 +127,28 @@ describe('NavigationStore', () => {
 
   it('saveSidebar() shallow-merges the sidebar config', async () => {
     store.userSettings.set({
-      sidebar: { showPinned: true, showWorkspaces: true, apps: ['mod:a'] },
+      sidebar: {
+        showPinned: true,
+        showWorkspaces: true,
+        showRecent: true,
+        recentLimit: 10,
+        recentApps: ['mod:a'],
+      },
       sidebarExpanded: [],
     });
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
-        settings: { sidebar: { showPinned: true, showWorkspaces: false, apps: ['mod:a'] }, sidebarExpanded: [] },
+        settings: {
+          sidebar: {
+            showPinned: true,
+            showWorkspaces: false,
+            showRecent: true,
+            recentLimit: 10,
+            recentApps: ['mod:a'],
+          },
+          sidebarExpanded: [],
+        },
       }),
     });
 
@@ -112,23 +160,81 @@ describe('NavigationStore', () => {
       body: JSON.stringify({ sidebar: { showWorkspaces: false } }),
     });
     expect(store.sidebar().showWorkspaces).toBe(false);
-    expect(store.sidebar().apps).toEqual(['mod:a']);
+    expect(store.sidebar().recentApps).toEqual(['mod:a']);
+  });
+
+  it('recordRecent() dedupes move-to-front and caps at recentLimit', () => {
+    store.userSettings.set({
+      sidebar: {
+        showPinned: true,
+        showWorkspaces: true,
+        showRecent: true,
+        recentLimit: 2,
+        recentApps: ['mod:a', 'mod:b'],
+      },
+      sidebarExpanded: [],
+    });
+
+    store.recordRecent('mod:b');
+    store.recordRecent('mod:c');
+
+    expect(store.sidebar().recentApps).toEqual(['mod:c', 'mod:b']);
+  });
+
+  it('recordRecent() persists debounced', async () => {
+    store.userSettings.set({
+      sidebar: {
+        showPinned: true,
+        showWorkspaces: true,
+        showRecent: true,
+        recentLimit: 10,
+        recentApps: [],
+      },
+      sidebarExpanded: [],
+    });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        settings: {
+          sidebar: {
+            showPinned: true,
+            showWorkspaces: true,
+            showRecent: true,
+            recentLimit: 10,
+            recentApps: ['mod:x'],
+          },
+          sidebarExpanded: [],
+        },
+      }),
+    });
+
+    store.recordRecent('mod:x');
+    store.recordRecent('mod:y');
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/navigation/user-settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sidebar: { recentApps: ['mod:y', 'mod:x'] } }),
+    });
   });
 
   it('saveFeatures() updates the signal from the server response', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ pinnedAppsEnabled: false, workspacesEnabled: false, pinnedSectionEnabled: true }),
+      json: async () => ({ pinnedAppsEnabled: false, workspacesEnabled: false }),
     });
 
     const ok = await store.saveFeatures({ pinnedAppsEnabled: false });
 
     expect(ok).toBe(true);
-    expect(store.features()).toEqual({ pinnedAppsEnabled: false, workspacesEnabled: false, pinnedSectionEnabled: true });
+    expect(store.features()).toEqual({ pinnedAppsEnabled: false, workspacesEnabled: false });
   });
 
   it('togglePin() is a no-op when pinned apps are disabled', async () => {
-    store.features.set({ pinnedAppsEnabled: false, workspacesEnabled: true, pinnedSectionEnabled: true });
+    store.features.set({ pinnedAppsEnabled: false, workspacesEnabled: true });
 
     await store.togglePin('mod:x');
 

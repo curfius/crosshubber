@@ -14,7 +14,12 @@ export interface PinnedNode {
 export interface NavigationSidebarSettings {
   showPinned: boolean;
   showWorkspaces: boolean;
-  apps: string[];
+  /** "Recently used" block visibility (user-settings toggle). */
+  showRecent: boolean;
+  /** Max entries kept for the recently-used block (1-50). */
+  recentLimit: number;
+  /** Server-tracked last-used app refs, newest first (cap = recentLimit). */
+  recentApps: string[];
 }
 
 export interface NavigationUserSettings {
@@ -25,7 +30,6 @@ export interface NavigationUserSettings {
 export interface NavigationFeatures {
   pinnedAppsEnabled: boolean;
   workspacesEnabled: boolean;
-  pinnedSectionEnabled: boolean;
 }
 
 export interface ShellGroupPayload {
@@ -34,6 +38,8 @@ export interface ShellGroupPayload {
   parentKey?: string | null;
   icon?: string;
   hidden?: boolean;
+  /** Section color (display only); null/undefined keeps the runtime fallback. */
+  color?: string | null;
 }
 
 export interface ShellItemPayload {
@@ -61,6 +67,7 @@ export interface ShellTreeResponse {
     icon?: string;
     roles?: string[];
     hidden?: boolean;
+    color?: string | null;
   }>;
   items: Array<{
     moduleKey: string;
@@ -103,6 +110,8 @@ export interface EditableTreeNode {
   meta?: unknown;
   /** Row hidden/visible toggle. A hidden folder effectively hides all descendants. */
   hidden?: boolean;
+  /** Editor-only status badge the DnD tree renders next to the row. */
+  badge?: 'hidden' | 'roles';
   children: EditableTreeNode[];
 }
 
@@ -174,7 +183,11 @@ function subtreeDepth(node: EditableTreeNode): number {
 }
 
 /** True when `ancestorId` is the node itself or one of its ancestors. */
-export function isSelfOrAncestor(nodes: EditableTreeNode[], ancestorId: string, nodeId: string): boolean {
+export function isSelfOrAncestor(
+  nodes: EditableTreeNode[],
+  ancestorId: string,
+  nodeId: string,
+): boolean {
   let current = findNode(nodes, nodeId);
   while (current) {
     if (current.id === ancestorId) return true;
@@ -213,9 +226,13 @@ export function moveNode(
   const removed = removeNode(next, nodeId);
   if (!removed) return null;
 
-  const computedIndex = Math.max(0, Math.min(index, targetParentId
-    ? (findNode(next, targetParentId)?.children.length ?? 0)
-    : next.length));
+  const computedIndex = Math.max(
+    0,
+    Math.min(
+      index,
+      targetParentId ? (findNode(next, targetParentId)?.children.length ?? 0) : next.length,
+    ),
+  );
 
   if (targetParentId) {
     const parent = findNode(next, targetParentId);
@@ -229,7 +246,9 @@ export function moveNode(
   return next;
 }
 
-export function flattenTree(nodes: EditableTreeNode[]): Array<{ node: EditableTreeNode; depth: number; parentId: string | null }> {
+export function flattenTree(
+  nodes: EditableTreeNode[],
+): Array<{ node: EditableTreeNode; depth: number; parentId: string | null }> {
   const out: Array<{ node: EditableTreeNode; depth: number; parentId: string | null }> = [];
   const walk = (list: EditableTreeNode[], depth: number, parentId: string | null) => {
     for (const node of list) {

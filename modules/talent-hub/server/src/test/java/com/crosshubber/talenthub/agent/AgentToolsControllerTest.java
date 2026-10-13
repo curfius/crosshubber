@@ -21,7 +21,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import com.crosshubber.talenthub.domain.ClientService;
 import com.crosshubber.talenthub.domain.RfpCaptureService;
+import com.crosshubber.talenthub.domain.RfpDeleteService;
 import com.crosshubber.talenthub.domain.RfpDtos;
 import com.crosshubber.talenthub.domain.RfpEntity;
 import com.crosshubber.talenthub.domain.RfpPhase;
@@ -37,6 +39,8 @@ class AgentToolsControllerTest {
   private ModuleSettingsService settings;
   private RfpCaptureService captureService;
   private RfpWorkflowService workflowService;
+  private RfpDeleteService deleteService;
+  private ClientService clientService;
   private MockMvc mockMvc;
 
   @BeforeEach
@@ -44,6 +48,8 @@ class AgentToolsControllerTest {
     settings = mock(ModuleSettingsService.class);
     captureService = mock(RfpCaptureService.class);
     workflowService = mock(RfpWorkflowService.class);
+    deleteService = mock(RfpDeleteService.class);
+    clientService = mock(ClientService.class);
     when(settings.isToolEnabled(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
     mockMvc =
         MockMvcBuilders.standaloneSetup(
@@ -51,10 +57,15 @@ class AgentToolsControllerTest {
                     settings,
                     captureService,
                     workflowService,
+                    deleteService,
                     mock(com.crosshubber.talenthub.domain.RfpQueryService.class),
                     mock(com.crosshubber.talenthub.domain.CandidateProcessService.class),
                     mock(com.crosshubber.talenthub.domain.CandidateService.class),
+                    clientService,
+                    mock(com.crosshubber.talenthub.domain.PositionService.class),
                     mock(com.crosshubber.talenthub.domain.MatchRunService.class),
+                    mock(com.crosshubber.talenthub.domain.SourcingInboxService.class),
+                    mock(com.crosshubber.talenthub.docs.DocumentService.class),
                     mock(com.crosshubber.talenthub.domain.AnalyticsService.class),
                     new JsonMapper()))
             .build();
@@ -152,6 +163,40 @@ class AgentToolsControllerTest {
   }
 
   @Test
+  void deleteDraftRfpReturnsOkPayload() throws Exception {
+    UUID id = UUID.randomUUID();
+    when(deleteService.deleteDraft(id)).thenReturn(id);
+
+    mockMvc
+        .perform(
+            post("/agent/tools/delete_draft_rfp")
+                .contentType("application/json")
+                .content(
+                    "{\"tool\":\"delete_draft_rfp\",\"arguments\":{\"rfpId\":\"" + id + "\"}}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ok"))
+        .andExpect(jsonPath("$.deletedRfpId").value(id.toString()));
+  }
+
+  @Test
+  void listClientsReturnsClientShapes() throws Exception {
+    UUID id = UUID.randomUUID();
+    when(clientService.list())
+        .thenReturn(
+            List.of(
+                new ClientService.ClientDto(
+                    id, "Acme Steel", "manufacturing", "Jane", List.of(), null, null)));
+
+    mockMvc
+        .perform(
+            post("/agent/tools/list_clients")
+                .contentType("application/json")
+                .content("{\"tool\":\"list_clients\",\"arguments\":{}}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.clients[0].name").value("Acme Steel"));
+  }
+
+  @Test
   void manifestMatchesImplementedToolNames() {
     assertThat(AgentToolsController.toolNames())
         .containsExactly(
@@ -159,8 +204,20 @@ class AgentToolsControllerTest {
             "get_rfp",
             "create_rfp",
             "approve_rfp",
+            "delete_draft_rfp",
             "list_candidate_processes",
             "search_candidates",
+            "get_candidate",
+            "list_clients",
+            "get_client",
+            "list_positions",
+            "get_position",
+            "list_submissions",
+            "list_documents",
+            "get_document",
+            "list_match_runs",
+            "get_match_run",
+            "list_sourcing_inbox",
             "open_candidate_process",
             "advance_process_stage",
             "close_rfp",

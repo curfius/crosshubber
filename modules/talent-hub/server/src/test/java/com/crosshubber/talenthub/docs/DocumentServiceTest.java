@@ -88,4 +88,27 @@ class DocumentServiceTest {
         .isInstanceOf(ResponseStatusException.class)
         .hasMessageContaining("404");
   }
+
+  @Test
+  void metadataReadsSidecarWithoutContent() throws IOException {
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "rfp-spec.txt", "text/plain", "body".getBytes(StandardCharsets.UTF_8));
+
+    DocumentService.StoredDocument stored = service.store(file);
+    DocumentService.DocMeta meta = service.metadata(stored.ref());
+
+    assertThat(meta).isNotNull();
+    assertThat(meta.name()).isEqualTo("rfp-spec.txt");
+    assertThat(meta.mimeType()).isEqualTo("text/plain");
+    assertThat(meta.size()).isNull();
+  }
+
+  @Test
+  void metadataIsNullForUnknownAndExternalRefs() {
+    assertThat(service.metadata("upload:00000000-0000-0000-0000-000000000000")).isNull();
+    assertThat(service.metadata("fake:cv-ana")).isNull();
+    assertThat(service.metadata(null)).isNull();
+    assertThat(service.metadata("")).isNull();
+  }
 }

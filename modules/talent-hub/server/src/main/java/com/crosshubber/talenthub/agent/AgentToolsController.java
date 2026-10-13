@@ -11,17 +11,24 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.crosshubber.talenthub.docs.DocumentService;
+import com.crosshubber.talenthub.docs.DocumentSource;
+import com.crosshubber.talenthub.docs.TalentSourceConnector;
 import com.crosshubber.talenthub.domain.AnalyticsService;
 import com.crosshubber.talenthub.domain.CandidateProcessService;
 import com.crosshubber.talenthub.domain.CandidateService;
+import com.crosshubber.talenthub.domain.ClientService;
 import com.crosshubber.talenthub.domain.MatchRunEntity;
 import com.crosshubber.talenthub.domain.MatchRunService;
 import com.crosshubber.talenthub.domain.MatchingService;
+import com.crosshubber.talenthub.domain.PositionService;
 import com.crosshubber.talenthub.domain.RfpCaptureService;
+import com.crosshubber.talenthub.domain.RfpDeleteService;
 import com.crosshubber.talenthub.domain.RfpDtos;
 import com.crosshubber.talenthub.domain.RfpPhase;
 import com.crosshubber.talenthub.domain.RfpQueryService;
 import com.crosshubber.talenthub.domain.RfpWorkflowService;
+import com.crosshubber.talenthub.domain.SourcingInboxService;
 import com.crosshubber.talenthub.security.AgentPrincipals;
 import com.crosshubber.talenthub.settings.ModuleSettingsService;
 
@@ -44,10 +51,15 @@ public class AgentToolsController {
   private final ModuleSettingsService settings;
   private final RfpCaptureService captureService;
   private final RfpWorkflowService workflowService;
+  private final RfpDeleteService deleteService;
   private final RfpQueryService queryService;
   private final CandidateProcessService processService;
   private final CandidateService candidateService;
+  private final ClientService clientService;
+  private final PositionService positionService;
   private final MatchRunService matchRunService;
+  private final SourcingInboxService inboxService;
+  private final DocumentService documentService;
   private final AnalyticsService analyticsService;
   private final ObjectMapper objectMapper;
 
@@ -55,19 +67,29 @@ public class AgentToolsController {
       ModuleSettingsService settings,
       RfpCaptureService captureService,
       RfpWorkflowService workflowService,
+      RfpDeleteService deleteService,
       RfpQueryService queryService,
       CandidateProcessService processService,
       CandidateService candidateService,
+      ClientService clientService,
+      PositionService positionService,
       MatchRunService matchRunService,
+      SourcingInboxService inboxService,
+      DocumentService documentService,
       AnalyticsService analyticsService,
       ObjectMapper objectMapper) {
     this.settings = settings;
     this.captureService = captureService;
     this.workflowService = workflowService;
+    this.deleteService = deleteService;
     this.queryService = queryService;
     this.processService = processService;
     this.candidateService = candidateService;
+    this.clientService = clientService;
+    this.positionService = positionService;
     this.matchRunService = matchRunService;
+    this.inboxService = inboxService;
+    this.documentService = documentService;
     this.analyticsService = analyticsService;
     this.objectMapper = objectMapper;
   }
@@ -84,8 +106,20 @@ public class AgentToolsController {
         case "get_rfp" -> getRfp(args);
         case "create_rfp" -> createRfp(args);
         case "approve_rfp" -> approveRfp(args);
+        case "delete_draft_rfp" -> deleteDraftRfp(args);
         case "list_candidate_processes" -> listCandidateProcesses(args);
         case "search_candidates" -> searchCandidates(args);
+        case "get_candidate" -> getCandidate(args);
+        case "list_clients" -> listClients();
+        case "get_client" -> getClient(args);
+        case "list_positions" -> listPositions(args);
+        case "get_position" -> getPosition(args);
+        case "list_submissions" -> listSubmissions(args);
+        case "list_documents" -> listDocuments(args);
+        case "get_document" -> getDocument(args);
+        case "list_match_runs" -> listMatchRuns(args);
+        case "get_match_run" -> getMatchRun(args);
+        case "list_sourcing_inbox" -> listSourcingInbox();
         case "open_candidate_process" -> openCandidateProcess(args);
         case "advance_process_stage" -> advanceProcessStage(args);
         case "close_rfp" -> closeRfp(args);
@@ -156,6 +190,122 @@ public class AgentToolsController {
     RfpWorkflowService.WorkflowResult result =
         workflowService.approve(rfpId, AgentPrincipals.currentName());
     return rfpNode(RfpDtos.toDto(result.rfp()));
+  }
+
+  private ObjectNode deleteDraftRfp(JsonNode args) {
+    UUID rfpId = requireId(args, "rfpId");
+    UUID deleted = deleteService.deleteDraft(rfpId);
+    ObjectNode out = objectMapper.createObjectNode();
+    out.put("status", "ok");
+    out.put("deletedRfpId", deleted.toString());
+    return out;
+  }
+
+  private ObjectNode listClients() {
+    ObjectNode out = objectMapper.createObjectNode();
+    ArrayNode clients = out.putArray("clients");
+    for (ClientService.ClientDto client : clientService.list()) {
+      clients.add((ObjectNode) objectMapper.valueToTree(client));
+    }
+    return out;
+  }
+
+  private ObjectNode getClient(JsonNode args) {
+    UUID clientId = requireId(args, "clientId");
+    ClientService.ClientDetailDto detail = clientService.detail(clientId);
+    ObjectNode node = (ObjectNode) objectMapper.valueToTree(detail.client());
+    node.set("rfps", objectMapper.valueToTree(detail.rfps()));
+    node.put("active", detail.active());
+    return node;
+  }
+
+  private ObjectNode listPositions(JsonNode args) {
+    UUID rfpId = requireId(args, "rfpId");
+    ObjectNode out = objectMapper.createObjectNode();
+    ArrayNode positions = out.putArray("positions");
+    for (RfpDtos.PositionDto position : positionService.list(rfpId)) {
+      positions.add((ObjectNode) objectMapper.valueToTree(position));
+    }
+    return out;
+  }
+
+  private ObjectNode getPosition(JsonNode args) {
+    UUID positionId = requireId(args, "positionId");
+    return (ObjectNode) objectMapper.valueToTree(positionService.get(positionId));
+  }
+
+  private ObjectNode getCandidate(JsonNode args) {
+    UUID candidateId = requireId(args, "candidateId");
+    CandidateService.CandidateDetailDto detail = candidateService.detail(candidateId);
+    ObjectNode node = (ObjectNode) objectMapper.valueToTree(detail.candidate());
+    node.set("history", objectMapper.valueToTree(detail.history()));
+    return node;
+  }
+
+  private ObjectNode listSubmissions(JsonNode args) {
+    UUID rfpId = requireId(args, "rfpId");
+    ObjectNode out = objectMapper.createObjectNode();
+    ArrayNode submissions = out.putArray("submissions");
+    for (RfpDtos.SubmissionDto submission : queryService.detail(rfpId).submissions()) {
+      submissions.add((ObjectNode) objectMapper.valueToTree(submission));
+    }
+    return out;
+  }
+
+  private ObjectNode listDocuments(JsonNode args) {
+    UUID rfpId = requireId(args, "rfpId");
+    ObjectNode out = objectMapper.createObjectNode();
+    ArrayNode documents = out.putArray("documents");
+    for (RfpDtos.DocumentMetaDto document : queryService.detail(rfpId).documents()) {
+      documents.add((ObjectNode) objectMapper.valueToTree(document));
+    }
+    return out;
+  }
+
+  private ObjectNode getDocument(JsonNode args) {
+    String ref = textOrNull(args, "ref");
+    if (ref == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ref is required");
+    }
+    try {
+      DocumentSource.DocumentContent content = documentService.resolve(ref);
+      ObjectNode node = objectMapper.createObjectNode();
+      node.put("ref", ref);
+      node.put("name", content.name());
+      node.put("mimeType", content.mimeType());
+      node.put("size", content.size());
+      node.put("text", content.text());
+      return node;
+    } catch (ResponseStatusException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new ResponseStatusException(
+          HttpStatus.NOT_FOUND, e.getMessage() != null ? e.getMessage() : "document not found");
+    }
+  }
+
+  private ObjectNode listMatchRuns(JsonNode args) {
+    UUID rfpId = requireId(args, "rfpId");
+    ObjectNode out = objectMapper.createObjectNode();
+    ArrayNode runs = out.putArray("matchRuns");
+    for (MatchRunEntity run : matchRunService.runsFor(rfpId)) {
+      runs.add(matchRunNode(run));
+    }
+    return out;
+  }
+
+  private ObjectNode getMatchRun(JsonNode args) {
+    UUID runId = requireId(args, "runId");
+    return matchRunNode(matchRunService.get(runId));
+  }
+
+  private ObjectNode listSourcingInbox() {
+    ObjectNode out = objectMapper.createObjectNode();
+    ArrayNode inbox = out.putArray("inbox");
+    for (TalentSourceConnector.InboxItem item : inboxService.inbox()) {
+      inbox.add((ObjectNode) objectMapper.valueToTree(item));
+    }
+    return out;
   }
 
   private ObjectNode listCandidateProcesses(JsonNode args) {
@@ -313,6 +463,19 @@ public class AgentToolsController {
     return node;
   }
 
+  private ObjectNode matchRunNode(MatchRunEntity run) {
+    ObjectNode node = objectMapper.createObjectNode();
+    node.put("runId", run.getId().toString());
+    node.put("rfpId", run.getRfpId().toString());
+    node.put("engine", run.getEngine());
+    node.put("status", run.getStatus().name().toLowerCase(java.util.Locale.ROOT));
+    node.set("params", objectMapper.valueToTree(run.getParams()));
+    node.set("results", objectMapper.valueToTree(run.getResults()));
+    node.put("createdBy", run.getCreatedBy());
+    node.put("createdAt", run.getCreatedAt() == null ? null : run.getCreatedAt().toString());
+    return node;
+  }
+
   private UUID requireId(JsonNode args, String field) {
     String raw = textOrNull(args, field);
     if (raw == null) {
@@ -373,8 +536,20 @@ public class AgentToolsController {
         "get_rfp",
         "create_rfp",
         "approve_rfp",
+        "delete_draft_rfp",
         "list_candidate_processes",
         "search_candidates",
+        "get_candidate",
+        "list_clients",
+        "get_client",
+        "list_positions",
+        "get_position",
+        "list_submissions",
+        "list_documents",
+        "get_document",
+        "list_match_runs",
+        "get_match_run",
+        "list_sourcing_inbox",
         "open_candidate_process",
         "advance_process_stage",
         "close_rfp",

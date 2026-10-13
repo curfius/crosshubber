@@ -40,13 +40,13 @@ class NavigationAgentToolsTest {
   @Test
   void handleReturnsInstanceSettings() {
     NavigationSettingsService service = mock(NavigationSettingsService.class);
-    Map<String, Object> settings = Map.of("homeApp", "portal-dashboard");
+    Map<String, Object> settings = Map.of("homeApp", "navigation:portal");
     when(service.get()).thenReturn(settings);
     ObjectMapper mapper = new JacksonConfig().jsonMapper();
     NavigationAgentTools tools = new NavigationAgentTools(service, mapper);
 
     JsonNode result = tools.handle(tools.tools().get(0), USER, mapper.createObjectNode());
 
-    assertThat(result.path("homeApp").asString()).isEqualTo("portal-dashboard");
+    assertThat(result.path("homeApp").asString()).isEqualTo("navigation:portal");
   }
 }

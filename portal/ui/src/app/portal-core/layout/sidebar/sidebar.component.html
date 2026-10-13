@@ -1,48 +1,73 @@
 <aside
   class="relative h-full w-[var(--portal-sidebar-width-collapsed)] shrink-0"
   (mouseenter)="hovered.set(true)"
-  (mouseleave)="hovered.set(false)">
+  (mouseleave)="hovered.set(false)"
+>
   <div
     [class]="
       expanded()
         ? 'ds-sidebar ds-sidebar-expanded absolute inset-y-0 left-0 z-30 flex flex-col shadow-2xl shadow-black/40'
         : 'ds-sidebar ds-sidebar-collapsed flex h-full'
-    ">
+    "
+  >
     <div
       [class]="
         expanded()
           ? 'flex items-center gap-3 px-5 py-5'
           : 'flex flex-col items-center gap-2 px-2 py-4'
-      ">
+      "
+    >
       <div
-        class="flex size-10 shrink-0 items-center justify-center rounded-xl shadow-lg [background:var(--portal-gradient-primary)]">
-        <svg class="size-6 text-[var(--portal-text-inverse)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
+        class="flex size-10 shrink-0 items-center justify-center rounded-xl shadow-lg [background:var(--portal-gradient-primary)]"
+      >
+        <svg
+          class="size-6 text-[var(--portal-text-inverse)]"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <circle cx="12" cy="12" r="9"></circle>
           <path d="M9 10h.01M15 10h.01M8.5 15a4 4 0 0 0 7 0"></path>
         </svg>
       </div>
       @if (expanded()) {
-      <div class="min-w-0 flex-1">
-        <p class="truncate text-sm font-semibold text-[var(--portal-text-primary)]">{{ branding.name() }}</p>
-      </div>
-      <button
-        (click)="$event.stopPropagation(); togglePinned()"
-        class="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--portal-sidebar-text)] transition hover:bg-[var(--portal-sidebar-hover)] hover:text-[var(--portal-sidebar-text-hover)]"
-        [attr.aria-label]="pinned() ? i18n.t('sidebar.unpin') : i18n.t('sidebar.pin')"
-        [attr.title]="pinned() ? i18n.t('sidebar.unpin') : i18n.t('sidebar.pin')">
-        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          @if (pinned()) {
-          <path d="M12 17v5"></path>
-          <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"></path>
-          <path d="m2 2 20 20"></path>
-          } @else {
-          <path d="M12 17v5"></path>
-          <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"></path>
-          }
-        </svg>
-      </button>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-semibold text-[var(--portal-text-primary)]">
+            {{ branding.name() }}
+          </p>
+        </div>
+        <button
+          (click)="$event.stopPropagation(); togglePinned()"
+          class="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--portal-sidebar-text)] transition hover:bg-[var(--portal-sidebar-hover)] hover:text-[var(--portal-sidebar-text-hover)]"
+          [attr.aria-label]="pinned() ? i18n.t('sidebar.unpin') : i18n.t('sidebar.pin')"
+          [attr.title]="pinned() ? i18n.t('sidebar.unpin') : i18n.t('sidebar.pin')"
+        >
+          <svg
+            class="size-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            @if (pinned()) {
+              <path d="M12 17v5"></path>
+              <path
+                d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"
+              ></path>
+              <path d="m2 2 20 20"></path>
+            } @else {
+              <path d="M12 17v5"></path>
+              <path
+                d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"
+              ></path>
+            }
+          </svg>
+        </button>
       }
     </div>
 
@@ -51,223 +76,322 @@
         (click)="homeClick.emit()"
         class="ds-sidebar-item w-full"
         [class.ds-sidebar-item-active]="homeActive()"
-        [attr.title]="i18n.t('sidebar.home')">
+        [attr.title]="i18n.t('sidebar.home')"
+      >
         <span class="ds-sidebar-item-icon">
-          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            class="size-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path>
-            <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <path
+              d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+            ></path>
           </svg>
         </span>
         @if (expanded()) {
-        <span class="ds-sidebar-item-label">{{ i18n.t('sidebar.home') }}</span>
+          <span class="ds-sidebar-item-label">{{ i18n.t('sidebar.home') }}</span>
         }
       </button>
     </nav>
 
     <!-- Fresh-user hint: rail has no personalized apps yet. -->
     @if (expanded() && showEmptyHint()) {
-    <div class="px-3 pt-2">
-      <button
-        (click)="homeClick.emit()"
-        class="ds-sidebar-item w-full text-[var(--portal-text-muted)]"
-        [attr.title]="i18n.t('sidebar.emptyApps')"
-        [attr.aria-label]="i18n.t('sidebar.emptyApps')">
-        <span class="ds-sidebar-item-icon">
-          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-          </svg>
-        </span>
-        <span class="ds-sidebar-item-label font-normal">{{ i18n.t('sidebar.emptyApps') }}</span>
-      </button>
-    </div>
+      <div class="px-3 pt-2">
+        <button
+          (click)="homeClick.emit()"
+          class="ds-sidebar-item w-full text-[var(--portal-text-muted)]"
+          [attr.title]="i18n.t('sidebar.emptyApps')"
+          [attr.aria-label]="i18n.t('sidebar.emptyApps')"
+        >
+          <span class="ds-sidebar-item-icon">
+            <svg
+              class="size-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+              <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+              <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+              <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+            </svg>
+          </span>
+          <span class="ds-sidebar-item-label font-normal">{{ i18n.t('sidebar.emptyApps') }}</span>
+        </button>
+      </div>
     }
 
-    <!-- Pinned apps tree (managed content) -->
-    @if (pinnedVisible()) {
-    <div class="ds-sidebar-divider"></div>
+    <!-- Scrollable body: pinned + recently used + workspaces (fixes vertical overflow;
+         chat docks below it, never clipped) -->
+    <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <!-- Pinned apps tree (managed content) -->
+      @if (pinnedVisible()) {
+        <div class="ds-sidebar-divider"></div>
 
-    <div class="ds-sidebar-section-label">{{ i18n.t('sidebar.pinnedApps') }}</div>
-    <nav class="flex flex-col gap-1 px-3 overflow-y-auto">
-      <ng-template #pinnedTpl let-nodes let-depth="depth">
-        @for (node of nodes; track node.id) {
-        @if (node.nodeType === 'folder') {
-          <button
-            (click)="toggleFolder(node.id)"
-            class="ds-sidebar-item w-full"
-            [attr.title]="node.name">
-            <span class="ds-sidebar-item-icon">
-              <svg class="size-3 transition-transform duration-200" [class.rotate-90]="isFolderExpanded(node.id)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 18l6-6-6-6"/>
-              </svg>
-            </span>
-            @if (expanded()) {
-            <span class="ds-sidebar-item-label">{{ node.name }}</span>
+        <div class="ds-sidebar-section-label">{{ i18n.t('sidebar.pinnedApps') }}</div>
+        <nav class="flex flex-col gap-1 px-3">
+          <ng-template #pinnedTpl let-nodes let-depth="depth">
+            @for (node of nodes; track node.id) {
+              @if (node.nodeType === 'folder') {
+                <button
+                  (click)="toggleFolder(node.id)"
+                  class="ds-sidebar-item w-full"
+                  [attr.title]="node.name"
+                >
+                  <span class="ds-sidebar-item-icon">
+                    <svg
+                      class="size-3 transition-transform duration-200"
+                      [class.rotate-90]="isFolderExpanded(node.id)"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </span>
+                  @if (expanded()) {
+                    <span class="ds-sidebar-item-label">{{ node.name }}</span>
+                  }
+                </button>
+                @if (isFolderExpanded(node.id)) {
+                  <div style="padding-left: 12px">
+                    <ng-container
+                      *ngTemplateOutlet="
+                        pinnedTpl;
+                        context: { $implicit: node.children, depth: depth + 1 }
+                      "
+                    />
+                  </div>
+                }
+              } @else {
+                @if (resolveRef(node.ref!); as ep) {
+                  <button
+                    (click)="entryPointClick.emit(ep)"
+                    class="ds-sidebar-item sidebar-badge-host w-full"
+                    [class.ds-sidebar-item-active]="activeAppKey() === epId(ep)"
+                    [attr.title]="ep.name"
+                  >
+                    <span class="ds-sidebar-item-icon">
+                      <span
+                        class="flex size-8 shrink-0 items-center justify-center rounded-md text-base font-bold text-white"
+                        [style.background]="avatarBg(ep)"
+                        >{{ ep.name[0] }}</span
+                      >
+                    </span>
+                    @if (expanded()) {
+                      <span class="ds-sidebar-item-label">{{ ep.name }}</span>
+                      <span
+                        class="ml-auto text-[10px] uppercase tracking-wide text-[var(--portal-text-disabled)]"
+                        >{{ ep.type }}</span
+                      >
+                    }
+                    @if (msgCenterUnread(epId(ep)) > 0) {
+                      @if (expanded()) {
+                        <span
+                          class="ml-auto inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--portal-btn-danger-bg)] px-1 text-[10px] font-semibold text-white"
+                        >
+                          {{ msgCenterUnread(epId(ep)) }}
+                        </span>
+                      } @else {
+                        <span class="sidebar-badge-collapsed" aria-hidden="true">
+                          {{ msgCenterUnread(epId(ep)) }}
+                        </span>
+                      }
+                    }
+                  </button>
+                }
+              }
             }
-          </button>
-          @if (isFolderExpanded(node.id)) {
-            <div style="padding-left:12px">
-              <ng-container *ngTemplateOutlet="pinnedTpl; context: { $implicit: node.children, depth: depth + 1 }"/>
-            </div>
-          }
-        } @else {
-          @if (resolveRef(node.ref!); as ep) {
+          </ng-template>
+
+          <ng-container
+            *ngTemplateOutlet="pinnedTpl; context: { $implicit: nav.pinnedTree(), depth: 0 }"
+          />
+        </nav>
+      }
+
+      <!-- Recently used (server-tracked last apps used) -->
+      @if (recentApps().length > 0) {
+        <div class="ds-sidebar-divider"></div>
+
+        <div class="ds-sidebar-section-label">{{ i18n.t('sidebar.recentlyUsed') }}</div>
+        <nav class="flex flex-col gap-1 px-3">
+          @for (ep of recentApps(); track epId(ep)) {
             <button
               (click)="entryPointClick.emit(ep)"
-              class="ds-sidebar-item w-full"
+              class="ds-sidebar-item sidebar-badge-host w-full"
               [class.ds-sidebar-item-active]="activeAppKey() === epId(ep)"
-              [attr.title]="ep.name">
+              [attr.title]="ep.name"
+            >
               <span class="ds-sidebar-item-icon">
                 <span
                   class="flex size-8 shrink-0 items-center justify-center rounded-md text-base font-bold text-white"
-                  [style.background]="avatarBg(ep)">{{ ep.name[0] }}</span>
+                  [style.background]="avatarBg(ep)"
+                  >{{ ep.name[0] }}</span
+                >
               </span>
               @if (expanded()) {
-              <span class="ds-sidebar-item-label">{{ ep.name }}</span>
-              <span class="ml-auto text-[10px] uppercase tracking-wide text-[var(--portal-text-disabled)]">{{ ep.type }}</span>
+                <span class="ds-sidebar-item-label">{{ ep.name }}</span>
               }
               @if (msgCenterUnread(epId(ep)) > 0) {
-              <span
-                class="ml-auto inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--portal-btn-danger-bg)] px-1 text-[10px] font-semibold text-white">
-                {{ msgCenterUnread(epId(ep)) }}
-              </span>
+                @if (expanded()) {
+                  <span
+                    class="ml-auto inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--portal-btn-danger-bg)] px-1 text-[10px] font-semibold text-white"
+                  >
+                    {{ msgCenterUnread(epId(ep)) }}
+                  </span>
+                } @else {
+                  <span class="sidebar-badge-collapsed" aria-hidden="true">
+                    {{ msgCenterUnread(epId(ep)) }}
+                  </span>
+                }
               }
             </button>
           }
-        }
-        }
-      </ng-template>
-
-      <ng-container *ngTemplateOutlet="pinnedTpl; context: { $implicit: nav.pinnedTree(), depth: 0 }"/>
-    </nav>
-    }
-
-    <!-- Quick access (picked apps) -->
-    @if (pickedApps().length > 0) {
-    <div class="ds-sidebar-divider"></div>
-
-    <div class="ds-sidebar-section-label">{{ i18n.t('sidebar.quickAccess') }}</div>
-    <nav class="flex flex-col gap-1 px-3">
-      @for (ep of pickedApps(); track epId(ep)) {
-      <button
-        (click)="entryPointClick.emit(ep)"
-        class="ds-sidebar-item w-full"
-        [class.ds-sidebar-item-active]="activeAppKey() === epId(ep)"
-        [attr.title]="ep.name">
-        <span class="ds-sidebar-item-icon">
-          <span
-            class="flex size-8 shrink-0 items-center justify-center rounded-md text-base font-bold text-white"
-            [style.background]="avatarBg(ep)">{{ ep.name[0] }}</span>
-        </span>
-        @if (expanded()) {
-        <span class="ds-sidebar-item-label">{{ ep.name }}</span>
-        }
-        @if (msgCenterUnread(epId(ep)) > 0) {
-        <span
-          class="ml-auto inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--portal-btn-danger-bg)] px-1 text-[10px] font-semibold text-white">
-          {{ msgCenterUnread(epId(ep)) }}
-        </span>
-        }
-      </button>
+        </nav>
       }
-    </nav>
-    }
 
-    <!-- Workspaces -->
-    @if (workspacesEnabled() && features().workspacesEnabled) {
-    <div class="ds-sidebar-divider"></div>
+      <!-- Workspaces -->
+      @if (workspacesEnabled() && features().workspacesEnabled) {
+        <div class="ds-sidebar-divider"></div>
 
-    @if (workspaces().length > 0) {
-    <div class="ds-sidebar-section-label">{{ i18n.t('sidebar.myWorkspaces') }}</div>
-    <nav class="flex flex-col gap-1 px-3">
-      @for (ws of workspaces(); track ws.name) {
-      @if (renamingWs() === ws.name && expanded()) {
-      <div
-        class="ds-sidebar-item w-full"
-        [class.ds-sidebar-item-active]="activeWorkspace() === ws.name"
-        (click)="$event.stopPropagation()">
-        <input
-          #renameInput
-          [value]="renameValue()"
-          (input)="renameValue.set($any($event.target).value)"
-          (keydown.enter)="commitRename()"
-          (keydown.escape)="cancelRename()"
-          (blur)="cancelRename()"
-          [attr.aria-label]="i18n.t('sidebar.rename')"
-          class="ds-input h-7 w-full min-w-0 text-xs" />
-        </div>
-      } @else {
-      <div
-        class="ds-sidebar-item w-full"
-        [class.ds-sidebar-item-active]="activeWorkspace() === ws.name"
-        [attr.title]="ws.name">
+        @if (workspaces().length > 0) {
+          <div class="ds-sidebar-section-label">{{ i18n.t('sidebar.myWorkspaces') }}</div>
+          <nav class="flex flex-col gap-1 px-3">
+            @for (ws of workspaces(); track ws.name) {
+              @if (renamingWs() === ws.name && expanded()) {
+                <div
+                  class="ds-sidebar-item w-full"
+                  [class.ds-sidebar-item-active]="activeWorkspace() === ws.name"
+                  (click)="$event.stopPropagation()"
+                >
+                  <input
+                    #renameInput
+                    [value]="renameValue()"
+                    (input)="renameValue.set($any($event.target).value)"
+                    (keydown.enter)="commitRename()"
+                    (keydown.escape)="cancelRename()"
+                    (blur)="cancelRename()"
+                    [attr.aria-label]="i18n.t('sidebar.rename')"
+                    class="ds-input h-7 w-full min-w-0 text-xs"
+                  />
+                </div>
+              } @else {
+                <div
+                  class="ds-sidebar-item w-full"
+                  [class.ds-sidebar-item-active]="activeWorkspace() === ws.name"
+                  [attr.title]="ws.name"
+                >
+                  <button
+                    type="button"
+                    (click)="workspaceClick.emit(ws.name)"
+                    [class]="
+                      expanded()
+                        ? 'flex min-w-0 flex-1 items-center gap-3 text-left'
+                        : 'flex min-w-0 flex-1 items-center justify-center gap-3 text-left'
+                    "
+                  >
+                    <span class="ds-sidebar-item-icon">
+                      <span
+                        class="flex size-8 shrink-0 items-center justify-center rounded-md text-base font-bold text-white"
+                        [style.background]="ws.color || 'var(--portal-gradient-primary)'"
+                      >
+                        {{ ws.name[0] }}
+                      </span>
+                    </span>
+                    @if (expanded()) {
+                      <span class="ds-sidebar-item-label">{{ ws.name }}</span>
+                    }
+                  </button>
+                  @if (expanded()) {
+                    <span class="flex shrink-0 items-center gap-0.5">
+                      <button
+                        type="button"
+                        (click)="$event.stopPropagation(); startRename(ws.name)"
+                        [attr.title]="i18n.t('sidebar.rename')"
+                        [attr.aria-label]="i18n.t('sidebar.rename')"
+                        class="flex size-6 cursor-pointer items-center justify-center rounded text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-sidebar-hover)] hover:text-[var(--portal-sidebar-text-hover)]"
+                      >
+                        <svg
+                          class="size-3.5"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M11 2l3 3-7.5 7.5H3v-3.5z" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        (click)="$event.stopPropagation(); workspaceDelete.emit(ws.name)"
+                        [attr.title]="i18n.t('shell.toolbar.deleteWorkspace')"
+                        [attr.aria-label]="i18n.t('shell.toolbar.deleteWorkspace')"
+                        class="flex size-6 cursor-pointer items-center justify-center rounded text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-sidebar-hover)] hover:text-[var(--portal-status-danger)]"
+                      >
+                        <svg
+                          class="size-3.5"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M2 4h12M6 4V2h4v2M4 4l1 10h6l1-10" />
+                        </svg>
+                      </button>
+                    </span>
+                  }
+                </div>
+              }
+            }
+          </nav>
+        }
+      }
+    </div>
+
+    <!-- Chat button (docked bottom, outside the scroll region; hidden when the
+         quick-chat EP is not served) -->
+    @if (quickChatAvailable()) {
+      <div class="shrink-0 border-t border-[var(--portal-sidebar-border)] px-3 pt-3 pb-3">
         <button
-          type="button"
-          (click)="workspaceClick.emit(ws.name)"
-          [class]="expanded() ? 'flex min-w-0 flex-1 items-center gap-3 text-left' : 'flex min-w-0 flex-1 items-center justify-center gap-3 text-left'">
+          (click)="chatClick.emit()"
+          class="ds-sidebar-item w-full"
+          [attr.title]="i18n.t('sidebar.quickChat')"
+        >
           <span class="ds-sidebar-item-icon">
-            <span
-              class="flex size-8 shrink-0 items-center justify-center rounded-md text-base font-bold text-white"
-              [style.background]="ws.color || 'var(--portal-gradient-primary)'">
-              {{ ws.name[0] }}
-            </span>
+            <svg
+              class="size-4 text-[var(--portal-accent-primary)]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z" />
+            </svg>
           </span>
           @if (expanded()) {
-          <span class="ds-sidebar-item-label">{{ ws.name }}</span>
+            <span class="ds-sidebar-item-label" style="color: var(--portal-accent-primary)">{{
+              i18n.t('sidebar.quickChat')
+            }}</span>
           }
         </button>
-        @if (expanded()) {
-        <span class="flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            (click)="$event.stopPropagation(); startRename(ws.name)"
-            [attr.title]="i18n.t('sidebar.rename')"
-            [attr.aria-label]="i18n.t('sidebar.rename')"
-            class="flex size-6 cursor-pointer items-center justify-center rounded text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-sidebar-hover)] hover:text-[var(--portal-sidebar-text-hover)]">
-            <svg class="size-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M11 2l3 3-7.5 7.5H3v-3.5z" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            (click)="$event.stopPropagation(); workspaceDelete.emit(ws.name)"
-            [attr.title]="i18n.t('shell.toolbar.deleteWorkspace')"
-            [attr.aria-label]="i18n.t('shell.toolbar.deleteWorkspace')"
-            class="flex size-6 cursor-pointer items-center justify-center rounded text-[var(--portal-text-disabled)] transition hover:bg-[var(--portal-sidebar-hover)] hover:text-[var(--portal-status-danger)]">
-            <svg class="size-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 4h12M6 4V2h4v2M4 4l1 10h6l1-10" />
-            </svg>
-          </button>
-        </span>
-        }
       </div>
-      }
-      }
-    </nav>
-    }
-    }
-
-    <div class="flex-1"></div>
-
-    <!-- Chat button (docked bottom; hidden when the quick-chat EP is not served) -->
-    @if (quickChatAvailable()) {
-    <div class="mt-auto border-t border-[var(--portal-sidebar-border)] px-3 pt-3 pb-3">
-      <button
-        (click)="chatClick.emit()"
-        class="ds-sidebar-item w-full"
-        [attr.title]="i18n.t('sidebar.quickChat')">
-        <span class="ds-sidebar-item-icon">
-          <svg class="size-4 text-[var(--portal-accent-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/>
-          </svg>
-        </span>
-        @if (expanded()) {
-        <span class="ds-sidebar-item-label" style="color:var(--portal-accent-primary)">{{ i18n.t('sidebar.quickChat') }}</span>
-        }
-      </button>
-    </div>
     }
   </div>
 </aside>

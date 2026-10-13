@@ -102,7 +102,7 @@ class MsgCenterIngestionIT {
     ObjectNode root = mapper.createObjectNode();
     root.put("v", 1);
     root.put("type", "notification");
-    root.put("moduleKey", "portal-dashboard");
+    root.put("moduleKey", "navigation");
     root.put("subject", subject);
     root.put("id", id);
     root.put("createdAt", "2026-10-06T10:15:00Z");
@@ -120,7 +120,7 @@ class MsgCenterIngestionIT {
   void publishedEventArrivesExactlyOnce() {
     String id = UUID.randomUUID().toString();
     String subject =
-        "portal.msg.portal-dashboard.it-once-" + UUID.randomUUID().toString().substring(0, 8);
+        "portal.msg.navigation.it-once-" + UUID.randomUUID().toString().substring(0, 8);
     eventPublisher.publish(subject, notificationEnvelope(id, subject));
 
     await()
@@ -138,9 +138,8 @@ class MsgCenterIngestionIT {
   void storeIsIdempotentDirectly() {
     String id = UUID.randomUUID().toString();
     JsonNode envelope = mapper.readTree(notificationEnvelope(id, "direct"));
-    assertThat(ingestionService.store(envelope, "portal.msg.portal-dashboard.direct", 1))
-        .isNotNull();
-    assertThat(ingestionService.store(envelope, "portal.msg.portal-dashboard.direct", 1)).isNull();
+    assertThat(ingestionService.store(envelope, "portal.msg.navigation.direct", 1)).isNotNull();
+    assertThat(ingestionService.store(envelope, "portal.msg.navigation.direct", 1)).isNull();
   }
 
   @Test
@@ -149,11 +148,9 @@ class MsgCenterIngestionIT {
     String subject;
     try (Connection probe = Nats.connect(natsUrl())) {
       JetStream js = probe.jetStream();
-      subject =
-          "portal.msg.portal-dashboard.it-bad-" + UUID.randomUUID().toString().substring(0, 8);
+      subject = "portal.msg.navigation.it-bad-" + UUID.randomUUID().toString().substring(0, 8);
       // Deliberately malformed (v missing) → immediate DLQ, no poison-pill redeliveries
-      js.publish(
-          subject, "{\"moduleKey\": \"portal-dashboard\", \"type\": \"notification\"}".getBytes());
+      js.publish(subject, "{\"moduleKey\": \"navigation\", \"type\": \"notification\"}".getBytes());
 
       ConsumerConfiguration conf =
           ConsumerConfiguration.builder()
@@ -213,7 +210,7 @@ class MsgCenterIngestionIT {
             .header("X-MsgCenter-Key", callerKey)
             .header("X-MsgCenter-Secret", secret)
             .header("Content-Type", "application/json")
-            .body(validPublishEnvelope("portal-dashboard"))
+            .body(validPublishEnvelope("navigation"))
             .retrieve()
             .onStatus(s -> true, (r, res) -> {})
             .toEntity(String.class);
@@ -235,7 +232,7 @@ class MsgCenterIngestionIT {
   void httpPublishAcceptsMatchingCallerAndArrives() {
     // the caller key doubles as the envelope moduleKey and must exist in registry_modules —
     // the test tenant seeds builtin modules only, so the caller is a builtin module here
-    String callerKey = "portal-dashboard";
+    String callerKey = "navigation";
     // the HMAC is computed from the test session secret exactly as the authenticator does
     String computed = hmacOf(callerKey);
     String marker = "http-publish-" + UUID.randomUUID().toString().substring(0, 8);
@@ -303,7 +300,7 @@ class MsgCenterIngestionIT {
     // 1. publish a claim-mode collect task addressed to allUsers
     String id = UUID.randomUUID().toString();
     String subject =
-        "portal.task.portal-dashboard.it-claim-" + UUID.randomUUID().toString().substring(0, 8);
+        "portal.task.navigation.it-claim-" + UUID.randomUUID().toString().substring(0, 8);
     ObjectNode task = mapper.createObjectNode();
     task.put("kind", "collect");
     task.put("completion", "any");
@@ -316,7 +313,7 @@ class MsgCenterIngestionIT {
     ObjectNode envelope = mapper.createObjectNode();
     envelope.put("v", 1);
     envelope.put("type", "task");
-    envelope.put("moduleKey", "portal-dashboard");
+    envelope.put("moduleKey", "navigation");
     envelope.put("id", id);
     envelope.put("createdAt", "2026-10-06T10:15:00Z");
     envelope.putObject("audience").put("allUsers", true);
@@ -411,14 +408,14 @@ class MsgCenterIngestionIT {
     ObjectNode envelope = mapper.createObjectNode();
     envelope.put("v", 1);
     envelope.put("type", "notification");
-    envelope.put("moduleKey", "portal-dashboard");
+    envelope.put("moduleKey", "navigation");
     envelope.put("id", id);
     envelope.put("createdAt", "2026-10-06T10:15:00Z");
     envelope.putObject("audience").putArray("users").add(viewer);
     envelope.putObject("title").put("en", "Reader regression");
     envelope.putObject("body").put("en", "audience users[] pin");
     eventPublisher.publish(
-        "portal.msg.portal-dashboard.reader-" + UUID.randomUUID().toString().substring(0, 8),
+        "portal.msg.navigation.reader-" + UUID.randomUUID().toString().substring(0, 8),
         envelope.toString());
 
     final long before = unreadAfter;

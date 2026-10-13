@@ -7,6 +7,8 @@ import { OngoingComponent } from './app/ongoing/ongoing.component';
 import { TalentComponent } from './app/talent/talent.component';
 import { AnalyticsComponent } from './app/analytics/analytics.component';
 import { SettingsComponent } from './app/settings/settings.component';
+import { UI_I18N } from './app/shared/i18n';
+import { MfeI18n } from './app/shared/mfe-i18n';
 
 // Invisible bootstrap root — exists only so the element registry gets a fully
 // configured injector (zoneless scheduler, error handler, i18n-less defaults).
@@ -25,7 +27,11 @@ async function defineElements(): Promise<void> {
   host.style.display = 'none';
   document.body.appendChild(host);
   const app = await bootstrapApplication(RootComponent, {
-    providers: [provideZonelessChangeDetection()],
+    providers: [
+      provideZonelessChangeDetection(),
+      // Shared UI kit labels: render from the portal's public i18n bundles.
+      { provide: UI_I18N, useExisting: MfeI18n },
+    ],
   });
   host.remove();
   const injector = app.injector;

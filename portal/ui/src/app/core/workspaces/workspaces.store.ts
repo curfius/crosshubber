@@ -5,13 +5,13 @@ import { moduleContentId, parseModuleContentId } from '../models';
 import { apiFetch } from '../http/api-fetch';
 import { UrlSyncService } from '../history/url-sync.service';
 import { tabKeyOf, type NavState } from '../history/nav-state';
+import { NavigationStore } from '../navigation/navigation.store';
 
 const ACTIVE_KEY = 'portal.activeWorkspace';
 const HOME_SNAPSHOT_KEY = 'portal.homeSnapshot';
 
 /** Default home-app ref (instance setting `homeApp` overrides it). */
 const DEFAULT_HOME_REF = 'navigation:portal';
-const FALLBACK_HOME_REF = 'portal-dashboard:main';
 
 function withInstances(tabs: Tab[]): Tab[] {
   const counts = new Map<string, number>();
@@ -46,6 +46,7 @@ function normalizeSplitDirs(node: LayoutNode): LayoutNode {
 @Injectable({ providedIn: 'root' })
 export class WorkbenchService {
   private readonly urlSync = inject(UrlSyncService);
+  private readonly navigation = inject(NavigationStore);
 
   readonly groups = signal<Record<string, TabGroup>>({});
   readonly layout = signal<LayoutNode | null>(null);
@@ -100,6 +101,33 @@ export class WorkbenchService {
 
   setModuleContents(eps: PortalModuleContent[]): void {
     this.moduleContents.set(eps);
+    this.refreshTabContents();
+  }
+
+  /** Snapshots the catalog into every open tab so renames/colors show without reopening. */
+  private refreshTabContents(): void {
+    const byId = new Map(this.moduleContents().map((ep) => [moduleContentId(ep), ep]));
+    let changed = false;
+    this.groups.update((gs) => {
+      const next: Record<string, TabGroup> = {};
+      for (const [gid, g] of Object.entries(gs)) {
+        let groupChanged = false;
+        const tabs = g.tabs.map((t) => {
+          const ep = byId.get(moduleContentId(t.content));
+          if (!ep || ep === t.content) return t;
+          groupChanged = true;
+          return { ...t, content: ep };
+        });
+        if (!groupChanged) {
+          next[gid] = g;
+        } else {
+          changed = true;
+          next[gid] = { ...g, tabs: withInstances(tabs) };
+        }
+      }
+      return next;
+    });
+    if (changed) this.syncAfterMutation();
   }
 
   getModuleContents(): PortalModuleContent[] {
@@ -154,7 +182,7 @@ export class WorkbenchService {
       const ep = this.findModuleContent(ref.slice(0, idx), ref.slice(idx + 1));
       return ep && ep.type !== 'link' ? ep : null;
     };
-    return resolve(this.homeAppRef()) ?? resolve(FALLBACK_HOME_REF);
+    return resolve(this.homeAppRef());
   }
 
   /** Ensures the unclosable Home tab exists as the first tab of the primary group. */
@@ -244,6 +272,7 @@ export class WorkbenchService {
       return;
     }
     const id = moduleContentId(ep);
+    this.recordRecent(id);
     if (!ep.multi) {
       for (const g of Object.values(this.groups())) {
         const existing = g.tabs.find((t) => moduleContentId(t.content) === id);
@@ -397,6 +426,7 @@ export class WorkbenchService {
   openAppInGroup(ep: PortalModuleContent, groupId: string): void {
     if (!this.groups()[groupId]) return;
     const id = moduleContentId(ep);
+    this.recordRecent(id);
     const existing = this.groups()[groupId].tabs.find((t) => moduleContentId(t.content) === id);
     if (existing) {
       this.activate(groupId, existing.id, true);
@@ -860,6 +890,12 @@ export class WorkbenchService {
     }
     this.saveSessionSnapshot();
     this.syncUrl('replace');
+  }
+
+  /** Feeds the "Recently used" block; the home app is not duplicated there. */
+  private recordRecent(id: string): void {
+    if (id === this.getHomeAppRef()) return;
+    this.navigation.recordRecent(id);
   }
 
   private saveSessionSnapshot(): void {

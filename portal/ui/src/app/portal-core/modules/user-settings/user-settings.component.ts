@@ -65,7 +65,8 @@ export class UserSettings {
 
   protected selectEntry(ep: PortalModuleContent): void {
     this.activeEntry.set(ep);
-    this.coordinator.navigateFromModule(MODULE_KEY, '/' + ep.contentKey);
+    // Module-scoped path: entry points of different modules may share keys.
+    this.coordinator.navigateFromModule(MODULE_KEY, '/' + ep.moduleKey + '/' + ep.contentKey);
   }
 
   protected onTreeNodeSelected(node: DsTreeNode): void {
@@ -88,8 +89,16 @@ export class UserSettings {
   }
 
   private applyModulePath(path: string): void {
-    const contentKey = path.replace(/^\//, '').split('/')[0];
-    const ep = this.userSettingsContents().find((e) => e.contentKey === contentKey);
+    const segments = path.replace(/^\//, '').split('/').filter(Boolean);
+    // Module-scoped: /<moduleKey>/<contentKey>. Legacy single-segment paths
+    // (pre-2026-10 deep links) fall back to a contentKey-only match.
+    const ep =
+      segments.length >= 2
+        ? this.userSettingsContents().find(
+            (e) => e.moduleKey === segments[0] && e.contentKey === segments[1],
+          ) ??
+          this.userSettingsContents().find((e) => e.contentKey === segments[segments.length - 1])
+        : this.userSettingsContents().find((e) => e.contentKey === segments[0]);
     if (ep) this.activeEntry.set(ep);
   }
 }

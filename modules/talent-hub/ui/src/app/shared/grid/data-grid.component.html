@@ -1,0 +1,219 @@
+<div class="ds-table-wrapper">
+  @if (searchable() || groupable() || showBulk()) {
+    <div class="grid-toolbar">
+      @if (searchable()) {
+        <div class="grid-search">
+          <label class="visually-hidden" for="grid-search-{{ columns()[0]?.key }}">{{ i18n.t('grid.searchPlaceholder') }}</label>
+          <input
+            id="grid-search-{{ columns()[0]?.key }}"
+            type="search"
+            class="ds-input"
+            [placeholder]="i18n.t('grid.searchPlaceholder')"
+            [value]="globalSearch()"
+            (input)="onGlobalSearch($event)" />
+        </div>
+      }
+      @if (groupable()) {
+        <div class="grid-groupby">
+          <label class="visually-hidden" for="grid-groupby">{{ i18n.t('grid.groupBy') }}</label>
+          <span class="grid-groupby-label">{{ i18n.t('grid.groupBy') }}</span>
+          <select id="grid-groupby" class="ds-input" [value]="groupBy() ?? ''" (change)="onGroupByChange($event)">
+            <option value="">{{ i18n.t('grid.groupByNone') }}</option>
+            @for (col of groupableColumns(); track col.key) {
+              <option [value]="col.key">{{ col.header }}</option>
+            }
+          </select>
+        </div>
+      }
+      @if (searchable()) {
+        <button
+          type="button"
+          class="grid-filter-toggle"
+          [class.active]="showFilters() || hasActiveFilters()"
+          [attr.aria-pressed]="showFilters()"
+          (click)="toggleFilters()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+          </svg>
+        </button>
+      }
+      @if (showBulk()) {
+        <div class="grid-bulk">
+          <div class="grid-bulk-split">
+            <button
+              type="button"
+              class="ds-btn ds-btn-secondary grid-bulk-btn"
+              [disabled]="selectedCount() === 0"
+              aria-haspopup="menu"
+              [attr.aria-expanded]="bulkOpen()"
+              (click)="toggleBulkMenu()">
+              <span>{{ i18n.t('grid.bulkActions') }}</span>
+              @if (selectedCount() > 0) {
+                <span class="grid-bulk-count">({{ selectedCountLabel() }})</span>
+              }
+            </button>
+            <button
+              type="button"
+              class="ds-btn ds-btn-secondary grid-bulk-caret"
+              [disabled]="selectedCount() === 0"
+              aria-haspopup="menu"
+              [attr.aria-expanded]="bulkOpen()"
+              [attr.aria-label]="i18n.t('grid.bulkActions')"
+              (click)="toggleBulkMenu()">
+              <span class="grid-bulk-chevron" [class.open]="bulkOpen()" aria-hidden="true">▾</span>
+            </button>
+          </div>
+          @if (bulkOpen()) {
+            <div class="grid-bulk-menu" role="menu">
+              @for (action of bulkActions(); track action.id) {
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="grid-bulk-item"
+                  [class.danger]="action.danger"
+                  (click)="pickBulkAction(action.id)">
+                  {{ bulkLabel(action) }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+      <div class="grid-actions">
+        <ng-content select="[gridActions]" />
+      </div>
+    </div>
+  }
+
+  <div class="grid-table-scroll">
+    <table class="ds-table">
+      <thead>
+        <tr>
+          @if (selectable()) {
+            <th class="grid-select-col">
+              <label class="visually-hidden" for="grid-select-all">{{ i18n.t('grid.selectAll') }}</label>
+              <input
+                id="grid-select-all"
+                type="checkbox"
+                class="ds-checkbox"
+                [checked]="allSelected()"
+                [indeterminate]="someSelected()"
+                (change)="onToggleAll($event)" />
+            </th>
+          }
+          @for (col of columns(); track col.key) {
+            <th
+              [style.text-align]="col.align ?? 'left'"
+              [style.width]="col.width ?? ''"
+              [class.sortable]="col.sortable !== false"
+              [attr.aria-sort]="ariaSort(col)">
+              @if (col.sortable !== false) {
+                <button type="button" class="grid-sort-btn" (click)="toggleSort(col)">
+                  <span>{{ headerLabel(col) }}</span>
+                  <span class="grid-sort-indicator" aria-hidden="true">{{ sortIndicator(col) }}</span>
+                </button>
+              } @else {
+                <span>{{ headerLabel(col) }}</span>
+              }
+            </th>
+          }
+        </tr>
+        @if (showFilters()) {
+          <tr class="grid-filter-row">
+            @if (selectable()) {
+              <th aria-hidden="true"></th>
+            }
+            @for (col of columns(); track col.key) {
+              <th>
+                @if (col.searchable !== false) {
+                  <label class="visually-hidden" for="grid-filter-{{ col.key }}">{{ col.header }}</label>
+                  <input
+                    id="grid-filter-{{ col.key }}"
+                    type="text"
+                    class="ds-input grid-filter-input"
+                    [placeholder]="i18n.t('grid.filterPlaceholder')"
+                    [value]="columnFilters()[col.key] ?? ''"
+                    (input)="onColumnFilter(col.key, $event)" />
+                }
+              </th>
+            }
+          </tr>
+        }
+      </thead>
+      <tbody>
+        @if (isEmpty()) {
+          <tr>
+            <td [attr.colspan]="columnCount()" class="grid-empty">
+              {{ emptyLabel() }}
+            </td>
+          </tr>
+        } @else if (hasGrouping()) {
+          @for (group of groupedRows(); track group.key) {
+            <tr class="grid-group-header">
+              <td [attr.colspan]="columnCount()">
+                <button
+                  type="button"
+                  class="grid-group-toggle"
+                  [attr.aria-expanded]="!collapsedGroups().has(group.key)"
+                  (click)="toggleGroup(group.key)">
+                  <span class="grid-group-chevron" [class.open]="!collapsedGroups().has(group.key)" aria-hidden="true">▼</span>
+                  <span class="grid-group-label">{{ group.header }}: {{ group.value }}</span>
+                  <span class="grid-group-count">{{ i18n.t('grid.groupCount', { count: group.rows.length }) }}</span>
+                </button>
+              </td>
+            </tr>
+            @if (!collapsedGroups().has(group.key)) {
+              @for (row of group.rows; track trackRow(row, $index)) {
+                <tr [class.grid-row-clickable]="clickable()" (click)="onRowClick(row)">
+                  @if (selectable()) {
+                    <td class="grid-select-col" (click)="$event.stopPropagation()">
+                      <input
+                        type="checkbox"
+                        class="ds-checkbox"
+                        [checked]="isSelected(rowIdOf(row))"
+                        [attr.aria-label]="i18n.t('grid.selectRow')"
+                        (change)="onToggleRow(rowIdOf(row), $event)" />
+                    </td>
+                  }
+                  @for (col of columns(); track col.key) {
+                    <td [style.text-align]="col.align ?? 'left'">
+                      @if (getCell(col.key); as tpl) {
+                        <ng-container *ngTemplateOutlet="tpl; context: { $implicit: row, value: col.accessor(row) }" />
+                      } @else {
+                        {{ formatCell(col, row) }}
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            }
+          }
+        } @else {
+          @for (row of sortedRows(); track trackRow(row, $index)) {
+            <tr [class.grid-row-clickable]="clickable()" (click)="onRowClick(row)">
+              @if (selectable()) {
+                <td class="grid-select-col" (click)="$event.stopPropagation()">
+                  <input
+                    type="checkbox"
+                    class="ds-checkbox"
+                    [checked]="isSelected(rowIdOf(row))"
+                    [attr.aria-label]="i18n.t('grid.selectRow')"
+                    (change)="onToggleRow(rowIdOf(row), $event)" />
+                </td>
+              }
+              @for (col of columns(); track col.key) {
+                <td [style.text-align]="col.align ?? 'left'">
+                  @if (getCell(col.key); as tpl) {
+                    <ng-container *ngTemplateOutlet="tpl; context: { $implicit: row, value: col.accessor(row) }" />
+                  } @else {
+                    {{ formatCell(col, row) }}
+                  }
+                </td>
+              }
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

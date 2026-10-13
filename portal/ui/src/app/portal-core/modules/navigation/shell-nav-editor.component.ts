@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, OnInit, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { DndTree } from '../../../shared/components/dnd-tree/dnd-tree.component';
 import type { EditableTreeNode } from '../../../core/navigation/navigation.models';
 import { AVATAR_COLORS, avatarColor } from '../../../core/navigation/navigation.models';
@@ -23,11 +24,16 @@ function slugify(name: string): string {
 export function shellTreeFromResponse(resp: ShellTreeResponse): EditableTreeNode[] {
   const groupNodes = new Map<string, EditableTreeNode>();
   for (const g of resp.groups) {
+    // Editor-only badges explain why a row may be absent from the runtime shell:
+    // `hidden` (eye) and `roles` (role-restricted groups are dropped per-user).
+    const folderBadge = g.hidden === true ? ('hidden' as const) : g.roles?.length ? ('roles' as const) : undefined;
     groupNodes.set(g.groupKey, {
       id: `group:${g.groupKey}`,
       label: g.name,
       kind: 'folder',
+      color: g.color ?? undefined,
       hidden: g.hidden === true ? true : undefined,
+      badge: folderBadge,
       meta: { groupKey: g.groupKey } satisfies ShellGroupMeta,
       children: [],
     });
@@ -46,6 +52,7 @@ export function shellTreeFromResponse(resp: ShellTreeResponse): EditableTreeNode
       color: item.color,
       fallbackColor: avatarColor(`${item.moduleKey}:${item.contentKey}`),
       hidden: item.hidden === true ? true : undefined,
+      badge: item.hidden === true ? ('hidden' as const) : undefined,
       meta: { moduleKey: item.moduleKey, contentKey: item.contentKey } satisfies ShellItemMeta,
       children: [],
     };
@@ -67,19 +74,40 @@ export function shellTreeToPayload(nodes: EditableTreeNode[], reservedKeys: Set<
     usedKeys.add(key);
     return key;
   };
+  // Items must never save at the root level: legacy ungrouped rows fall back to
+  // their (real or synthesized) module section `mod-<moduleKey>`.
+  const groupNameByKey = new Map<string, string>();
+  const collectNames = (list: EditableTreeNode[]): void => {
+    for (const node of list) {
+      if (node.kind === 'folder') {
+        const key = (node.meta as ShellGroupMeta | undefined)?.groupKey;
+        if (key) groupNameByKey.set(key, node.label);
+        collectNames(node.children);
+      }
+    }
+  };
+  collectNames(nodes);
+  const moduleGroup = (moduleKey: string): string => {
+    const key = `mod-${moduleKey}`;
+    if (!groupNameByKey.has(key) && !groups.some((g) => g.groupKey === key)) {
+      groups.push({ groupKey: key, name: groupNameByKey.get(key) ?? moduleKey, parentKey: null, hidden: false });
+    }
+    return key;
+  };
   const walk = (list: EditableTreeNode[], parentKey: string | null): void => {
     for (const node of list) {
       if (node.kind === 'folder') {
         const meta = node.meta as ShellGroupMeta | undefined;
         const key = meta?.groupKey ?? uniqueKey(node.label);
-        groups.push({ groupKey: key, name: node.label, parentKey, hidden: !!node.hidden });
+        groups.push({ groupKey: key, name: node.label, parentKey, hidden: !!node.hidden, color: node.color ?? null });
         walk(node.children, key);
       } else {
         const meta = node.meta as ShellItemMeta;
+        const fallbackKey = parentKey ?? moduleGroup(meta.moduleKey);
         items.push({
           moduleKey: meta.moduleKey,
           contentKey: meta.contentKey,
-          groupKey: parentKey,
+          groupKey: fallbackKey,
           hidden: !!node.hidden,
           color: node.color ?? null,
         });
@@ -96,9 +124,29 @@ export function setNodeColor(
   id: string,
   color: string | undefined,
 ): EditableTreeNode[] {
-  return nodes.map((n) =>
-    n.id === id ? { ...n, color } : { ...n, children: setNodeColor(n.children, id, color) },
-  );
+  return setNodeColorDeep(nodes, id, color, false);
+}
+
+/** Sets `color` on node `id`; when `applyToAll` the color also applies to every
+ *  descendant (the "Apply to all" section affordance). Returns a new tree. */
+export function setNodeColorDeep(
+  nodes: EditableTreeNode[],
+  id: string,
+  color: string | undefined,
+  applyToAll: boolean,
+): EditableTreeNode[] {
+  return nodes.map((n) => {
+    if (n.id === id) {
+      const next = { ...n, color } as EditableTreeNode;
+      if (applyToAll) next.children = colorAll(n.children, color);
+      return next;
+    }
+    return { ...n, children: setNodeColorDeep(n.children, id, color, applyToAll) };
+  });
+}
+
+function colorAll(nodes: EditableTreeNode[], color: string | undefined): EditableTreeNode[] {
+  return nodes.map((n) => ({ ...n, color, children: colorAll(n.children, color) }));
 }
 
 /**
@@ -109,7 +157,7 @@ export function setNodeColor(
  */
 @Component({
   selector: 'app-shell-nav-editor',
-  imports: [DndTree],
+  imports: [DndTree, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-nav-editor.component.html',
   styleUrl: './shell-nav-editor.component.css',
@@ -129,9 +177,11 @@ export class ShellNavEditor implements OnInit {
   protected readonly saveError = signal<string | null>(null);
   protected readonly saveSuccess = signal(false);
 
-  /** Node whose avatar-color palette is open (item rows only). */
+  /** Node whose avatar-color palette is open (item AND section rows). */
   protected readonly colorPicker = signal<EditableTreeNode | null>(null);
   protected readonly avatarColors = AVATAR_COLORS;
+  /** "Apply to all" for section colors: recolors every descendant. Checked by default. */
+  protected readonly applyToAll = signal(true);
 
   protected readonly dirty = computed(() => JSON.stringify(this.tree()) !== this.baseline());
 
@@ -173,11 +223,14 @@ export class ShellNavEditor implements OnInit {
     this.saveSuccess.set(false);
   }
 
-  /** Applies an explicit avatar color to the picked item; null reverts to the hash fallback. */
+  /** Applies an explicit avatar color to the picked node; null reverts to the
+   *  hash fallback. For sections the "Apply to all" toggle extends the color
+   *  to every descendant. */
   protected applyAvatarColor(color: string | null): void {
     const target = this.colorPicker();
     if (!target) return;
-    this.tree.set(setNodeColor(this.tree(), target.id, color ?? undefined));
+    const applyAll = target.kind === 'folder' && this.applyToAll();
+    this.tree.set(setNodeColorDeep(this.tree(), target.id, color ?? undefined, applyAll));
     this.colorPicker.set(null);
     this.saveSuccess.set(false);
   }

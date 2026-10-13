@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: crosshubber-clienthub
+  datasource:
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:25432}/${PGDATABASE:crosshubber_dev}
+    username: ${PGUSER:portal}
+    password: ${PGPASSWORD:}
+    hikari:
+      maximum-pool-size: 5
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: ${PGSCHEMA:clienthub}
+  flyway:
+    schemas: ${PGSCHEMA:clienthub}
+
+server:
+  port: ${PORT:8094}
+
+clienthub:
+  agent-shared-secret: ${AGENT_SHARED_SECRET:${SESSION_SECRET:dev-insecure-shared-secret}}
+  portal:
+    url: ${PORTAL_URL:http://portal:3000}
+    session-secret: ${SESSION_SECRET:dev-insecure-shared-secret}
+
+logging:
+  level:
+    com.crosshubber.clienthub: INFO

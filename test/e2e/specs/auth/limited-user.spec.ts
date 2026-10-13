@@ -36,7 +36,7 @@ test.describe("limited user (no admin roles)", () => {
   //       portal-registry-edit, portal-i18n-edit) holds for role-less users.
   test("admin writes are rejected with 403", async ({ page }) => {
     const settings = await page.request.put("/api/settings", {
-      data: { homeApp: "portal-dashboard:main" },
+      data: { homeApp: "navigation:portal" },
     });
     expect(settings.status()).toBe(403);
 

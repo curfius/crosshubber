@@ -1,5 +1,9 @@
 ﻿# Design System - Complete Reference
 
+This document covers the CSS layer (tokens, primitives, themes). The shared
+Angular components (data grid, UI_I18N contract) live in `components/` and are
+documented in `README.md` ("Shared Components Kit").
+
 ## 1. Design Tokens
 
 All visual values are defined as CSS custom properties on `:root` in `design-tokens.css`. Themes override these properties under `[data-theme="..."]` selectors.

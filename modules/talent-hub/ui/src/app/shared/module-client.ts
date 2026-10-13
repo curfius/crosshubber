@@ -138,6 +138,27 @@ export interface Rfp {
   updatedAt: string;
 }
 
+/** Attachment metadata (resolved from stored document refs). */
+export interface DocumentMeta {
+  ref: string;
+  name: string;
+  mimeType: string | null;
+  size: number | null;
+}
+
+export interface RfpDetail {
+  rfp: Rfp;
+  client: Client | null;
+  positions: Position[];
+  documents: DocumentMeta[];
+}
+
+/** Row shape of `GET /api/rfps/drafts`: the RFP plus its resolved client name. */
+export interface DraftItem {
+  rfp: Rfp;
+  clientName: string | null;
+}
+
 export interface Position {
   id: string;
   rfpId: string;
@@ -225,28 +246,49 @@ export class ModuleClient {
     return res;
   }
 
+  /**
+   * Surfaces the server's `{"error": "..."}` envelope (Crosshubber-owned error
+   * shape) verbatim so form errors are actionable; falls back to the status.
+   */
+  private async failure(res: Response, label: string): Promise<Error> {
+    try {
+      const body = (await res.json()) as { error?: unknown };
+      if (body && typeof body.error === 'string' && body.error) {
+        return new Error(body.error);
+      }
+    } catch {
+      // no JSON body — use the status fallback
+    }
+    return new Error(`${label} failed (${res.status})`);
+  }
+
   async get<T>(path: string): Promise<T> {
     const res = await this.authed('GET', path, undefined);
-    if (!res.ok) throw new Error(`GET ${path} failed (${res.status})`);
+    if (!res.ok) throw await this.failure(res, `GET ${path}`);
     return (await res.json()) as T;
   }
 
   async post<T>(path: string, body: unknown): Promise<T> {
     const res = await this.authed('POST', path, body);
-    if (!res.ok) throw new Error(`POST ${path} failed (${res.status})`);
+    if (!res.ok) throw await this.failure(res, `POST ${path}`);
     return (await res.json()) as T;
   }
 
   async put<T>(path: string, body: unknown): Promise<T> {
     const res = await this.authed('PUT', path, body);
-    if (!res.ok) throw new Error(`PUT ${path} failed (${res.status})`);
+    if (!res.ok) throw await this.failure(res, `PUT ${path}`);
     return (await res.json()) as T;
   }
 
   async patch<T>(path: string, body: unknown): Promise<T> {
     const res = await this.authed('PATCH', path, body);
-    if (!res.ok) throw new Error(`PATCH ${path} failed (${res.status})`);
+    if (!res.ok) throw await this.failure(res, `PATCH ${path}`);
     return (await res.json()) as T;
+  }
+
+  async delete(path: string): Promise<void> {
+    const res = await this.authed('DELETE', path, undefined);
+    if (!res.ok) throw await this.failure(res, `DELETE ${path}`);
   }
 
   /** Uploads a file (multipart); returns the stored document ref. */
@@ -265,7 +307,7 @@ export class ModuleClient {
       this.token = await this.mintToken();
       res = await send(this.token!);
     }
-    if (!res.ok) throw new Error(`upload ${path} failed (${res.status})`);
+    if (!res.ok) throw await this.failure(res, `upload ${path}`);
     return (await res.json()) as T;
   }
 }

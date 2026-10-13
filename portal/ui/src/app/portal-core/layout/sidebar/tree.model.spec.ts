@@ -26,18 +26,21 @@ function keyOf(node: { data: PortalModuleContent | NavigationGroup }): string {
 }
 
 describe('buildAppTree', () => {
-  it('nests grouped applications and keeps ungrouped ones at root, excluding other categories', () => {
+  it('groups ungrouped applications under a virtual per-module section', () => {
     const groups = [group({ groupKey: 'nav-g', category: 'applications', sortOrder: 10 })];
     const eps = [
       ep({ moduleKey: 'm', contentKey: 'root', category: 'applications', sortOrder: 0 }),
+      ep({ moduleKey: 'm', contentKey: 'other', category: 'applications', sortOrder: 5 }),
       ep({ moduleKey: 'm', contentKey: 'child', category: 'applications', groupKey: 'nav-g' }),
-      ep({ moduleKey: 'm', contentKey: 'other', category: 'admin-settings' }),
+      ep({ moduleKey: 'm', contentKey: 'othercat', category: 'admin-settings' }),
     ];
 
     const tree = buildAppTree(groups, eps);
 
-    expect(tree.map(keyOf)).toEqual(['ep:root', 'nav-g']);
-    expect(tree[1].children.map(keyOf)).toEqual(['ep:child']);
+    expect(tree.map(keyOf)).toEqual(['nav-g', 'virtual:m']);
+    const virtual = tree[1];
+    expect(virtual.data.name).toBe('m');
+    expect(virtual.children.map(keyOf)).toEqual(['ep:root', 'ep:other']);
   });
 
   it('orders siblings by sortOrder', () => {
@@ -46,7 +49,9 @@ describe('buildAppTree', () => {
       ep({ moduleKey: 'm', contentKey: 'a', category: 'applications', sortOrder: 10 }),
     ];
 
-    expect(buildAppTree([], eps).map(keyOf)).toEqual(['ep:a', 'ep:b']);
+    const tree = buildAppTree([], eps);
+    const virtual = tree[0];
+    expect(virtual.children.map(keyOf)).toEqual(['ep:a', 'ep:b']);
   });
 });
 

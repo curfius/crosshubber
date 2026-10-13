@@ -31,7 +31,7 @@ test.describe("module registry contents", () => {
   test("registry lists all catalog modules with builtins flagged", async ({ request }) => {
     const body = await (await request.get("/api/registry/modules")).json();
     const byKey = new Map(body.modules.map((m: { key: string; builtin: boolean }) => [m.key, m]));
-    for (const key of ["portal-dashboard", "ai-hub", "navigation"]) {
+    for (const key of ["ai-hub", "navigation"]) {
       expect(byKey.get(key)?.builtin, `${key} should be builtin`).toBe(true);
     }
     expect(byKey.get("sample-embedded")?.active).toBe(false);

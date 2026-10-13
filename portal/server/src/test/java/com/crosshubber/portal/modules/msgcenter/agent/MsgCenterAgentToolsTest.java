@@ -184,7 +184,7 @@ class MsgCenterAgentToolsTest {
         id,
         "e" + id,
         type,
-        "portal-dashboard",
+        "navigation",
         null,
         null,
         Map.of("en", "t"),

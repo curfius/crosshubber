@@ -6,6 +6,7 @@ import {
   shellTreeFromResponse,
   shellTreeToPayload,
   setNodeColor,
+  setNodeColorDeep,
 } from './shell-nav-editor.component';
 
 const RESPONSE: ShellTreeResponse = {
@@ -13,10 +14,12 @@ const RESPONSE: ShellTreeResponse = {
   groups: [
     { groupKey: 'nav-a', category: 'admin-settings', name: 'A', parentKey: null, sortOrder: 0, hidden: true },
     { groupKey: 'nav-b', category: 'admin-settings', name: 'B', parentKey: 'nav-a', sortOrder: 10 },
+    { groupKey: 'mod-m3', category: 'admin-settings', name: 'M3', parentKey: null, sortOrder: 20, color: '#10b981' },
   ],
   items: [
     { moduleKey: 'm1', contentKey: 'one', name: 'One', category: 'admin-settings', type: 'embedded', sortOrder: 0, groupKey: 'nav-a', color: '#ef4444', hidden: true },
     { moduleKey: 'm2', contentKey: 'two', name: 'Two', category: 'admin-settings', type: 'embedded', sortOrder: 10, groupKey: null },
+    { moduleKey: 'm3', contentKey: 'three', name: 'Three', category: 'admin-settings', type: 'embedded', sortOrder: 20, groupKey: 'mod-m3' },
   ],
 };
 
@@ -44,11 +47,13 @@ describe('shellTreeFromResponse', () => {
     expect(itemTwo.fallbackColor).toBe(avatarColor('m2:two'));
   });
 
-  it('leaves folder nodes without colors', () => {
+  it('leaves folder nodes without colors unless the response carries one', () => {
     const tree = shellTreeFromResponse(RESPONSE);
     const groupA = tree.find((n) => n.id === 'group:nav-a')!;
     expect(groupA.color).toBeUndefined();
     expect(groupA.fallbackColor).toBeUndefined();
+    const groupM3 = tree.find((n) => n.id === 'group:mod-m3')!;
+    expect(groupM3.color).toBe('#10b981');
   });
 });
 
@@ -70,8 +75,17 @@ describe('shellTreeToPayload', () => {
 
   it('round-trips colors and clears to null when unset', () => {
     const tree = shellTreeFromResponse(RESPONSE);
-    const payload = shellTreeToPayload(tree, new Set(['nav-a', 'nav-b']));
+    const payload = shellTreeToPayload(tree, new Set(['nav-a', 'nav-b', 'mod-m3']));
     expect(JSON.stringify(payload)).not.toContain('fallbackColor');
+    const groupM3 = payload.groups.find((g) => g.groupKey === 'mod-m3')!;
+    expect(groupM3.color).toBe('#10b981');
+  });
+
+  it('saves legacy ungrouped items into their module section', () => {
+    const payload = shellTreeToPayload(shellTreeFromResponse(RESPONSE), new Set(['nav-a', 'nav-b', 'mod-m3']));
+    const itemTwo = payload.items.find((i) => i.moduleKey === 'm2')!;
+    expect(itemTwo.groupKey).toBe('mod-m2');
+    expect(payload.groups.find((g) => g.groupKey === 'mod-m2')).toBeDefined();
   });
 
   it('marks freshly created sections hidden when the node is hidden', () => {
@@ -111,5 +125,32 @@ describe('setNodeColor', () => {
     expect(next[0].color).toBe('#ef4444');
     expect(next[1].color).toBe('#3b82f6');
     expect(next).not.toBe(tree);
+  });
+});
+
+describe('setNodeColorDeep', () => {
+  const section = (): EditableTreeNode[] => [
+    {
+      id: 'f', label: 'F', kind: 'folder', children: [
+        { id: 'i1', label: 'I1', kind: 'item', color: '#ef4444', children: [] },
+        { id: 'f2', label: 'F2', kind: 'folder', children: [{ id: 'i2', label: 'I2', kind: 'item', children: [] }] },
+      ],
+    },
+  ];
+
+  it('applies to the section and all descendants when applyToAll is on', () => {
+    const next = setNodeColorDeep(section(), 'f', '#10b981', true);
+    expect(next[0].color).toBe('#10b981');
+    expect(next[0].children[0].color).toBe('#10b981');
+    expect(next[0].children[1].color).toBe('#10b981');
+    expect(next[0].children[1].children[0].color).toBe('#10b981');
+    expect(section()[0].children[0].color).toBe('#ef4444');
+  });
+
+  it('colors only the section when applyToAll is off', () => {
+    const next = setNodeColorDeep(section(), 'f', '#10b981', false);
+    expect(next[0].color).toBe('#10b981');
+    expect(next[0].children[0].color).toBe('#ef4444');
+    expect(next[0].children[1].color).toBeUndefined();
   });
 });

@@ -1,0 +1,70 @@
+{
+  "manifestVersion": 1,
+  "key": "client-hub",
+  "name": "Client Hub",
+  "baseUrl": "http://client-hub:8094",
+  "health": "/healthz",
+  "shell": {
+    "applications": [
+      {
+        "key": "main",
+        "name": "Client Hub",
+        "description": "CRM accounts and contacts — flat lists, detail views, message center integration.",
+        "type": "iframe",
+        "url": "http://localhost:28096",
+        "requiredRoles": ["portal-client-hub-view"],
+        "multi": false
+      }
+    ],
+    "features": [],
+    "adminSettings": [],
+    "userSettings": []
+  },
+  "security": {
+    "roles": [
+      { "key": "portal-client-hub-view", "name": "Client Hub View", "description": "View accounts and contacts" },
+      { "key": "portal-client-hub-edit", "name": "Client Hub Edit", "description": "Create and edit accounts and contacts" }
+    ]
+  },
+  "events": {
+    "published": [
+      "portal.msg.client-hub.*",
+      "portal.task.client-hub.*"
+    ],
+    "consumed": [
+      "portal.taskresponse.client-hub.>",
+      "portal.msg.client-hub.>"
+    ]
+  },
+  "agentic": {
+    "tools": [
+      {
+        "key": "list_accounts",
+        "name": "List Accounts",
+        "description": "List client accounts with optional search and filtering.",
+        "endpoint": "/api/agent/tools/list_accounts"
+      },
+      {
+        "key": "get_account",
+        "name": "Get Account",
+        "description": "Get full account detail including contacts.",
+        "endpoint": "/api/agent/tools/get_account"
+      },
+      {
+        "key": "list_contacts",
+        "name": "List Contacts",
+        "description": "List contacts with optional account filter.",
+        "endpoint": "/api/agent/tools/list_contacts"
+      },
+      {
+        "key": "suggest_account_next_action",
+        "name": "Suggest Next Action",
+        "description": "AI-suggested next action for an account (follow-up, outreach, review).",
+        "endpoint": "/api/agent/tools/suggest_account_next_action"
+      }
+    ],
+    "skills": [],
+    "agents": [],
+    "knowledge": []
+  }
+}

@@ -6,7 +6,6 @@
   "lifecycle": "ephemeral",
   "modules": {
     "builtin": {
-      "portal-dashboard": true,
       "module-registry": true,
       "settings": true,
       "user-settings": true,

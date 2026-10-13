@@ -24,12 +24,15 @@ import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentCateg
 import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
 import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentRepository;
 import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentsService;
+import com.crosshubber.portal.modules.registry.modules.ModuleEntity;
+import com.crosshubber.portal.modules.registry.modules.ModuleRepository;
 
 import tools.jackson.databind.JsonNode;
 
 /**
  * Settings-shell tree editor (groups + items): group key resolution (slugified {@code nav-*} keys),
- * per-bucket renumbering, ungrouping of unlisted items and cascade cleanup of removed groups — one
+ * per-bucket renumbering, section colors, re-parenting of unlisted items into their module section
+ * (no orphan apps — root-level items are rejected) and cascade cleanup of removed groups — one
  * transaction.
  */
 @Service
@@ -37,26 +40,38 @@ public class ShellTreeService {
 
   private final NavigationGroupRepository groupRepo;
   private final ModuleContentRepository contentRepo;
+  private final ModuleRepository moduleRepo;
+  private final ShellSections shellSections;
 
   public ShellTreeService(
-      NavigationGroupRepository groupRepo, ModuleContentRepository contentRepo) {
+      NavigationGroupRepository groupRepo,
+      ModuleContentRepository contentRepo,
+      ModuleRepository moduleRepo,
+      ShellSections shellSections) {
     this.groupRepo = groupRepo;
     this.contentRepo = contentRepo;
+    this.moduleRepo = moduleRepo;
+    this.shellSections = shellSections;
   }
 
   @Transactional(readOnly = true)
   public ShellTreePayload shellTreePayload(String category) {
+    ModuleContentCategory cat = ModuleContentCategory.parse(category);
     List<NavigationGroupDto> groups =
-        groupRepo
-            .findByCategoryOrderBySortOrderAscNameAsc(ModuleContentCategory.parse(category))
-            .stream()
+        groupRepo.findByCategoryOrderBySortOrderAscNameAsc(cat).stream()
             .map(NavigationGroupsService::toOutput)
             .toList();
+    // Items of inactive modules are dropped, mirroring the runtime config gate.
+    Set<String> activeModuleKeys = new HashSet<>();
+    for (ModuleEntity m : moduleRepo.findAll()) {
+      if (Boolean.TRUE.equals(m.getActive())) {
+        activeModuleKeys.add(m.getKey());
+      }
+    }
     List<ModuleContentDto> items =
-        contentRepo
-            .findByCategoryOrderBySortOrderAscNameAsc(ModuleContentCategory.parse(category))
-            .stream()
+        contentRepo.findByCategoryOrderBySortOrderAscNameAsc(cat).stream()
             .filter(ep -> Boolean.TRUE.equals(ep.getActive()))
+            .filter(ep -> activeModuleKeys.contains(ep.getModuleKey()))
             .map(ModuleContentsService::toOutput)
             .toList();
     return new ShellTreePayload(category, groups, items);
@@ -104,6 +119,16 @@ public class ShellTreeService {
       if (!isNullish(g.path("hidden")) && !g.path("hidden").isBoolean()) {
         throw new IllegalArgumentException("groups[" + i + "].hidden: must be a boolean");
       }
+      if (!isNullish(g.path("color")) && !g.path("color").isString()) {
+        throw new IllegalArgumentException("groups[" + i + "].color: must be a string");
+      }
+      String groupColor = g.path("color").asString(null);
+      boolean validGroupColor =
+          isNullish(g.path("color")) || groupColor.isEmpty() || groupColor.matches(Keys.COLOR_RE);
+      if (!validGroupColor) {
+        throw new IllegalArgumentException(
+            "groups[" + i + "].color: must be a hex color like #3b82f6");
+      }
     }
     // Validate each item
     for (int i = 0; i < itemInputs.size(); i++) {
@@ -132,9 +157,7 @@ public class ShellTreeService {
       }
       String color = item.path("color").asString(null);
       boolean validColor =
-          isNullish(item.path("color"))
-              || color.isEmpty()
-              || color.matches("#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})");
+          isNullish(item.path("color")) || color.isEmpty() || color.matches(Keys.COLOR_RE);
       if (!validColor) {
         throw new IllegalArgumentException(
             "items[" + i + "].color: must be a hex color like #3b82f6");
@@ -165,6 +188,7 @@ public class ShellTreeService {
         String parentKey,
         String icon,
         boolean hidden,
+        String color,
         String existingRoles) {}
     List<ResolvedGroup> resolved = new ArrayList<>();
     for (JsonNode g : groupInputs) {
@@ -186,6 +210,7 @@ public class ShellTreeService {
               g.path("parentKey").isString() ? g.get("parentKey").asString() : null,
               g.path("icon").isString() ? g.get("icon").asString() : null,
               g.path("hidden").asBoolean(false),
+              Texts.blankToNull(g.path("color").asString(null)),
               isNew ? "" : Texts.orEmpty(byExistingKey.get(key).getRoles())));
     }
 
@@ -244,6 +269,7 @@ public class ShellTreeService {
       entity.setSortOrder(order);
       entity.setIcon(g.icon());
       entity.setHidden(g.hidden());
+      entity.setColor(g.color());
       if (entity.getRoles() == null) {
         entity.setRoles(g.existingRoles());
       }
@@ -288,25 +314,40 @@ public class ShellTreeService {
     for (ModuleContentEntity row : unlisted) {
       int order = itemBucket.getOrDefault("", 0);
       itemBucket.put("", order + 10);
-      row.setGroupKey(null);
+      // Unlisted items keep a home: their module section (created on demand) or
+      // Core for portal-shell elements. No item is ever left ungrouped.
+      row.setGroupKey(
+          shellSections.assignSection(
+              ModuleContentCategory.parse(category), row.getModuleKey(), List.of()));
       row.setSortOrder(order);
       contentRepo.save(row);
     }
 
-    // Groups removed from the payload: clear dangling item references first,
-    // then delete (nested groups cascade via parent_key ON DELETE CASCADE).
+    // Groups removed from the payload: re-home their items first (module section /
+    // Core, created on demand, never the removed key itself), then delete (nested
+    // groups cascade via parent_key ON DELETE CASCADE).
     Set<String> payloadKeys = new LinkedHashSet<>();
     for (ResolvedGroup g : resolved) {
       payloadKeys.add(g.key());
     }
+    List<NavigationGroupEntity> removedGroups = new ArrayList<>();
     for (NavigationGroupEntity g : existingGroups) {
       if (!payloadKeys.contains(g.getGroupKey())) {
-        for (ModuleContentEntity ep : contentRepo.findByGroupKey(g.getGroupKey())) {
-          ep.setGroupKey(null);
-          contentRepo.save(ep);
-        }
-        groupRepo.delete(g);
+        removedGroups.add(g);
       }
+    }
+    Set<String> removedKeys = new LinkedHashSet<>();
+    for (NavigationGroupEntity g : removedGroups) {
+      removedKeys.add(g.getGroupKey());
+    }
+    for (NavigationGroupEntity g : removedGroups) {
+      for (ModuleContentEntity ep : contentRepo.findByGroupKey(g.getGroupKey())) {
+        ep.setGroupKey(
+            shellSections.assignSection(
+                ModuleContentCategory.parse(category), ep.getModuleKey(), removedKeys));
+        contentRepo.save(ep);
+      }
+      groupRepo.delete(g);
     }
 
     return shellTreePayload(category);

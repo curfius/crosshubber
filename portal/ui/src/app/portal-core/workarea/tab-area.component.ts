@@ -1,10 +1,22 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, viewChild, type ElementRef, type OnDestroy } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  viewChild,
+  type ElementRef,
+  type OnDestroy,
+} from '@angular/core';
 import { AppOutlet } from './module-outlet.component';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import type { PortalUser, PortalModuleContent, SplitDir, Tab } from '../../core/models';
 import { moduleContentId } from '../../core/models';
 import { WorkbenchService } from '../../core/workspaces/workspaces.store';
 import { I18nService } from '../../core/i18n/i18n.service';
+import { MsgCenterStore } from '../../core/msg-center/msg-center.store';
 import { avatarColor } from '../../core/navigation/navigation.models';
 
 @Component({
@@ -17,6 +29,7 @@ import { avatarColor } from '../../core/navigation/navigation.models';
 export class AppArea implements OnDestroy {
   protected readonly wb = inject(WorkbenchService);
   protected readonly i18n = inject(I18nService);
+  protected readonly msgCenter = inject(MsgCenterStore);
   private readonly tabsNav = viewChild<ElementRef<HTMLDivElement>>('tabsNav');
   private navEl: HTMLDivElement | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -36,8 +49,14 @@ export class AppArea implements OnDestroy {
     const search = this.appSearch().toLowerCase();
     const homeRef = this.wb.getHomeAppRef();
     return this.allModuleContents()
-      .filter((ep) => ep.category === 'applications' && ep.active !== false && moduleContentId(ep) !== homeRef)
-      .filter((ep) => ep.name.toLowerCase().includes(search) || ep.moduleKey.toLowerCase().includes(search));
+      .filter(
+        (ep) =>
+          ep.category === 'applications' && ep.active !== false && moduleContentId(ep) !== homeRef,
+      )
+      .filter(
+        (ep) =>
+          ep.name.toLowerCase().includes(search) || ep.moduleKey.toLowerCase().includes(search),
+      );
   });
 
   protected readonly isSingleArea = computed(() => {
@@ -46,14 +65,21 @@ export class AppArea implements OnDestroy {
   });
 
   /**
-   * Close-area affordance: hidden only when there is nothing the close action could
-   * do (primary area holding nothing but Home). Empty areas close immediately.
+   * Whether the close-area action has something to do. The button itself is
+   * always visible and renders disabled when this is false. The main area
+   * keeps its shape and closes all tabs but Home, so it is enabled whenever a
+   * non-home tab is open — even when it is the only area.
    */
   protected readonly canCloseArea = computed(() => {
-    if (this.isSingleArea()) return false;
     const tabs = this.tabs();
+    if (this.isSingleArea()) {
+      return this.isPrimary() && tabs.some((t) => !this.wb.isHomeTab(t));
+    }
     return tabs.length === 0 || tabs.some((t) => !this.wb.isHomeTab(t));
   });
+
+  /** Hide-home is always offered; disabled when Home is the only open tab. */
+  protected readonly canHideHome = computed(() => this.tabs().some((t) => !this.wb.isHomeTab(t)));
 
   /** Main area keeps its shape on close ("Close all tabs…"), others collapse ("Close this area…"). */
   protected readonly confirmMessage = computed(() =>
@@ -158,11 +184,24 @@ export class AppArea implements OnDestroy {
   }
 
   /** Avatar background: explicit content color, else the deterministic hash fallback. */
-protected avatarBg(ep: PortalModuleContent): string {
-  return ep.color || avatarColor(moduleContentId(ep));
-}
+  protected avatarBg(ep: PortalModuleContent): string {
+    return ep.color || avatarColor(moduleContentId(ep));
+  }
 
-protected addAppToGroup(ep: PortalModuleContent): void {
+  /** Count badge on a tab: Message Center unread (0 = hidden). */
+  protected tabUnread(tab: Tab): number {
+    return moduleContentId(tab.content) === 'msgcenter:main' ? this.msgCenter.unread() : 0;
+  }
+
+  protected isIframeTab(tab: Tab): boolean {
+    return tab.content.type === 'iframe' && !!tab.content.url;
+  }
+
+  protected popOut(tab: Tab): void {
+    if (tab.content.url) window.open(tab.content.url, '_blank', 'noopener');
+  }
+
+  protected addAppToGroup(ep: PortalModuleContent): void {
     this.wb.openAppInGroup(ep, this.groupId());
   }
 

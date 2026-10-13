@@ -1,34 +1,23 @@
 package com.crosshubber.portal.modules.navigation;
 
-import java.text.Collator;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 import com.crosshubber.portal.common.Keys;
-import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentCategory;
 import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentEntity;
-import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentType;
 
 import tools.jackson.databind.JsonNode;
 
-/** Pure navigation tree validators + default builders (no DB access). */
+/** Pure navigation tree validators (no DB access). */
 public final class NavigationValidationService {
 
   private NavigationValidationService() {}
 
   public static final int MAX_PINNED_DEPTH = 3;
   public static final int MAX_SHELL_DEPTH = 3;
-
-  /**
-   * Deterministic name-tiebreak collator. Locale.ROOT keeps ordering stable across servers and JVM
-   * default locales.
-   */
-  private static final Collator NAME_COLLATOR = Collator.getInstance(Locale.ROOT);
 
   public record Validation(boolean success, String error) {
 
@@ -184,7 +173,15 @@ public final class NavigationValidationService {
       }
     }
     for (ShellItem item : items) {
-      if (item.groupKey() != null && !byKey.containsKey(item.groupKey())) {
+      if (item.groupKey() == null) {
+        return Validation.fail(
+            "item "
+                + item.moduleKey()
+                + ":"
+                + item.contentKey()
+                + " must live in a section (root-level apps are not allowed)");
+      }
+      if (!byKey.containsKey(item.groupKey())) {
         return Validation.fail(
             "item "
                 + item.moduleKey()
@@ -211,26 +208,6 @@ public final class NavigationValidationService {
     int depth = depthOf(parent, byKey, guard);
     guard.remove(key);
     return depth < 0 ? -1 : depth + 1;
-  }
-
-  // — Computed defaults (D5 / D12)
-  // —
-
-  public static boolean isDefaultSidebarApp(ModuleContentEntity ep) {
-    return ep.getCategory() == ModuleContentCategory.APPLICATIONS
-        && ep.getType() != ModuleContentType.LINK
-        && Boolean.TRUE.equals(ep.getActive());
-  }
-
-  /** D12: every visible app module content, ordered by sortOrder then name. */
-  public static List<String> buildDefaultSidebarApps(List<ModuleContentEntity> moduleContents) {
-    return moduleContents.stream()
-        .filter(NavigationValidationService::isDefaultSidebarApp)
-        .sorted(
-            Comparator.comparingInt((ModuleContentEntity ep) -> ep.getSortOrder())
-                .thenComparing(ep -> ep.getName(), NAME_COLLATOR))
-        .map(NavigationValidationService::entryPointRef)
-        .toList();
   }
 
   private static boolean nonBlank(JsonNode node) {

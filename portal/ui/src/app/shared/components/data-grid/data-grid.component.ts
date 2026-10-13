@@ -1,11 +1,10 @@
-import { ChangeDetectionStrategy, Component, TemplateRef, computed, inject, input, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, OnDestroy, TemplateRef, computed, effect, inject, input, output, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { GridColumn, GridCellContext } from './grid-column';
+import { GridBulkAction, GridBulkActionEvent, GridColumn, GridCellContext } from './grid-column';
+import { UI_I18N } from '../i18n';
 
-export type { GridColumn } from './grid-column';
+export type { GridBulkAction, GridBulkActionEvent, GridColumn } from './grid-column';
 export { GridCellDirective } from './grid-cell.directive';
-import { I18nService } from '../../../core/i18n/i18n.service';
 
 export type GridSortDirection = 'asc' | 'desc';
 
@@ -16,21 +15,45 @@ export interface GridGroup<T> {
   rows: T[];
 }
 
+/**
+ * Shared data grid (design-system kit): sortable columns, global search,
+ * group-by, per-column filter row toggled from the toolbar, custom cell
+ * templates via `gridCell` and an actions zone (`[gridActions]` projection)
+ * rendered after the filter toggle. Optional line selection (checkbox first
+ * column + bulk-actions dropdown) and clickable rows cover bulk workflows.
+ * Styles are component-owned (token-based) so the grid renders identically
+ * in the portal shell and in module MFEs.
+ */
 @Component({
   selector: 'app-data-grid',
-  imports: [FormsModule, NgTemplateOutlet],
+  imports: [NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './data-grid.component.html',
   styleUrl: './data-grid.component.css',
 })
-export class DataGrid<T> {
-  protected readonly i18n = inject(I18nService);
+export class DataGrid<T> implements OnDestroy {
+  protected readonly i18n = inject(UI_I18N);
 
   readonly data = input.required<T[]>();
   readonly columns = input.required<GridColumn<T>[]>();
   readonly searchable = input(true);
   readonly groupable = input(true);
   readonly trackBy = input<(row: T, index: number) => string | number>((_, i) => i);
+  /** Empty-state message key; defaults to the kit's own "no results" string. */
+  readonly emptyKey = input<string | null>(null);
+  /** Renders a checkbox first column and enables the bulk-actions dropdown. */
+  readonly selectable = input(false);
+  /** Bulk actions offered in the toolbar dropdown (only when `selectable`). */
+  readonly bulkActions = input<GridBulkAction[]>([]);
+  /** Makes body rows clickable (emits `rowClick`); checkbox/cell controls stop propagation. */
+  readonly clickable = input(false);
+
+  /** Emits the selected row ids (via `trackBy`) after every selection change. */
+  readonly selectionChange = output<string[]>();
+  /** Emits the picked bulk action together with the selected row ids. */
+  readonly bulkAction = output<GridBulkActionEvent>();
+  /** Emits the clicked row (only when `clickable`). */
+  readonly rowClick = output<T>();
 
   protected readonly sortColumn = signal<string | null>(null);
   protected readonly sortDirection = signal<GridSortDirection>('asc');
@@ -40,6 +63,18 @@ export class DataGrid<T> {
   protected readonly collapsedGroups = signal<Set<string>>(new Set());
   protected readonly showFilters = signal(false);
   protected readonly cellTemplates = signal<Record<string, TemplateRef<GridCellContext<T>>>>({});
+  /** Selected row ids (keys of `trackBy`, stringified) — only populated when `selectable`. */
+  protected readonly selectedIds = signal<Set<string>>(new Set());
+
+  constructor() {
+    // Prunes ids that left the dataset (e.g. after a delete + refresh).
+    effect(() => {
+      const live = new Set(this.data().map((row, index) => String(this.trackBy()(row, index))));
+      const selected = this.selectedIds();
+      if ([...selected].every((id) => live.has(id))) return;
+      this.selectedIds.set(new Set([...selected].filter((id) => live.has(id))));
+    });
+  }
 
   protected readonly groupableColumns = computed(() =>
     this.columns().filter((c) => c.sortable !== false),
@@ -108,6 +143,126 @@ export class DataGrid<T> {
   protected readonly hasGrouping = computed(() => this.groupBy() !== null);
 
   protected readonly isEmpty = computed(() => this.visibleRows().length === 0);
+
+  /** Physical column count (data columns + optional selection gutter). */
+  protected readonly columnCount = computed(
+    () => this.columns().length + (this.selectable() ? 1 : 0),
+  );
+
+  /** Row id used for selection state (stable while `trackBy` is stable). */
+  protected rowIdOf(row: T): string {
+    return String(this.trackBy()(row, this.data().indexOf(row)));
+  }
+
+  /** Ids of the currently visible (filtered + sorted) rows. */
+  protected readonly visibleIds = computed(() => this.sortedRows().map((row) => this.rowIdOf(row)));
+
+  protected readonly allSelected = computed(() => {
+    const ids = this.visibleIds();
+    if (ids.length === 0) return false;
+    const selected = this.selectedIds();
+    return ids.every((id) => selected.has(id));
+  });
+
+  protected readonly someSelected = computed(() => {
+    if (this.allSelected()) return false;
+    const selected = this.selectedIds();
+    return this.visibleIds().some((id) => selected.has(id));
+  });
+
+  protected readonly selectedCount = computed(() => this.selectedIds().size);
+
+  protected readonly showBulk = computed(
+    () => this.selectable() && this.bulkActions().length > 0,
+  );
+
+  protected isSelected(id: string): boolean {
+    return this.selectedIds().has(id);
+  }
+
+  protected selectedCountLabel(): string {
+    return this.i18n.t('grid.selectedCount', { count: this.selectedCount() });
+  }
+
+  protected bulkLabel(action: GridBulkAction): string {
+    return action.labelKey ? this.i18n.t(action.labelKey) : action.label;
+  }
+
+  protected onToggleRow(id: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    const next = new Set(this.selectedIds());
+    if (checked) next.add(id);
+    else next.delete(id);
+    this.selectedIds.set(next);
+    this.selectionChange.emit([...next]);
+  }
+
+  protected onToggleAll(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    const next = new Set(this.selectedIds());
+    if (checked) for (const id of this.visibleIds()) next.add(id);
+    else for (const id of this.visibleIds()) next.delete(id);
+    this.selectedIds.set(next);
+    this.selectionChange.emit([...next]);
+  }
+
+  /** Bulk menu open state; document listeners close it on outside click / Escape. */
+  protected readonly bulkOpen = signal(false);
+  private bulkCleanup: (() => void) | null = null;
+
+  ngOnDestroy(): void {
+    this.closeBulkMenu();
+  }
+
+  protected toggleBulkMenu(): void {
+    if (this.bulkOpen()) {
+      this.closeBulkMenu();
+      return;
+    }
+    this.bulkOpen.set(true);
+    const onPointer = (event: PointerEvent): void => {
+      const target = event.target as HTMLElement | null;
+      if (target instanceof HTMLElement && target.closest('.grid-bulk')) return;
+      this.closeBulkMenu();
+    };
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') this.closeBulkMenu();
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    this.bulkCleanup = () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }
+
+  protected closeBulkMenu(): void {
+    this.bulkCleanup?.();
+    this.bulkCleanup = null;
+    this.bulkOpen.set(false);
+  }
+
+  protected pickBulkAction(id: string): void {
+    this.closeBulkMenu();
+    if (!id) return;
+    this.bulkAction.emit({ id, ids: [...this.selectedIds()] });
+  }
+
+  /** Clears the selection (call after a bulk action completes). */
+  clearSelection(): void {
+    if (this.selectedIds().size === 0) return;
+    this.selectedIds.set(new Set());
+    this.selectionChange.emit([]);
+  }
+
+  protected onRowClick(row: T): void {
+    if (this.clickable()) this.rowClick.emit(row);
+  }
+
+  protected emptyLabel(): string {
+    const key = this.emptyKey();
+    return this.i18n.t(key ?? 'grid.noResults');
+  }
 
   protected toggleSort(column: GridColumn<T>): void {
     if (column.sortable === false) return;

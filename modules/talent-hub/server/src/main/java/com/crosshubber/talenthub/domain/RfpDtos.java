@@ -141,13 +141,20 @@ public final class RfpDtos {
         e.getAt() == null ? null : e.getAt().toString());
   }
 
+  /** Drafts-grid row: the RFP plus its resolved client name (single clientIds query). */
+  public record RfpDraftRow(RfpDto rfp, String clientName) {}
+
+  /** Attachment metadata resolved from a document ref (name-only fallback for external refs). */
+  public record DocumentMetaDto(String ref, String name, String mimeType, Long size) {}
+
   public record RfpDetailDto(
       RfpDto rfp,
       ClientService.ClientDto client,
       List<PositionDto> positions,
       List<ProcessDto> processes,
       List<SubmissionDto> submissions,
-      List<PhaseHistoryDto> phaseHistory) {}
+      List<PhaseHistoryDto> phaseHistory,
+      List<DocumentMetaDto> documents) {}
 
   private static String text(Object value) {
     return value == null ? null : value.toString();

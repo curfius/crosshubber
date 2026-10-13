@@ -30,10 +30,11 @@
     [rootLabel]="treeTitle()"
     [showVisibility]="true"
     [showColorPicker]="true"
+    [itemsRequireFolder]="true"
     deleteMode="folders-only"
     [addFolderLabel]="i18n.t('navigation.shell.newSection')"
     (nodesChange)="onTreeChange($event)"
-    (colorPick)="colorPicker.set($event)" />
+    (colorPick)="colorPicker.set($event); applyToAll.set(true)" />
 </div>
 
 @if (colorPicker(); as target) {
@@ -46,6 +47,16 @@
     <h4 class="ds-heading-3 mb-3 text-sm">
       {{ i18n.t('navigation.shell.pickColor', { name: target.label }) }}
     </h4>
+    @if (target.kind === 'folder') {
+    <label class="mb-3 flex cursor-pointer items-center gap-2 text-xs text-[var(--portal-text-secondary)]">
+      <input
+        type="checkbox"
+        class="ds-checkbox"
+        [ngModel]="applyToAll()"
+        (ngModelChange)="applyToAll.set($event)" />
+      {{ i18n.t('dnd.applyToAll') }}
+    </label>
+    }
     <div class="flex flex-wrap gap-2">
       @for (color of avatarColors; track color) {
       <button

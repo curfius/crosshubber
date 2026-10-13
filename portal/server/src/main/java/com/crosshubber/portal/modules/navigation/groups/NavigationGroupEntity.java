@@ -2,6 +2,7 @@ package com.crosshubber.portal.modules.navigation.groups;
 
 import java.time.Instant;
 
+import com.crosshubber.portal.common.Texts;
 import com.crosshubber.portal.modules.registry.modulecontents.ModuleContentCategory;
 
 import jakarta.persistence.Column;
@@ -49,6 +50,10 @@ public class NavigationGroupEntity {
   /** Nav-tree eye toggle: hidden sections hide all module content within them. */
   @Column(name = "hidden", nullable = false)
   private Boolean hidden = false;
+
+  /** Optional display color ({@code #rgb}|{@code #rrggbb}); null = no explicit color. */
+  @Column(name = "color")
+  private String color;
 
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
@@ -145,6 +150,14 @@ public class NavigationGroupEntity {
 
   public void setHidden(Boolean hidden) {
     this.hidden = Boolean.TRUE.equals(hidden);
+  }
+
+  public String getColor() {
+    return color;
+  }
+
+  public void setColor(String color) {
+    this.color = Texts.blankToNull(color);
   }
 
   public Instant getCreatedAt() {

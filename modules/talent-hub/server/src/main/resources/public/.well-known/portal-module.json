@@ -143,6 +143,17 @@
         "roles": ["staffing-manager"]
       },
       {
+        "name": "delete_draft_rfp",
+        "description": "Delete a draft RFP with its positions, processes, submissions and history (drafts only; manager).",
+        "arguments": {
+          "type": "object",
+          "properties": { "rfpId": { "type": "string" } },
+          "required": ["rfpId"]
+        },
+        "mutates": true,
+        "roles": ["staffing-manager"]
+      },
+      {
         "name": "list_candidate_processes",
         "description": "List candidate processes of an RFP.",
         "arguments": {
@@ -165,6 +176,119 @@
             "staleOnly": { "type": "boolean" }
           }
         },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "get_candidate",
+        "description": "Get a full candidate record: profile, contact, assignment, expectations, consent, process history.",
+        "arguments": {
+          "type": "object",
+          "properties": { "candidateId": { "type": "string" } },
+          "required": ["candidateId"]
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "list_clients",
+        "description": "List clients (id, name, industry, account owner).",
+        "arguments": { "type": "object", "properties": {} },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "get_client",
+        "description": "Get a client card with RFP history and active flag.",
+        "arguments": {
+          "type": "object",
+          "properties": { "clientId": { "type": "string" } },
+          "required": ["clientId"]
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "list_positions",
+        "description": "List positions of an RFP in board order.",
+        "arguments": {
+          "type": "object",
+          "properties": { "rfpId": { "type": "string" } },
+          "required": ["rfpId"]
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "get_position",
+        "description": "Get a single position (title, headcount, service type, requirements, status).",
+        "arguments": {
+          "type": "object",
+          "properties": { "positionId": { "type": "string" } },
+          "required": ["positionId"]
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "list_submissions",
+        "description": "List client submissions of an RFP, newest first.",
+        "arguments": {
+          "type": "object",
+          "properties": { "rfpId": { "type": "string" } },
+          "required": ["rfpId"]
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "list_documents",
+        "description": "List attachment metadata of an RFP (resolved from stored document refs).",
+        "arguments": {
+          "type": "object",
+          "properties": { "rfpId": { "type": "string" } },
+          "required": ["rfpId"]
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "get_document",
+        "description": "Fetch a document by ref (name, mime type, size, text).",
+        "arguments": {
+          "type": "object",
+          "properties": { "ref": { "type": "string" } },
+          "required": ["ref"]
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "list_match_runs",
+        "description": "List persisted match runs of an RFP, newest first.",
+        "arguments": {
+          "type": "object",
+          "properties": { "rfpId": { "type": "string" } },
+          "required": ["rfpId"]
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "get_match_run",
+        "description": "Get a persisted match run with engine provenance and ranked results.",
+        "arguments": {
+          "type": "object",
+          "properties": { "runId": { "type": "string" } },
+          "required": ["runId"]
+        },
+        "mutates": false,
+        "roles": ["staffing-manager", "staffing-recruiter"]
+      },
+      {
+        "name": "list_sourcing_inbox",
+        "description": "List unclaimed sourcing-inbox intake items (ready-to-claim candidate snapshots).",
+        "arguments": { "type": "object", "properties": {} },
         "mutates": false,
         "roles": ["staffing-manager", "staffing-recruiter"]
       },

@@ -15,6 +15,9 @@ public final class Keys {
   /** Reference format {@code moduleKey:contentKey}, both sides kebab-case. */
   public static final String REF_RE = "^[a-z0-9][a-z0-9-]{0,63}:[a-z0-9][a-z0-9-]{0,63}$";
 
+  /** Hex color ({@code #rgb} or {@code #rrggbb}) used by avatar/section color pickers. */
+  public static final String COLOR_RE = "#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})";
+
   /** I18n label key: dot- or dash-separated lowercase segments ({@code app.section.label}). */
   public static final String I18N_KEY_RE = "^[a-z0-9]+(?:[.-][a-z0-9]+)+$";
 

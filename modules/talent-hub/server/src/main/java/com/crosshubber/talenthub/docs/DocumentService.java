@@ -29,6 +29,9 @@ public class DocumentService {
 
   public record StoredDocument(String ref, String name, String mimeType, long size) {}
 
+  /** Metadata-only view: no content reads (size stays unknown for uploaded files). */
+  public record DocMeta(String name, String mimeType, Long size) {}
+
   /** Config record so the dir stays injectable/testable (tmp dirs in tests). */
   public record DocumentServiceConfig(String dir) {}
 
@@ -98,6 +101,29 @@ public class DocumentService {
         node.path("mimeType").asString("application/octet-stream"),
         bytes.length,
         new String(bytes, StandardCharsets.UTF_8));
+  }
+
+  /**
+   * Cheap metadata-only lookup for {@code upload:} refs (sidecar JSON read, no content); other ref
+   * kinds are served by external sources and resolve to null so callers render the ref itself.
+   */
+  public DocMeta metadata(String ref) {
+    if (ref == null || ref.isBlank() || !ref.startsWith("upload:")) {
+      return null;
+    }
+    Path meta = documentsDir.resolve(ref.substring("upload:".length()) + ".json");
+    if (!Files.isRegularFile(meta)) {
+      return null;
+    }
+    try {
+      tools.jackson.databind.JsonNode node =
+          objectMapper.readTree(Files.readString(meta, StandardCharsets.UTF_8));
+      return new DocMeta(
+          node.path("name").asString("document"), node.path("mimeType").asString(null), null);
+    } catch (IOException e) {
+      log.warn("[documents] metadata read of {} failed: {}", ref, e.getMessage());
+      return null;
+    }
   }
 
   static String sanitize(String name) {

@@ -44,6 +44,23 @@ public class PositionService {
     this.rfpRepository = rfpRepository;
   }
 
+  /** Positions of an RFP in board order (read surface for the detail view and agent tools). */
+  @Transactional(readOnly = true)
+  public List<RfpDtos.PositionDto> list(UUID rfpId) {
+    return positionRepository.findByRfpIdOrderByOrderIndexAsc(rfpId).stream()
+        .map(RfpDtos::toDto)
+        .toList();
+  }
+
+  /** Single position by id (read surface for agent tools). */
+  @Transactional(readOnly = true)
+  public RfpDtos.PositionDto get(UUID id) {
+    return positionRepository
+        .findById(id)
+        .map(RfpDtos::toDto)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "position not found"));
+  }
+
   @Transactional
   public RfpDtos.PositionDto create(UUID rfpId, PositionCreateRequest request, String actor) {
     RfpEntity rfp =

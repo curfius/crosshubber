@@ -2,3 +2,30 @@
   display: flex;
   flex-direction: column;
 }
+
+/* Anchor for the collapsed-mode count badge overlay. */
+.sidebar-badge-host {
+  position: relative;
+}
+
+/* Collapsed (40px tile) count badge: floats above the top-right corner of the
+   app icon instead of sitting in the row flow. Pass-through for clicks. */
+.sidebar-badge-collapsed {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  min-width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--portal-radius-full);
+  background: var(--portal-btn-danger-bg);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding-left: var(--portal-space-1);
+  padding-right: var(--portal-space-1);
+  pointer-events: none;
+}

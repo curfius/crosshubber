@@ -196,7 +196,7 @@ class MsgCenterEmailIT {
     McMessageEntity message = new McMessageEntity();
     setEntityId(message, Math.abs(UUID.randomUUID().getMostSignificantBits()));
     message.setMsgType("notification");
-    message.setModuleKey("portal-dashboard");
+    message.setModuleKey("navigation");
     message.setAudienceJson(
         mapper.readValue(audienceJson, new TypeReference<LinkedHashMap<String, Object>>() {}));
     message.setTitleJson(Map.of("en", "Mirror check", "pt-PT", "Verificação espelho"));

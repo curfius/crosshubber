@@ -133,4 +133,24 @@ class ProxyControllerTest {
     HttpServletRequest request = request("/api/mfe/other/x");
     assertEquals(400, controller.proxyGet("solutions", request).getStatusCode().value());
   }
+
+  @Test
+  void deleteForwardsMethod() throws Exception {
+    when(proxyService.findMfeContent("solutions")).thenReturn(content());
+    when(proxyService.forward(any(), anyString(), anyString(), any(), any(), anyString()))
+        .thenReturn(new ProxyService.FetchResult(204, null, new byte[0]));
+
+    HttpServletRequest request = request("/api/mfe/solutions/api/rfps/123");
+    ResponseEntity<?> response = controller.proxyDelete("solutions", request);
+
+    assertEquals(204, response.getStatusCode().value());
+    Mockito.verify(proxyService)
+        .forward(
+            any(),
+            Mockito.eq("api/rfps/123"),
+            Mockito.eq("DELETE"),
+            any(),
+            any(),
+            Mockito.eq("tok"));
+  }
 }

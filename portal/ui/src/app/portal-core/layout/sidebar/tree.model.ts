@@ -57,12 +57,35 @@ function buildTree(
     }
   }
 
+  // Orphan apps (no groupKey / group missing — e.g. a module added mid-runtime
+  // before its section is seeded) are grouped under a virtual per-module
+  // section instead of surfacing at the root level.
+  const virtualByModule = new Map<string, TreeNode<NavigationGroup>>();
+  const virtualSection = (ep: PortalModuleContent): TreeNode<NavigationGroup> => {
+    let node = virtualByModule.get(ep.moduleKey);
+    if (!node) {
+      node = {
+        data: {
+          groupKey: `virtual:${ep.moduleKey}`,
+          category: ep.category,
+          name: ep.moduleKey,
+          parentKey: null,
+          sortOrder: Number.MAX_SAFE_INTEGER,
+        },
+        children: [],
+      };
+      virtualByModule.set(ep.moduleKey, node);
+      roots.push(node);
+    }
+    return node;
+  };
+
   for (const ep of moduleContents) {
     const node: TreeNode<PortalModuleContent | NavigationGroup> = { data: ep, children: [] };
     if (ep.groupKey && groupNodes.has(ep.groupKey)) {
       groupNodes.get(ep.groupKey)!.children.push(node);
     } else {
-      roots.push(node);
+      virtualSection(ep).children.push(node);
     }
   }
 
@@ -71,6 +94,9 @@ function buildTree(
 
   roots.sort(sortBySortOrder);
   for (const node of groupNodes.values()) {
+    node.children.sort(sortBySortOrder);
+  }
+  for (const node of virtualByModule.values()) {
     node.children.sort(sortBySortOrder);
   }
 
